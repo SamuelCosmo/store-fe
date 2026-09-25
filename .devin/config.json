@@ -1,0 +1,45 @@
+{
+  "permissions": {
+    "allow": [
+      "Exec(ls)"
+    ],
+    "deny": [
+      "Exec(git -C)",
+      "Exec(git add)",
+      "Exec(git stage)",
+      "Exec(git commit)",
+      "Exec(git push)",
+      "Exec(git pull)",
+      "Exec(git merge)",
+      "Exec(git rebase)",
+      "Exec(git checkout)",
+      "Exec(git switch)",
+      "Exec(git branch)",
+      "Exec(git worktree)",
+      "Exec(git cherry-pick)",
+      "Exec(git stash)",
+      "Exec(git tag)",
+      "Exec(git reset)",
+      "Exec(git revert)",
+      "Exec(git restore)",
+      "Exec(git apply)",
+      "Exec(git am)",
+      "Exec(git clean)",
+      "Exec(git rm)",
+      "Exec(git mv)",
+      "Exec(git update-index)",
+      "Exec(git remote)",
+      "Exec(git submodule)",
+      "Exec(git config)",
+      "Exec(gh pr create)",
+      "Exec(gh pr merge)",
+      "Exec(gh pr close)",
+      "Exec(gh pr edit)",
+      "Exec(gh pr checkout)",
+      "Exec(gh pr review)",
+      "Exec(gh pr comment)",
+      "Exec(gh repo create)",
+      "Exec(gh release)"
+    ]
+  }
+}
