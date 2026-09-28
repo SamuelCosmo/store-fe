@@ -9,7 +9,7 @@ import type { AuthResponse } from "./session";
 
 const KEY = "store.session";
 
-function readStored(): AuthResponse | null {
+export function readStoredSession(): AuthResponse | null {
   try {
     return JSON.parse(localStorage.getItem(KEY) ?? "null");
   } catch {
@@ -50,12 +50,8 @@ export type AppDispatch = AppStore["dispatch"];
 
 let store: AppStore | undefined;
 
-/** Single store per client session, hydrated from localStorage on first access. */
+/** Single store per client session. Hydration happens post-mount in Providers to avoid SSR/CSR mismatch. */
 export function getStore(): AppStore {
-  if (!store) {
-    store = makeStore();
-    const stored = readStored();
-    if (stored) store.dispatch(hydrateSession(stored));
-  }
+  store ??= makeStore();
   return store;
 }
