@@ -1,67 +1,206 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useSyncExternalStore } from "react";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+
+type Role = "ADMIN" | "MANAGER" | "EMPLOYEE" | "CUSTOMER";
+
+type AuthResponse = {
+  token: string;
+  userId: number;
+  name: string;
+  email: string;
+  role: Role;
+  clientId: number;
+  storeId: number | null;
+};
+
+const ROLE_HOME: Record<Role, string> = {
+  ADMIN: "/admin",
+  MANAGER: "/admin",
+  EMPLOYEE: "/pos",
+  CUSTOMER: "/kiosk",
+};
+
+const inputClass =
+  "w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25";
+
+function readSession(): AuthResponse | null {
+  try {
+    return JSON.parse(localStorage.getItem("store.session") ?? "null");
+  } catch {
+    return null;
+  }
+}
+
+let sessionCache: AuthResponse | null | undefined;
+function getSession(): AuthResponse | null {
+  if (sessionCache === undefined) sessionCache = readSession();
+  return sessionCache;
+}
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const session = useSyncExternalStore(
+    () => () => {},
+    getSession,
+    () => null,
+  );
+
+  useEffect(() => {
+    if (session?.role) router.replace(ROLE_HOME[session.role] ?? "/");
+  }, [session, router]);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    const data = new FormData(e.currentTarget);
+    try {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.get("email"),
+          password: data.get("password"),
+        }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(body?.message ?? "No se pudo iniciar sesión");
+        return;
+      }
+      const session = body as AuthResponse;
+      localStorage.setItem("store.session", JSON.stringify(session));
+      sessionCache = session;
+      router.push(ROLE_HOME[session.role] ?? "/");
+    } catch {
+      setError("Sin conexión con el servidor — verifica que el backend esté corriendo");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (session?.role) {
+    return <div className="min-h-screen flex-1 bg-surface" />;
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="flex min-h-screen flex-1 bg-surface">
+      <aside className="hidden w-[44%] flex-col justify-between bg-primary p-12 text-white lg:flex xl:p-16">
+        <p className="text-sm font-semibold tracking-wide text-secondary-light">
+          Store Platform
+        </p>
+        <div className="space-y-10">
+          <div className="block w-72 -rotate-2 rounded-sm bg-white p-6 text-text-primary shadow-2xl">
+            <p className="text-center text-xs font-semibold tracking-widest text-text-primary">
+              COSMO COFFEE
+            </p>
+            <p className="mt-1 text-center text-[11px] text-text-muted">
+              ORDEN #0231 · CAJA 1
+            </p>
+            <div className="my-4 border-t border-dashed border-border" />
+            <ul className="space-y-2 text-sm tabular-nums">
+              <li className="flex justify-between">
+                <span>2 × Espresso</span>
+                <span>7.00</span>
+              </li>
+              <li className="flex justify-between">
+                <span>1 × Croissant</span>
+                <span>3.25</span>
+              </li>
+            </ul>
+            <div className="my-4 border-t border-dashed border-border" />
+            <p className="flex justify-between text-sm font-semibold tabular-nums">
+              <span>Total</span>
+              <span>$10.25</span>
+            </p>
+          </div>
+          <p className="max-w-sm text-2xl font-medium leading-snug tracking-tight">
+            Caja, cocina, kiosko y catálogo — todo desde el mismo sistema.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <p className="text-xs text-white/50">Multi-tienda · Multi-tenant</p>
+      </aside>
+
+      <main className="flex flex-1 items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <p className="mb-8 text-sm font-semibold text-primary lg:hidden">
+            Store Platform
+          </p>
+          <div className="overflow-hidden rounded-xl border border-border bg-background">
+            <div className="h-1 bg-secondary" />
+            <form onSubmit={handleSubmit} className="space-y-5 p-8">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
+                  Inicia sesión
+                </h1>
+                <p className="mt-1.5 text-sm text-text-secondary">
+                  Acceso para el equipo y administración.
+                </p>
+              </div>
+
+              {error && (
+                <p
+                  role="alert"
+                  className="rounded-lg border border-error/40 bg-error/5 px-3.5 py-2.5 text-sm text-error"
+                >
+                  {error}
+                </p>
+              )}
+
+              <div>
+                <label
+                  htmlFor="email"
+                  className="mb-1.5 block text-sm font-medium text-text-primary"
+                >
+                  Correo
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  autoFocus
+                  placeholder="admin@cosmo.com"
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="password"
+                  className="mb-1.5 block text-sm font-medium text-text-primary"
+                >
+                  Contraseña
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  className={inputClass}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60"
+              >
+                {loading ? "Entrando…" : "Entrar"}
+              </button>
+            </form>
+          </div>
+          <p className="mt-6 text-center text-xs text-text-muted">
+            ¿No puedes entrar? Pide tus credenciales a tu administrador.
+          </p>
         </div>
       </main>
     </div>
