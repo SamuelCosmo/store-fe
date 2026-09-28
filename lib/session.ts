@@ -1,6 +1,7 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useSelector } from "react-redux";
+import { clearSession as clearSessionAction, getStore, setSession } from "./store";
 
 export type Role = "ADMIN" | "MANAGER" | "EMPLOYEE" | "CUSTOMER";
 
@@ -28,36 +29,18 @@ export const ROLE_LABEL: Record<Role, string> = {
   CUSTOMER: "Cliente",
 };
 
-const KEY = "store.session";
-
 export function saveSession(session: AuthResponse) {
-  localStorage.setItem(KEY, JSON.stringify(session));
-  sessionCache = session;
+  getStore().dispatch(setSession(session));
 }
 
 export function clearSession() {
-  localStorage.removeItem(KEY);
-  sessionCache = null;
+  getStore().dispatch(clearSessionAction());
 }
 
-function readSession(): AuthResponse | null {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "null");
-  } catch {
-    return null;
-  }
-}
-
-let sessionCache: AuthResponse | null | undefined;
 export function getSession(): AuthResponse | null {
-  if (sessionCache === undefined) sessionCache = readSession();
-  return sessionCache;
+  return getStore().getState().session.value;
 }
 
 export function useSession() {
-  return useSyncExternalStore(
-    () => () => {},
-    getSession,
-    () => null,
-  );
+  return useSelector((s: { session: { value: AuthResponse | null } }) => s.session.value);
 }
