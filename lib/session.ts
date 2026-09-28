@@ -49,7 +49,7 @@ function readSession(): AuthResponse | null {
 }
 
 let sessionCache: AuthResponse | null | undefined;
-function getSession(): AuthResponse | null {
+export function getSession(): AuthResponse | null {
   if (sessionCache === undefined) sessionCache = readSession();
   return sessionCache;
 }
