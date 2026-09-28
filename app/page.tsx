@@ -1,55 +1,24 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
+import {
+  ROLE_HOME,
+  saveSession,
+  useSession,
+  type AuthResponse,
+} from "@/lib/session";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
-type Role = "ADMIN" | "MANAGER" | "EMPLOYEE" | "CUSTOMER";
-
-type AuthResponse = {
-  token: string;
-  userId: number;
-  name: string;
-  email: string;
-  role: Role;
-  clientId: number;
-  storeId: number | null;
-};
-
-const ROLE_HOME: Record<Role, string> = {
-  ADMIN: "/admin",
-  MANAGER: "/admin",
-  EMPLOYEE: "/pos",
-  CUSTOMER: "/kiosk",
-};
-
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25";
-
-function readSession(): AuthResponse | null {
-  try {
-    return JSON.parse(localStorage.getItem("store.session") ?? "null");
-  } catch {
-    return null;
-  }
-}
-
-let sessionCache: AuthResponse | null | undefined;
-function getSession(): AuthResponse | null {
-  if (sessionCache === undefined) sessionCache = readSession();
-  return sessionCache;
-}
 
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const session = useSyncExternalStore(
-    () => () => {},
-    getSession,
-    () => null,
-  );
+  const session = useSession();
 
   useEffect(() => {
     if (session?.role) router.replace(ROLE_HOME[session.role] ?? "/");
@@ -75,8 +44,7 @@ export default function LoginPage() {
         return;
       }
       const session = body as AuthResponse;
-      localStorage.setItem("store.session", JSON.stringify(session));
-      sessionCache = session;
+      saveSession(session);
       router.push(ROLE_HOME[session.role] ?? "/");
     } catch {
       setError("Sin conexión con el servidor — verifica que el backend esté corriendo");

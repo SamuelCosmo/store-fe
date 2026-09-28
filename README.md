@@ -38,11 +38,10 @@ efectivos del usuario (`user_modules ∩ client_modules`).
 | Superficie        | Ruta       | Rol             | Consume |
 | ----------------- | ---------- | --------------- | ------- |
 | Login             | `/`        | todos           | `POST /api/auth/login`; si ya hay sesión redirige por rol |
-| Panel Admin       | `/admin`   | ADMIN, MANAGER  | CRUD stores/categories/products, inventory, reportes, mesas/reservaciones |
+| Panel Admin       | `/dashboard` | ADMIN, MANAGER  | CRUD stores/categories/products, inventory, reportes, mesas/reservaciones |
 | Caja (POS)        | `/pos`     | EMPLOYEE        | `POST /api/orders` (CASH/CARD), fichas, ticket |
 | Kiosko            | `/kiosk`   | CUSTOMER        | `POST /api/orders` (solo CARD; sesión ligada al store) |
 | Cocina (KDS)      | `/kitchen` | EMPLOYEE        | `GET /api/orders?status=` + `PATCH .../status` |
-| Barra *(extra)*   | `/bar`     | EMPLOYEE        | `GET /api/bar/items` + PATCH status, canje de fichas |
 
 ## Autenticación
 

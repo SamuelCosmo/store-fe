@@ -45,9 +45,9 @@ Tras el login, enrutar según rol y módulos efectivos
 
 | Rol      | Destino                                    |
 | -------- | ------------------------------------------ |
-| ADMIN    | `/admin` (panel; también puede operar POS) |
-| MANAGER  | `/admin` u operación según módulos         |
-| EMPLOYEE | `/pos`, `/kitchen` o `/bar` según módulos  |
+| ADMIN    | `/dashboard` (panel; también puede operar POS) |
+| MANAGER  | `/dashboard` u operación según módulos         |
+| EMPLOYEE | `/pos` o `/kitchen` según módulos        |
 | CUSTOMER | `/kiosk`                                   |
 
 El frontend oculta rutas sin permiso (UX); el backend refuerza con
