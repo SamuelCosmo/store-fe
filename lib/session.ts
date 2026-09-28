@@ -35,6 +35,11 @@ export function saveSession(session: AuthResponse) {
   sessionCache = session;
 }
 
+export function clearSession() {
+  localStorage.removeItem(KEY);
+  sessionCache = null;
+}
+
 function readSession(): AuthResponse | null {
   try {
     return JSON.parse(localStorage.getItem(KEY) ?? "null");

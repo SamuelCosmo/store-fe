@@ -8,11 +8,12 @@ import {
   useSession,
   type AuthResponse,
 } from "@/lib/session";
+import { Receipt } from "./_components/Receipt";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 const inputClass =
-  "w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25";
+  "h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,77 +55,48 @@ export default function LoginPage() {
   }
 
   if (session?.role) {
-    return <div className="min-h-screen flex-1 bg-surface" />;
+    return <div className="min-h-screen flex-1 bg-canvas" />;
   }
 
   return (
-    <div className="flex min-h-screen flex-1 bg-surface">
-      <aside className="hidden w-[44%] flex-col justify-between bg-primary p-12 text-white lg:flex xl:p-16">
-        <p className="text-sm font-semibold tracking-wide text-secondary-light">
-          Store Platform
-        </p>
-        <div className="space-y-10">
-          <div className="block w-72 -rotate-2 rounded-sm bg-white p-6 text-text-primary shadow-2xl">
-            <p className="text-center text-xs font-semibold tracking-widest text-text-primary">
-              COSMO COFFEE
-            </p>
-            <p className="mt-1 text-center text-[11px] text-text-muted">
-              ORDEN #0231 · CAJA 1
-            </p>
-            <div className="my-4 border-t border-dashed border-border" />
-            <ul className="space-y-2 text-sm tabular-nums">
-              <li className="flex justify-between">
-                <span>2 × Espresso</span>
-                <span>7.00</span>
-              </li>
-              <li className="flex justify-between">
-                <span>1 × Croissant</span>
-                <span>3.25</span>
-              </li>
-            </ul>
-            <div className="my-4 border-t border-dashed border-border" />
-            <p className="flex justify-between text-sm font-semibold tabular-nums">
-              <span>Total</span>
-              <span>$10.25</span>
-            </p>
+    <div className="flex min-h-screen flex-1 items-center justify-center bg-canvas p-6">
+      <div className="flex h-[600px] w-full max-w-[960px] overflow-hidden rounded-xl bg-surface shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+        <aside className="hidden w-1/2 flex-col bg-primary px-14 py-10 text-white sm:flex">
+          <p className="text-sm font-semibold tracking-wide">Store Platform</p>
+          <div className="flex flex-1 items-center">
+            <Receipt />
           </div>
-          <p className="max-w-sm text-2xl font-medium leading-snug tracking-tight">
+          <p className="max-w-[220px] text-sm font-semibold leading-normal tracking-wide">
             Caja, cocina, kiosko y catálogo — todo desde el mismo sistema.
           </p>
-        </div>
-        <p className="text-xs text-white/50">Multi-tienda · Multi-tenant</p>
-      </aside>
+        </aside>
 
-      <main className="flex flex-1 items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm">
-          <p className="mb-8 text-sm font-semibold text-primary lg:hidden">
-            Store Platform
-          </p>
-          <div className="overflow-hidden rounded-xl border border-border bg-background">
-            <div className="h-1 bg-secondary" />
-            <form onSubmit={handleSubmit} className="space-y-5 p-8">
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
-                  Inicia sesión
-                </h1>
-                <p className="mt-1.5 text-sm text-text-secondary">
-                  Acceso para el equipo y administración.
-                </p>
-              </div>
+        <main className="flex w-full flex-col items-center justify-center bg-background px-8 sm:w-1/2 sm:px-14">
+          <form
+            onSubmit={handleSubmit}
+            className="flex w-full flex-col gap-3 rounded-xl bg-background p-6 shadow-[0_4px_16px_rgba(0,0,0,0.15)]"
+          >
+            <h1 className="text-xl font-semibold tracking-wide text-text-primary">
+              Inicia sesión
+            </h1>
+            <p className="text-sm text-text-muted">
+              Acceso para el equipo y administración.
+            </p>
 
-              {error && (
-                <p
-                  role="alert"
-                  className="rounded-lg border border-error/40 bg-error/5 px-3.5 py-2.5 text-sm text-error"
-                >
-                  {error}
-                </p>
-              )}
+            {error && (
+              <p
+                role="alert"
+                className="rounded-lg border border-error/40 bg-error/5 px-3.5 py-2.5 text-sm text-error"
+              >
+                {error}
+              </p>
+            )}
 
-              <div>
+            <div className="mt-2 flex flex-col gap-3.5">
+              <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="email"
-                  className="mb-1.5 block text-sm font-medium text-text-primary"
+                  className="text-sm font-medium text-text-primary"
                 >
                   Correo
                 </label>
@@ -139,11 +111,10 @@ export default function LoginPage() {
                   className={inputClass}
                 />
               </div>
-
-              <div>
+              <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="password"
-                  className="mb-1.5 block text-sm font-medium text-text-primary"
+                  className="text-sm font-medium text-text-primary"
                 >
                   Contraseña
                 </label>
@@ -156,21 +127,21 @@ export default function LoginPage() {
                   className={inputClass}
                 />
               </div>
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60"
-              >
-                {loading ? "Entrando…" : "Entrar"}
-              </button>
-            </form>
-          </div>
-          <p className="mt-6 text-center text-xs text-text-muted">
-            ¿No puedes entrar? Pide tus credenciales a tu administrador.
-          </p>
-        </div>
-      </main>
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-3 w-full rounded-lg bg-primary py-3 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60"
+            >
+              {loading ? "Entrando…" : "Entrar"}
+            </button>
+            <p className="mt-1 text-xs text-text-muted">
+              ¿No puedes entrar? Pide tus credenciales a tu administrador.
+            </p>
+          </form>
+        </main>
+      </div>
     </div>
   );
 }
