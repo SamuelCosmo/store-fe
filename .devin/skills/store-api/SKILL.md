@@ -91,7 +91,7 @@ POST   /api/orders            # OrderRequest abajo
 GET    /api/orders            # ?storeId=&status= (KDS filtra por estado)
 GET    /api/orders/{id}
 PATCH  /api/orders/{id}/status
-GET    /api/orders/{id}/ticket   # payload para impresión
+GET    /api/orders/{id}/ticket   # PENDIENTE backend — payload para impresión
 ```
 
 ```json
@@ -117,7 +117,10 @@ GET    /api/orders/{id}/ticket   # payload para impresión
   `refund_status=REFUNDED` (reembolso manual por staff).
 - KDS usa: `PREPARING`, `READY`, `CANCELLED`.
 
-### Extras del cliente (módulos opcionales)
+**Pendiente en backend:** items de orden aún no aceptan `sizeId`/`extraIds`;
+tampoco `cashReceived`/`changeGiven` para pago en efectivo.
+
+### Extras del cliente (módulos opcionales — TODOS pendientes en backend)
 
 ```text
 # Fichas (TOKENS) — físicas/anónimas, sin wallet
@@ -171,5 +174,4 @@ Mapear `fieldErrors` a los campos del formulario; `message` es texto legible.
 - `fetch` nativo alcanza para empezar; `TanStack Query` recomendado para
   cache/loading/error y polling (el KDS hace polling de órdenes).
 - No hay Express ni BFF — el backend Spring Boot ES el servidor.
-- Pendiente en backend: **CORS** para `http://localhost:3000`. Si un request
-  falla sin response, revisar primero esto.
+- **CORS** ya configurado en `SecurityConfig` para `http://localhost:3000`.

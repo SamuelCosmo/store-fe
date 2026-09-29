@@ -35,17 +35,17 @@ Swagger UI del backend: http://localhost:8080/swagger-ui.html
 Todas consumen la misma API. Tras el login se enruta por **rol + módulos**
 efectivos del usuario (`user_modules ∩ client_modules`).
 
-| Superficie        | Ruta       | Rol             | Consume |
-| ----------------- | ---------- | --------------- | ------- |
-| Login             | `/`        | todos           | `POST /api/auth/login`; si ya hay sesión redirige por rol |
-| Dashboard         | `/dashboard` | ADMIN, MANAGER | Resumen/ventas del día |
-| Categorías        | `/categories` | ADMIN, MANAGER | CRUD `/api/categories` (multi-tienda, icono, activo) |
-| Productos         | `/products` | ADMIN, MANAGER  | CRUD `/api/products` + catálogo `/api/extras` |
-| Establecimientos  | `/stores`  | ADMIN           | CRUD `/api/stores` + `/api/clients/{id}/stores` |
-| Inventario        | `/inventory` | ADMIN, MANAGER | `GET/PUT /api/inventory/{productId}` |
-| Caja (POS)        | `/pos`     | EMPLOYEE        | `POST /api/orders` (CASH/CARD), fichas, ticket |
-| Kiosko            | `/kiosk`   | CUSTOMER        | `POST /api/orders` (solo CARD; sesión ligada al store) |
-| Cocina (KDS)      | `/kitchen` | EMPLOYEE        | `GET /api/orders?status=` + `PATCH .../status` |
+| Superficie        | Ruta       | Estado | Rol             | Consume |
+| ----------------- | ---------- | ------ | --------------- | ------- |
+| Login             | `/`        | ✅     | todos           | `POST /api/auth/login`; si ya hay sesión redirige por rol |
+| Dashboard         | `/dashboard` | ✅ parcial | ADMIN, MANAGER | Landing + UserCard; falta resumen/ventas del día |
+| Categorías        | `/categories` | ✅  | ADMIN, MANAGER | CRUD `/api/categories` (multi-tienda, icono, activo) |
+| Productos         | `/products` | ✅ | ADMIN, MANAGER  | CRUD `/api/products` + catálogos `/api/extras` y `/api/sizes`; filas expandibles con asignaciones |
+| Establecimientos  | `/stores`  | ✅     | ADMIN           | CRUD `/api/stores` + `/api/clients/{id}/stores` |
+| Inventario        | `/inventory` | ⬜ pendiente | ADMIN, MANAGER | `GET/PUT /api/inventory/{productId}` |
+| Caja (POS)        | `/pos`     | ⬜ placeholder | EMPLOYEE        | `POST /api/orders` (CASH/CARD), fichas, ticket |
+| Kiosko            | `/kiosk`   | ⬜ placeholder | CUSTOMER        | `POST /api/orders` (solo CARD; sesión ligada al store) |
+| Cocina (KDS)      | `/kitchen` | ⬜ placeholder | EMPLOYEE        | `GET /api/orders?status=` + `PATCH .../status` |
 
 Las rutas del panel viven en el route group `app/(panel)/` — comparten el
 sidebar (`(panel)/layout.tsx`) sin prefijo en la URL. Rutas nuevas van ahí,
@@ -73,8 +73,17 @@ fuera de `/dashboard`, salvo indicación contraria.
 - Errores llegan como `ErrorResponse` `{ status, error, message, path,
   fieldErrors }` — manejar `fieldErrors` en formularios.
 
+## Nuevo en el proyecto?
+
+1. Lee [`docs/01-happy-path.md`](docs/01-happy-path.md) — qué flujos existen
+   y qué endpoints tocan.
+2. [`docs/02-architecture.md`](docs/02-architecture.md) — estructura,
+   convenciones (route group `(panel)`, `lib/api`, sesión en Redux).
+3. [`docs/03-todos.md`](docs/03-todos.md) — trabajo pendiente en orden.
+
 ## Referencia
 
+- Docs del repo: [`docs/`](docs/README.md) — happy path, arquitectura, TODOs.
 - Skill del repo: `/store-api` — contrato de la API destilado.
 - Docs fuente (backend): [`../store-be/docs/`](../store-be/docs/README.md) —
   especialmente `10-frontend-screens.md`, `11-frontend-integration.md` y
