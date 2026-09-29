@@ -34,7 +34,7 @@ export function UserCard({
           />
           <div className="absolute bottom-full left-0 z-20 mb-2 w-full overflow-hidden rounded-xl border border-border bg-background shadow-lg">
             <Link
-              href="/dashboard/settings"
+              href="/settings"
               onClick={() => setOpen(false)}
               className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-text-primary transition-colors hover:bg-surface"
             >

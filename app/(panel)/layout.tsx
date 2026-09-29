@@ -1,6 +1,7 @@
+import type { ReactNode } from "react";
 import { AdminSidebar } from "./_components/AdminSidebar";
 
-export default function AdminLayout({ children }: LayoutProps<"/dashboard">) {
+export default function PanelLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-1 bg-canvas">
       <AdminSidebar />

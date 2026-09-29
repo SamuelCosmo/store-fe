@@ -60,8 +60,18 @@ El frontend oculta rutas sin permiso (UX); el backend refuerza con
 
 ```text
 POST/GET/GET{id}/PUT/DELETE   /api/categories        # GET ?storeId=
+                                                   # Category: { storeIds[], name,
+                                                   #   description, icon, active }
 POST/GET/GET{id}/PUT/DELETE   /api/products          # GET ?storeId=&categoryId=
 PATCH                         /api/products/{id}/active
+# Product: { categoryId, name, description, sku, image, price,
+#   tokenCost, sizeIds[], extraIds[] }
+# ProductResponse incluye extras[] y sizes[] resueltos.
+POST/GET/PUT/DELETE           /api/extras            # catálogo por cliente
+POST/GET/PUT/DELETE           /api/sizes             # catálogo por cliente
+# Extra/Size: { name, price, active, productIds[] } — asignación
+# bidireccional: desde el producto (extraIds/sizeIds) o desde el
+# extra/tamaño (productIds). price = cargo adicional sobre el precio.
 GET/PUT                       /api/inventory/{productId}
 ```
 

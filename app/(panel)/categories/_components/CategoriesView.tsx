@@ -246,7 +246,7 @@ export function CategoriesView() {
               Primero necesitas un establecimiento para tener categorías.
             </p>
             <Link
-              href="/dashboard/stores"
+              href="/stores"
               className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
             >
               Ir a Establecimientos

@@ -38,10 +38,18 @@ efectivos del usuario (`user_modules ∩ client_modules`).
 | Superficie        | Ruta       | Rol             | Consume |
 | ----------------- | ---------- | --------------- | ------- |
 | Login             | `/`        | todos           | `POST /api/auth/login`; si ya hay sesión redirige por rol |
-| Panel Admin       | `/dashboard` | ADMIN, MANAGER  | CRUD stores/categories/products, inventory, reportes, mesas/reservaciones |
+| Dashboard         | `/dashboard` | ADMIN, MANAGER | Resumen/ventas del día |
+| Categorías        | `/categories` | ADMIN, MANAGER | CRUD `/api/categories` (multi-tienda, icono, activo) |
+| Productos         | `/products` | ADMIN, MANAGER  | CRUD `/api/products` + catálogo `/api/extras` |
+| Establecimientos  | `/stores`  | ADMIN           | CRUD `/api/stores` + `/api/clients/{id}/stores` |
+| Inventario        | `/inventory` | ADMIN, MANAGER | `GET/PUT /api/inventory/{productId}` |
 | Caja (POS)        | `/pos`     | EMPLOYEE        | `POST /api/orders` (CASH/CARD), fichas, ticket |
 | Kiosko            | `/kiosk`   | CUSTOMER        | `POST /api/orders` (solo CARD; sesión ligada al store) |
 | Cocina (KDS)      | `/kitchen` | EMPLOYEE        | `GET /api/orders?status=` + `PATCH .../status` |
+
+Las rutas del panel viven en el route group `app/(panel)/` — comparten el
+sidebar (`(panel)/layout.tsx`) sin prefijo en la URL. Rutas nuevas van ahí,
+fuera de `/dashboard`, salvo indicación contraria.
 
 ## Autenticación
 
