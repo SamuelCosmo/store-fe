@@ -2,7 +2,6 @@
 
 import { Sidebar } from "@/components/organisms/Sidebar";
 import {
-  BarChart3,
   LayoutDashboard,
   Settings,
   Soup,
@@ -19,7 +18,6 @@ const items = [
   { href: "/products", label: "Productos", icon: Soup },
   { href: "/stores", label: "Establecimientos", icon: Store },
   { href: "/users", label: "Usuarios", icon: Users },
-  { href: "/reports", label: "Reportes", icon: BarChart3 },
   { href: "/settings", label: "Configuración", icon: Settings },
 ];
 

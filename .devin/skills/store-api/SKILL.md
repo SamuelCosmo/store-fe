@@ -143,10 +143,11 @@ POST   /api/tokens/redeem      # { productId, quantity } — canje en barra;
 GET    /api/bar/items?status=
 PATCH  /api/bar/items/{id}/status
 
-# Reportes (REPORTS) — ADMIN/MANAGER
-GET    /api/reports/sales/daily?date=
-GET    /api/reports/top-products?from=&to=&limit=
-GET    /api/reports/sales-by-employee?from=&to=
+# Reportes (REPORTS) — ADMIN/MANAGER ✅
+GET    /api/reports/dashboard?from=&to=&storeId=&top=
+#   → { totalSales, orders, avgTicket, cancelledOrders, refundedTotal,
+#       channels[], orderTypes[], payments[], hourly[], topProducts[],
+#       employees[] } — CANCELLED no cuentan en ventas
 
 # Mesas y reservaciones (RESERVATIONS)
 GET    /api/tables?zone=                       # DINING | BAR (6 sillas)

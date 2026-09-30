@@ -14,15 +14,15 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [ ] **Items de orden con extras/tamaños** — depende del backend
       (`sizeId`/`extraIds` en `OrderItemRequest`, pendiente) y luego del UI
       del POS/kiosko.
-- [ ] **Páginas del sidebar que no existen** — `/reports` y `/settings`
-      enlazan a 404; `/inventory` y `/reservations` están deshabilitadas en
-      el sidebar ("Pronto"). Crearlas o quitarlas.
+- [ ] **Páginas del sidebar que no existen** — `/settings` enlaza a 404;
+      `/inventory` y `/reservations` se quitaron del menú hasta implementarse.
+      (Reportes vive dentro de `/dashboard`.)
 - [ ] **Placeholders** — `/pos`, `/kiosk`, `/kitchen` son pantallas vacías.
 
 ## Iteración siguiente
 
-- [ ] **Dashboard real** — métricas del día; depende de `/api/reports/*`
-      (pendiente en backend).
+- [x] **Dashboard real** — métricas del día via `GET /api/reports/dashboard`
+      (KPIs, por hora, canal/tipo/pago, top productos, por empleado).
 - [ ] **Módulos por usuario** — el sidebar muestra todo; filtrar por
       `user_modules ∩ client_modules` cuando el backend lo exponga.
 - [ ] **Enrutado por rol + módulos tras login** — hoy solo se usa `ROLE_HOME`.

@@ -15,11 +15,14 @@ Flujos tal como existen hoy. ✅ = implementado contra el backend real;
    `CUSTOMER` → `/kiosk`.
 5. Logout desde `UserCard` → `clearSession()` + `router.push("/")`.
 
-## Dashboard → `/dashboard` ✅ parcial
+## Dashboard → `/dashboard` ✅
 
-- Landing con `DashboardHeader` + `UserCard` dentro del shell del panel.
-- ⬜ Falta: métricas/resumen del día (depende de `/api/reports/*`,
-  pendiente en backend).
+- Saludo por hora del día + selector de rango (Hoy / 7 días / 30 días /
+  Este mes).
+- Consume `GET /api/reports/dashboard?from=&to=` — KPIs (ventas, órdenes,
+  ticket promedio, comer aquí %, cancelaciones+reembolsos), barras por hora,
+  composición por canal/tipo de orden/pago, top productos y ventas por
+  empleado.
 
 ## Establecimientos → `/stores` ✅
 
