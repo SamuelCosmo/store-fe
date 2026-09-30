@@ -52,8 +52,28 @@ Tres bloques en la misma página:
 - **SizesSection** — CRUD `/api/sizes` (`name`, `price` = cargo adicional,
   `active`). La asignación a productos SOLO se hace desde el ProductModal;
   la tabla muestra el conteo de productos como lectura.
-- **ExtrasSection** — CRUD `/api/extras` (`name`, `price`, `active`) y desde
-  su modal también se puede asignar a productos (`productIds`).
+- **ExtrasSection** — CRUD `/api/extras` (`name`, `price`, `active`).
+  Igual que tamaños: la asignación se hace desde el ProductModal
+  (`extraIds`), la tabla muestra el conteo como lectura.
+- Las tres tablas viven en pestañas: **Productos · Tamaños · Extras**.
+
+## Usuarios → `/users` ✅
+
+- Lista `GET /api/users` (scope del `clientId` del JWT) + tabla con rol y
+  establecimientos asignados.
+- `UserModal`: `name`, `email`, `password` escrita dos veces con regex
+  fuerte (8+ chars, mayúscula, minúscula, número — validado también en el
+  backend con `@Pattern`; vacío en edición = sin cambios), `role`
+  (MANAGER/EMPLOYEE/CUSTOMER — el primer ADMIN nace de `/auth/register`) y
+  `storeIds[]` → `user_stores`.
+- Acciones por fila: editar, activar/desactivar (`PATCH .../active`),
+  eliminar (`DELETE`). Usuarios inactivos se ven apagados con pill "Inactivo"
+  y ya no pueden iniciar sesión.
+- **Toda mutación es de dos pasos**: el form/acción abre
+  `ConfirmPasswordModal` pidiendo la contraseña del admin logueado
+  (`currentPassword` en el payload, verificado server-side → 401). Si falla,
+  el modal se queda abierto con "vuelve a intentarlo".
+- ⬜ `PUT /api/users/{id}/modules` — módulos por usuario (pendiente backend).
 
 ## Superficies pendientes ⬜
 

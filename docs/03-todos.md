@@ -14,9 +14,9 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [ ] **Items de orden con extras/tamaños** — depende del backend
       (`sizeId`/`extraIds` en `OrderItemRequest`, pendiente) y luego del UI
       del POS/kiosko.
-- [ ] **Páginas del sidebar que no existen** — `/inventory`, `/users`,
-      `/reports`, `/reservations`, `/settings` enlazan a 404. Crearlas o
-      quitarlas del sidebar.
+- [ ] **Páginas del sidebar que no existen** — `/reports` y `/settings`
+      enlazan a 404; `/inventory` y `/reservations` están deshabilitadas en
+      el sidebar ("Pronto"). Crearlas o quitarlas.
 - [ ] **Placeholders** — `/pos`, `/kiosk`, `/kitchen` son pantallas vacías.
 
 ## Iteración siguiente

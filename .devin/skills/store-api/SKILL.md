@@ -75,14 +75,25 @@ POST/GET/PUT/DELETE           /api/sizes             # catálogo por cliente
 GET/PUT                       /api/inventory/{productId}
 ```
 
-### Stores y clients
+### Stores, clients y users
 
 ```text
 POST/GET/GET{id}/PUT   /api/stores     # ADMIN; ligado a clientId
 POST   /api/clients                    # alta de tenant (plan: maxStores,
 GET    /api/clients/{id}               #  maxPosPerStore, maxKiosksPerStore)
 GET    /api/clients/{id}/stores
+GET    /api/users                      # ADMIN/MANAGER — lista del cliente
+POST   /api/users                      # ADMIN — { name, email, password, role,
+                                       #   storeIds[], currentPassword }
+PUT    /api/users/{id}                 # ADMIN — password vacío = sin cambio
+PATCH  /api/users/{id}/active          # ADMIN — { active, currentPassword }
+DELETE /api/users/{id}                 # ADMIN — body { currentPassword }
 ```
+
+- **Toda mutación de usuarios exige `currentPassword`** — la contraseña del
+  admin logueado (re-auth server-side; 401 `Invalid credentials` si falla).
+- Un admin no puede desactivarse, eliminarse ni cambiar su propio rol;
+  `active=false` bloquea el login.
 
 ### Órdenes
 
