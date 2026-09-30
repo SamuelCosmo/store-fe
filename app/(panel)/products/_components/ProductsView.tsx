@@ -76,6 +76,14 @@ function toProduct(dto: ProductDto): Product {
 
 const GRID = "grid-cols-[1fr_140px_110px_140px_60px]";
 
+type Tab = "productos" | "tamanos" | "extras";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "productos", label: "Productos" },
+  { id: "tamanos", label: "Tamaños" },
+  { id: "extras", label: "Extras" },
+];
+
 export function ProductsView() {
   const session = useSession();
   const [products, setProducts] = useState<Product[]>([]);
@@ -89,6 +97,7 @@ export function ProductsView() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [tab, setTab] = useState<Tab>("productos");
 
   useEffect(() => {
     if (!session) return;
@@ -176,6 +185,35 @@ export function ProductsView() {
         subtitle="Administra los platos, precios y disponibilidad del menú"
       />
 
+      <div role="tablist" className="flex gap-1 border-b border-border">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`-mb-px border-b-2 px-4 py-2.5 text-sm transition-colors ${
+              tab === t.id
+                ? "border-primary font-semibold text-primary"
+                : "border-transparent text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <p
+          role="alert"
+          className="rounded-lg border border-error/40 bg-error/5 px-4 py-3 text-sm text-error"
+        >
+          {error}
+        </p>
+      )}
+
+      {tab === "productos" && (
+      <>
       <div className="flex items-center justify-between gap-4">
         <label className="flex h-[42px] w-full max-w-[320px] items-center gap-2.5 rounded-xl border border-border bg-background px-3.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25">
           <Search size={16} aria-hidden className="shrink-0 text-text-muted" />
@@ -200,15 +238,6 @@ export function ProductsView() {
           </button>
         )}
       </div>
-
-      {error && (
-        <p
-          role="alert"
-          className="rounded-lg border border-error/40 bg-error/5 px-4 py-3 text-sm text-error"
-        >
-          {error}
-        </p>
-      )}
 
       <div className="rounded-2xl border border-border bg-background p-5">
         <div
@@ -454,7 +483,10 @@ export function ProductsView() {
           })
         )}
       </div>
+      </>
+      )}
 
+      {tab === "tamanos" && (
       <SizesSection
         sizes={sizes}
         products={products}
@@ -474,7 +506,9 @@ export function ProductsView() {
         }}
         onError={setError}
       />
+      )}
 
+      {tab === "extras" && (
       <ExtrasSection
         extras={extras}
         products={products}
@@ -494,6 +528,7 @@ export function ProductsView() {
         }}
         onError={setError}
       />
+      )}
 
       <ProductModal
         open={modalOpen}

@@ -42,12 +42,7 @@ export function ExtrasSection({
   const [editing, setEditing] = useState<ExtraDto | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
 
-  async function save(data: {
-    name: string;
-    price: number;
-    active: boolean;
-    productIds: number[];
-  }) {
+  async function save(data: { name: string; price: number; active: boolean }) {
     try {
       const saved = await api<ExtraDto>(
         editing ? `/api/extras/${editing.id}` : "/api/extras",
@@ -228,7 +223,6 @@ export function ExtrasSection({
       <ExtraModal
         open={modalOpen}
         extra={editing}
-        products={products}
         onClose={() => setModalOpen(false)}
         onSave={save}
       />
@@ -239,20 +233,13 @@ export function ExtrasSection({
 function ExtraModal({
   open,
   extra,
-  products,
   onClose,
   onSave,
 }: {
   open: boolean;
   extra: ExtraDto | null;
-  products: Product[];
   onClose: () => void;
-  onSave: (data: {
-    name: string;
-    price: number;
-    active: boolean;
-    productIds: number[];
-  }) => void;
+  onSave: (data: { name: string; price: number; active: boolean }) => void;
 }) {
   return (
     <Modal
@@ -261,12 +248,7 @@ function ExtraModal({
       title={extra ? "Editar extra" : "Nuevo extra"}
     >
       {open && (
-        <ExtraForm
-          key={extra?.id ?? "new"}
-          extra={extra}
-          products={products}
-          onSave={onSave}
-        />
+        <ExtraForm key={extra?.id ?? "new"} extra={extra} onSave={onSave} />
       )}
     </Modal>
   );
@@ -274,62 +256,40 @@ function ExtraModal({
 
 function ExtraForm({
   extra,
-  products,
   onSave,
 }: {
   extra: ExtraDto | null;
-  products: Product[];
-  onSave: (data: {
-    name: string;
-    price: number;
-    active: boolean;
-    productIds: number[];
-  }) => void;
+  onSave: (data: { name: string; price: number; active: boolean }) => void;
 }) {
   const [name, setName] = useState(extra?.name ?? "");
   const [price, setPrice] = useState(extra?.price.toString() ?? "");
   const [active, setActive] = useState(extra?.active ?? true);
-  const [productIds, setProductIds] = useState<number[]>(
-    extra?.productIds ?? [],
-  );
-
-  function toggleProduct(id: number) {
-    setProductIds((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
-    );
-  }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    onSave({
-      name: name.trim(),
-      price: Number(price) || 0,
-      active,
-      productIds,
-    });
+    onSave({ name: name.trim(), price: Number(price) || 0, active });
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor="extra-name"
-          className="text-sm font-medium text-text-primary"
-        >
-          Nombre
-        </label>
-        <input
-          id="extra-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          autoFocus
-          placeholder="Ej. Chashu extra"
-          className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 items-end gap-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="extra-name"
+            className="text-sm font-medium text-text-primary"
+          >
+            Nombre
+          </label>
+          <input
+            id="extra-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            autoFocus
+            placeholder="Ej. Chashu extra"
+            className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+          />
+        </div>
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="extra-price"
@@ -349,40 +309,17 @@ function ExtraForm({
             className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
           />
         </div>
-        <label className="flex items-center gap-2.5 pb-3 text-sm text-text-primary">
-          <input
-            type="checkbox"
-            checked={active}
-            onChange={(e) => setActive(e.target.checked)}
-            className="size-4 accent-primary"
-          />
-          Disponible
-        </label>
       </div>
 
-      {products.length > 0 && (
-        <fieldset className="flex flex-col gap-1.5">
-          <legend className="text-sm font-medium text-text-primary">
-            Aplica a estos productos
-          </legend>
-          <div className="flex max-h-44 flex-col gap-1 overflow-y-auto">
-            {products.map((product) => (
-              <label
-                key={product.id}
-                className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm text-text-primary transition-colors hover:bg-surface has-checked:border-primary has-checked:bg-primary-light"
-              >
-                <input
-                  type="checkbox"
-                  checked={productIds.includes(product.id)}
-                  onChange={() => toggleProduct(product.id)}
-                  className="size-4 accent-primary"
-                />
-                {product.name}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      )}
+      <label className="flex items-center gap-2.5 text-sm text-text-primary">
+        <input
+          type="checkbox"
+          checked={active}
+          onChange={(e) => setActive(e.target.checked)}
+          className="size-4 accent-primary"
+        />
+        Disponible
+      </label>
 
       <div className="mt-1 flex justify-end gap-2.5">
         <button
