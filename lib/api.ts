@@ -1,4 +1,9 @@
-import { getSession } from "./session";
+import {
+  SESSION_EXPIRED_EVENT,
+  clearSession,
+  getSession,
+  isSessionExpired,
+} from "./session";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -19,6 +24,16 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
       if (body?.message) message = body.message;
     } catch {
       /* respuesta sin cuerpo JSON */
+    }
+    const session = getSession();
+    if (
+      (res.status === 401 || res.status === 403) &&
+      session &&
+      isSessionExpired(session) &&
+      typeof window !== "undefined"
+    ) {
+      clearSession();
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     }
     throw new Error(message);
   }

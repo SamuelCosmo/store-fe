@@ -100,6 +100,7 @@ DELETE /api/users/{id}                 # ADMIN — body { currentPassword }
 ```text
 POST   /api/orders            # OrderRequest abajo
 GET    /api/orders            # ?storeId=&status= (KDS filtra por estado)
+GET    /api/orders/next-number  # → { nextNumber } — folio semanal (reset lunes)
 GET    /api/orders/{id}
 PATCH  /api/orders/{id}/status
 GET    /api/orders/{id}/ticket   # PENDIENTE backend — payload para impresión

@@ -11,13 +11,27 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       contenedor placeholder; falta el servicio de subida (Azure Blob u
       otro) que devuelva el URL a guardar en `products.image`.
       TODO en `ProductModal.tsx`.
-- [ ] **Items de orden con extras/tamaños** — depende del backend
-      (`sizeId`/`extraIds` en `OrderItemRequest`, pendiente) y luego del UI
-      del POS/kiosko.
+- [ ] **Items de orden con extras/tamaños** — la UI del POS/kiosko ya
+      selecciona tamaño, extras y notas; falta que el backend acepte
+      `sizeId`/`extraIds`/`notes` en `OrderItemRequest` y cobre los cargos
+      (hoy el total mostrado puede diferir del cobrado). TODO en
+      `OrderTerminal.tsx`.
+- [ ] **IVA/descuento en la orden** — el panel muestra solo subtotal=total;
+      agregar cuando el backend los modele.
 - [ ] **Páginas del sidebar que no existen** — `/settings` enlaza a 404;
       `/inventory` y `/reservations` se quitaron del menú hasta implementarse.
       (Reportes vive dentro de `/dashboard`.)
-- [ ] **Placeholders** — `/pos`, `/kiosk`, `/kitchen` son pantallas vacías.
+- [ ] **Placeholder restante** — `/kitchen` (KDS) sigue vacío.
+- [ ] **Ordenar por columnas en tablas del admin** — `/products`,
+      `/categories`, `/stores`, `/users`: headers clickeables con sort
+      asc/desc (estado local basta, los datos ya vienen completos).
+- [ ] **Paginación en tablas del admin** — hoy cargan todo el catálogo;
+      cuando crezca, paginar (cliente-side o `page`/`size` en el backend).
+- [ ] **Refresco automático del catálogo en POS/kiosco** — la terminal
+      carga productos/categorías/extras/tamaños solo al montar; dar de alta
+      o editar algo requiere reload manual. Opciones: polling con
+      `setInterval`, refetch al recuperar foco (`visibilitychange`) o SSE;
+      TanStack Query lo resolvería con `refetchInterval`.
 
 ## Iteración siguiente
 

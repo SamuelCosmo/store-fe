@@ -78,12 +78,42 @@ Tres bloques en la misma página:
   el modal se queda abierto con "vuelve a intentarlo".
 - ⬜ `PUT /api/users/{id}/modules` — módulos por usuario (pendiente backend).
 
+## Terminal de venta → `/pos` y `/kiosk` ✅
+
+Mismo componente (`app/pos/_components/OrderTerminal.tsx`) con prop
+`channel`; el kiosko es la vista del cliente (`CUSTOMER`).
+
+- **Barra superior**: `BrandMark` con el nombre del store (de
+  `GET /api/clients/{id}/stores`, fallback "Store") + reloj en vivo.
+- **Catálogo**: pills de categorías (incluye "Todo") + grid de cards
+  (foto o placeholder, nombre, precio, descripción, botón Añadir).
+  Solo productos `active` (`GET /api/products?activeOnly=true`) y
+  categorías activas.
+- **Modal de extras** (`ExtrasModal`): se abre si el producto tiene
+  tamaños o extras activos — radio de tamaño, steppers `- n +` por
+  extra, preview del item, campo "Notas…" y Cancelar/Añadir. Editar
+  una línea reabre el modal con la selección precargada.
+- **Pedido**: toggle En mesa / Para llevar (`DINE_IN`/`TAKEAWAY`) con
+  píldora deslizante; cada añadido es una línea independiente de
+  cantidad 1 (sin `2×`); acciones por línea en popup `⋯`:
+  Editar / Duplicar (copia exacta, sin modal) / Eliminar. Subtotal y
+  total. IVA/descuento pendientes de soporte en backend.
+- **PAGAR** abre modal de método: POS → Efectivo o Tarjeta;
+  KIOSK → solo Tarjeta (regla del backend). `POST /api/orders` con
+  `{ channel, orderType, paymentMethod, items: [{productId, quantity: 1}] }`
+  — `storeId` sale del JWT. Éxito → modal "Pedido enviado" con el
+  folio semanal (`GET /api/orders/next-number` → "Pedido #N", conteo
+  por store que se resetea cada lunes), total, método y tipo; se
+  cierra solo a los 10s o con "Nuevo pedido" → el carrito ya limpio y
+  el terminal queda listo para el siguiente pedido.
+- ⬜ Los items aún NO mandan `sizeId`/`extraIds`/notas ni totales con
+  cargos — pendiente en backend (el total cobrado puede diferir del
+  mostrado si hay extras). TODO en `OrderTerminal.tsx`.
+
 ## Superficies pendientes ⬜
 
 | Ruta       | Flujo esperado (spec: `store-be/docs/10-frontend-screens.md`) |
 | ---------- | ------------------------------------------------------------ |
-| `/pos`     | Armar orden → `POST /api/orders` (`channel: POS`, CASH/CARD), venta de fichas, ticket |
-| `/kiosk`   | Mismo flujo con `channel: KIOSK` (solo CARD), sesión `CUSTOMER` ligada al store |
 | `/kitchen` | `GET /api/orders?status=` + `PATCH .../status` (PREPARING/READY/CANCELLED), polling |
 
 Reglas que el UI debe respetar: `channel=KIOSK` ⇒ solo `CARD`; cancelación

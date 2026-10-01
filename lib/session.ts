@@ -44,3 +44,14 @@ export function getSession(): AuthResponse | null {
 export function useSession() {
   return useSelector((s: { session: { value: AuthResponse | null } }) => s.session.value);
 }
+
+export const SESSION_EXPIRED_EVENT = "store:session-expired";
+
+export function isSessionExpired(session: AuthResponse): boolean {
+  try {
+    const payload = JSON.parse(atob(session.token.split(".")[1]));
+    return typeof payload.exp !== "number" || payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}

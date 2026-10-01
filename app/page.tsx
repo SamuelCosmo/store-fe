@@ -19,11 +19,21 @@ export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [expired, setExpired] = useState(false);
   const session = useSession();
 
   useEffect(() => {
     if (session?.role) router.replace(ROLE_HOME[session.role] ?? "/");
   }, [session, router]);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (new URLSearchParams(window.location.search).has("expired")) {
+        setExpired(true);
+      }
+    }, 0);
+    return () => clearTimeout(id);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -41,7 +51,11 @@ export default function LoginPage() {
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
-        setError(body?.message ?? "No se pudo iniciar sesión");
+        setError(
+          body?.message === "Invalid credentials"
+            ? "Correo o contraseña incorrectos."
+            : (body?.message ?? "No se pudo iniciar sesión"),
+        );
         return;
       }
       const session = body as AuthResponse;
@@ -82,6 +96,12 @@ export default function LoginPage() {
             <p className="text-sm text-text-muted">
               Acceso para el equipo y administración.
             </p>
+
+            {expired && (
+              <p className="rounded-lg border border-primary/30 bg-primary-light px-3.5 py-2.5 text-sm text-primary">
+                Tu sesión expiró. Inicia sesión de nuevo.
+              </p>
+            )}
 
             {error && (
               <p

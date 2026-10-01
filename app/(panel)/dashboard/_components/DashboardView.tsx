@@ -49,7 +49,9 @@ function range(rangeId: (typeof RANGES)[number]["id"]): { from: string; to: stri
   const days = RANGES.find((r) => r.id === rangeId)!.days;
   if (days === -1) from.setDate(1);
   else from.setDate(from.getDate() - days);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  // local YYYY-MM-DD — toISOString() is UTC and rolls to tomorrow after 6pm in UTC-6
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   return { from: iso(from), to: iso(to) };
 }
 
