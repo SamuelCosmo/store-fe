@@ -22,6 +22,13 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       `/inventory` y `/reservations` se quitaron del menú hasta implementarse.
       (Reportes vive dentro de `/dashboard`.)
 - [ ] **Placeholder restante** — `/kitchen` (KDS) sigue vacío.
+- [ ] **Cerrar sesión en caja/kiosco** — `OrderTerminal` no tiene logout;
+      el único está en el sidebar del panel. Agregar botón en el header de
+      la terminal (limpia `store.session` y vuelve a `/`).
+- [ ] **Orden de tamaños por producto** — hoy `product.sizes` viene de un
+      `Set` sin orden; el kiosco preselecciona el primero que llegue. Falta
+      campo de orden (ej. `position` en `product_sizes` o lista ordenada en
+      `sizeIds`) + UI de reordenar en el modal de producto.
 - [ ] **Ordenar por columnas en tablas del admin** — `/products`,
       `/categories`, `/stores`, `/users`: headers clickeables con sort
       asc/desc (estado local basta, los datos ya vienen completos).

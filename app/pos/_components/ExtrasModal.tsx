@@ -28,16 +28,18 @@ export function ExtrasModal({
   onClose: () => void;
   onAdd: (product: ProductDto, selection: ItemSelection) => void;
 }) {
-  const [sizeId, setSizeId] = useState<number | null>(initial?.size?.id ?? null);
+  const sizes = product.sizes.filter((s) => s.active);
+  const extras = product.extras.filter((e) => e.active);
+
+  const [sizeId, setSizeId] = useState<number | null>(
+    initial ? (initial.size?.id ?? null) : (sizes[0]?.id ?? null),
+  );
   const [qty, setQty] = useState<Record<number, number>>(() =>
     Object.fromEntries(
       (initial?.extras ?? []).map((p) => [p.extra.id, p.quantity]),
     ),
   );
   const [notes, setNotes] = useState(initial?.notes ?? "");
-
-  const sizes = product.sizes.filter((s) => s.active);
-  const extras = product.extras.filter((e) => e.active);
   const size = sizes.find((s) => s.id === sizeId) ?? null;
   const picked = extras
     .map((extra) => ({ extra, quantity: qty[extra.id] ?? 0 }))

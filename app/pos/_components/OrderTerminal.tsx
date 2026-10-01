@@ -74,7 +74,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<
-    (OrderDto & { number: number | null }) | null
+    (OrderDto & { number: number | null; change: number | null }) | null
   >(null);
   const [countdown, setCountdown] = useState(10);
   const [categoryId, setCategoryId] = useState(0);
@@ -95,6 +95,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     channel === "KIOSK" ? "CARD" : "CASH",
   );
   const [paying, setPaying] = useState(false);
+  const [cashReceived, setCashReceived] = useState("");
   const [nextNumber, setNextNumber] = useState<number | null>(null);
   const [now, setNow] = useState<Date | null>(null);
 
@@ -208,7 +209,13 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       setCart([]);
       setPayOpen(false);
       setCountdown(10);
-      setReceipt({ ...order, number: nextNumber });
+      // change es solo display — el backend aún no guarda cashReceived/changeGiven
+      setReceipt({
+        ...order,
+        number: nextNumber,
+        change:
+          payment === "CASH" ? Number(cashReceived) - total : null,
+      });
     } catch (e) {
       setPayOpen(false);
       setError(e instanceof Error ? e.message : "No se pudo cobrar");
@@ -433,7 +440,10 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           </div>
 
           <button
-            onClick={() => setPayOpen(true)}
+            onClick={() => {
+              setCashReceived("");
+              setPayOpen(true);
+            }}
             disabled={cart.length === 0}
             className="flex h-14 w-full items-center justify-end gap-2 rounded-2xl bg-primary px-5 text-[15px] font-extrabold text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
           >
@@ -542,9 +552,46 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
             </button>
           </div>
 
+          {channel === "POS" && payment === "CASH" && (
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="cash-received"
+                className="text-xs font-bold text-text-secondary"
+              >
+                Efectivo recibido
+              </label>
+              <input
+                id="cash-received"
+                type="number"
+                min={0}
+                step="0.01"
+                inputMode="decimal"
+                placeholder={MXN.format(total)}
+                value={cashReceived}
+                onChange={(e) => setCashReceived(e.target.value)}
+                className="h-11 rounded-xl border border-border bg-background px-3.5 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+              />
+              {cashReceived !== "" &&
+                (Number(cashReceived) >= total ? (
+                  <p className="rounded-lg border border-success/40 bg-success/5 px-3.5 py-2.5 text-sm font-semibold text-success">
+                    Cambio a devolver: {MXN.format(Number(cashReceived) - total)}
+                  </p>
+                ) : (
+                  <p className="rounded-lg border border-error/40 bg-error/5 px-3.5 py-2.5 text-sm font-semibold text-error">
+                    Faltan {MXN.format(total - Number(cashReceived))}
+                  </p>
+                ))}
+            </div>
+          )}
+
           <button
             onClick={pay}
-            disabled={paying || cart.length === 0}
+            disabled={
+              paying ||
+              cart.length === 0 ||
+              (payment === "CASH" &&
+                (cashReceived === "" || Number(cashReceived) < total))
+            }
             className="w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
           >
             {paying ? "Cobrando…" : `Cobrar ${MXN.format(total)}`}
@@ -569,6 +616,11 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                 {receipt.paymentMethod === "CASH" ? "Efectivo" : "Tarjeta"} ·{" "}
                 {receipt.orderType === "DINE_IN" ? "En mesa" : "Para llevar"}
               </p>
+              {receipt.change !== null && receipt.change > 0 && (
+                <p className="mt-1 rounded-lg border border-success/40 bg-success/5 px-3.5 py-2 text-sm font-bold text-success">
+                  Cambio a devolver: {MXN.format(receipt.change)}
+                </p>
+              )}
               <p className="mt-1 text-xs text-text-muted">
                 La orden ya está en cocina.
               </p>
