@@ -12,7 +12,7 @@ Flujos tal como existen hoy. ✅ = implementado contra el backend real;
    hydration mismatch de leer `localStorage` en SSR).
 4. Redirect según `ROLE_HOME` (`lib/session.ts`):
    `ADMIN`/`MANAGER` → `/dashboard`, `EMPLOYEE` → `/pos`,
-   `CUSTOMER` → `/kiosk`.
+   `CUSTOMER` → `/kiosk`, `KITCHEN` → `/kitchen`.
 5. Logout desde `UserCard` → `clearSession()` + `router.push("/")`.
 
 ## Dashboard → `/dashboard` ✅
@@ -110,11 +110,30 @@ Mismo componente (`app/pos/_components/OrderTerminal.tsx`) con prop
   cargos — pendiente en backend (el total cobrado puede diferir del
   mostrado si hay extras). TODO en `OrderTerminal.tsx`.
 
-## Superficies pendientes ⬜
+## Cocina (KDS) → `/kitchen` ✅
 
-| Ruta       | Flujo esperado (spec: `store-be/docs/10-frontend-screens.md`) |
-| ---------- | ------------------------------------------------------------ |
-| `/kitchen` | `GET /api/orders?status=` + `PATCH .../status` (PREPARING/READY/CANCELLED), polling |
+`app/kitchen/_components/KitchenBoard.tsx` — tablero para el rol `KITCHEN`.
+
+- **Barra superior**: `BrandMark` con el nombre del store + reloj (mismo
+  patrón que el terminal).
+- **Parrilla única** de órdenes activas (`PENDING`/`CONFIRMED`/`PREPARING`/
+  `READY`), 4 por fila en `xl`, ordenadas FIFO (más vieja primero).
+- **Tarjeta**: fondo por antigüedad — verde <8 min, amarillo 8–14, rojo
+  ≥15 — con `#id`, minutos transcurridos, tipo (En mesa/Para llevar) +
+  canal (Caja/Kiosko) y lista de items.
+- **Acciones**: botón de avance siguiendo la cadena del backend
+  (`Preparando`→PREPARING, `Lista`→READY, `Entregar`→COMPLETED) +
+  "Cancelar" hasta `PREPARING` (confirm nativo).
+  `PATCH /api/orders/{id}/status`.
+- **Polling**: refetch de los 4 estados activos cada 10s + refetch tras
+  cada mutación. Órdenes COMPLETED/CANCELLED desaparecen del tablero.
+- **Alerta sonora**: si el polling detecta un `PENDING` nuevo, suena un
+  ding de dos tonos (Web Audio API, sin assets). El `AudioContext` se
+  desbloquea con el primer click/tecla del usuario (autoplay policy) y la
+  carga inicial no suena.
+- Rol `KITCHEN` enruta aquí tras login (`ROLE_HOME`).
+
+## Superficies pendientes ⬜
 
 Reglas que el UI debe respetar: `channel=KIOSK` ⇒ solo `CARD`; cancelación
 solo hasta `PREPARING`; `storeId` nunca va en el body — sale del JWT;

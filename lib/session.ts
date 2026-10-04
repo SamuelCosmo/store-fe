@@ -3,7 +3,7 @@
 import { useSelector } from "react-redux";
 import { clearSession as clearSessionAction, getStore, setSession } from "./store";
 
-export type Role = "ADMIN" | "MANAGER" | "EMPLOYEE" | "CUSTOMER";
+export type Role = "ADMIN" | "MANAGER" | "EMPLOYEE" | "CUSTOMER" | "KITCHEN";
 
 export type AuthResponse = {
   token: string;
@@ -20,6 +20,7 @@ export const ROLE_HOME: Record<Role, string> = {
   MANAGER: "/dashboard",
   EMPLOYEE: "/pos",
   CUSTOMER: "/kiosk",
+  KITCHEN: "/kitchen",
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -27,6 +28,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   MANAGER: "Gerente",
   EMPLOYEE: "Empleado",
   CUSTOMER: "Cliente",
+  KITCHEN: "Cocina",
 };
 
 export function saveSession(session: AuthResponse) {

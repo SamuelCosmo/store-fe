@@ -7,7 +7,7 @@ import { useState, type FormEvent } from "react";
 import type { StoreDto } from "../../stores/_components/StoresView";
 import type { UserDto } from "./UsersView";
 
-const ROLES: Role[] = ["MANAGER", "EMPLOYEE", "CUSTOMER"];
+const ROLES: Role[] = ["MANAGER", "EMPLOYEE", "CUSTOMER", "KITCHEN"];
 
 const PASSWORD_RULES: { label: string; test: (p: string) => boolean }[] = [
   { label: "Mínimo 8 caracteres", test: (p) => p.length >= 8 },

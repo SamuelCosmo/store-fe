@@ -21,10 +21,16 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [ ] **Páginas del sidebar que no existen** — `/settings` enlaza a 404;
       `/inventory` y `/reservations` se quitaron del menú hasta implementarse.
       (Reportes vive dentro de `/dashboard`.)
-- [ ] **Placeholder restante** — `/kitchen` (KDS) sigue vacío.
-- [ ] **Cerrar sesión en caja/kiosco** — `OrderTerminal` no tiene logout;
-      el único está en el sidebar del panel. Agregar botón en el header de
-      la terminal (limpia `store.session` y vuelve a `/`).
+- [ ] **Pantalla de configuración del admin** (`/settings`) — parámetros por
+      establecimiento/terminal: ajustes de la pantalla de cocina (umbrales de
+      tiempo verde/amarillo/rojo, sonido de alerta), del kiosco (pantalla de
+      espera, mensajes) y de la caja (propinas, métodos de pago habilitados),
+      más parámetros generales del administrador. Requiere modelo/endpoints
+      de settings en el backend (no existe).
+- [ ] **Cerrar sesión en caja** — `OrderTerminal` no tiene logout; el
+      único está en el sidebar del panel. Agregar botón en el header de la
+      terminal solo cuando `channel === "POS"` — el kiosco (CUSTOMER) no
+      debe tenerlo (limpia `store.session` y vuelve a `/`).
 - [ ] **Orden de tamaños por producto** — hoy `product.sizes` viene de un
       `Set` sin orden; el kiosco preselecciona el primero que llegue. Falta
       campo de orden (ej. `position` en `product_sizes` o lista ordenada en
@@ -49,6 +55,11 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [ ] **Enrutado por rol + módulos tras login** — hoy solo se usa `ROLE_HOME`.
 - [ ] **Cookie httpOnly para el token** — hoy `localStorage` (MVP); moverlo
       via Route Handler de Next.
+- [ ] **Fichas (venta y canje)** — pantalla o sección por definir (idea no
+      cerrada): vender fichas en caja (`POST /api/tokens/purchase` —
+      `{quantity, paymentMethod}`) y canjearlas por productos con
+      `tokenCost > 0` (`POST /api/tokens/redeem`). Físicas/anónimas, sin
+      wallet. Ambos endpoints pendientes en backend (módulo TOKENS).
 - [ ] **TanStack Query** — cache/loading/error y polling (el KDS lo
       necesitará). Hoy: `fetch` + `useState` por componente.
 - [ ] **i18n** — copy en español hardcodeado; selector pendiente.
@@ -60,3 +71,6 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - ✅ Catálogos de extras y tamaños + asignación N:M con productos.
 - ✅ Tabla de productos expandible con asignaciones; SKU/imagen URL.
 - ✅ Rutas del panel fuera de `/dashboard` via route group `(panel)`.
+- ✅ KDS `/kitchen`: parrilla FIFO con fondo por antigüedad, avance
+  PENDING→PREPARING→READY→COMPLETED, cancelación con modal, alerta sonora
+  y rol `KITCHEN` (ruteo → `/kitchen`).

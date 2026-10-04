@@ -31,7 +31,8 @@ POST /api/auth/login        # { email, password, storeId } → { token, role, ..
 
 - JWT con claims `clientId`, `storeId`, `role` — enviar como
   `Authorization: Bearer <token>`.
-- Roles: `ADMIN`, `MANAGER`, `EMPLOYEE`, `CUSTOMER` (cuenta genérica de kiosko).
+- Roles: `ADMIN`, `MANAGER`, `EMPLOYEE`, `CUSTOMER` (cuenta genérica de kiosko),
+  `KITCHEN` (KDS; puede actualizar estatus de órdenes).
 - MVP: token en `localStorage`. Futuro: cookie httpOnly via Route Handler.
 - Un usuario puede operar varios stores (`user_stores`); el `storeId` activo
   se elige en el login y viaja en el JWT.
@@ -49,6 +50,7 @@ Tras el login, enrutar según rol y módulos efectivos
 | MANAGER  | `/dashboard` u operación según módulos         |
 | EMPLOYEE | `/pos` o `/kitchen` según módulos        |
 | CUSTOMER | `/kiosk`                                   |
+| KITCHEN  | `/kitchen`                                  |
 
 El frontend oculta rutas sin permiso (UX); el backend refuerza con
 `@PreAuthorize`. Módulos vendibles: `CATALOG`, `INVENTORY`, `POS`, `KIOSK`,
