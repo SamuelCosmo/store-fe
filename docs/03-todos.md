@@ -55,11 +55,22 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [ ] **Enrutado por rol + módulos tras login** — hoy solo se usa `ROLE_HOME`.
 - [ ] **Cookie httpOnly para el token** — hoy `localStorage` (MVP); moverlo
       via Route Handler de Next.
+- [ ] **Impresión de ticket en caja** — botón en el modal de éxito del POS
+      para imprimir ticket fiscal/cortesía; el kiosko solo muestra el folio.
+      Requiere `GET /api/orders/{id}/ticket` en backend (pendiente).
+- [ ] **Modo idle del kiosco** — screensaver/modo atracción cuando nadie lo
+      usa + timeout que reinicia el pedido si el cliente abandona a mitad
+      del carrito (hoy el kiosco no resetea por inactividad).
 - [ ] **Fichas (venta y canje)** — pantalla o sección por definir (idea no
       cerrada): vender fichas en caja (`POST /api/tokens/purchase` —
       `{quantity, paymentMethod}`) y canjearlas por productos con
-      `tokenCost > 0` (`POST /api/tokens/redeem`). Físicas/anónimas, sin
-      wallet. Ambos endpoints pendientes en backend (módulo TOKENS).
+      `tokenCost > 0` (`POST /api/tokens/redeem`). Solo en caja, no en
+      kiosco. Físicas/anónimas, sin wallet. Ambos endpoints pendientes en
+      backend (módulo TOKENS).
+- [ ] **Marcar agotado desde caja** ("86'd") — el cajero podría apagar un
+      producto al vuelo y que deje de aparecer en caja/kiosco; el kiosko
+      solo lee. Requiere flag de disponibilidad en backend (hoy solo existe
+      `active`, pensado para el admin).
 - [ ] **TanStack Query** — cache/loading/error y polling (el KDS lo
       necesitará). Hoy: `fetch` + `useState` por componente.
 - [ ] **i18n** — copy en español hardcodeado; selector pendiente.
