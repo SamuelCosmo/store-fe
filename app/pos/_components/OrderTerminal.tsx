@@ -14,7 +14,9 @@ import type { ProductDto } from "@/app/(panel)/products/_components/ProductsView
 import {
   ArrowRight,
   Banknote,
+  ChefHat,
   CircleCheck,
+  CircleSlash,
   CopyPlus,
   CreditCard,
   LogOut,
@@ -24,6 +26,7 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExtrasModal, type ItemSelection } from "./ExtrasModal";
@@ -40,6 +43,9 @@ type OrderDto = {
   id: number;
   status: string;
   total: number;
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
   paymentMethod: "CASH" | "CARD";
   orderType: "DINE_IN" | "TAKEAWAY";
 };
@@ -280,18 +286,21 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       .catch(() => setNextNumber(null));
   }, [session, receipt]);
 
+  // el kiosco esconde los agotados; la caja los muestra para poder reactivarlos
   const visible = useMemo(
     () =>
       products.filter(
-        (p) => categoryId === 0 || p.categoryId === categoryId,
+        (p) =>
+          (categoryId === 0 || p.categoryId === categoryId) &&
+          (channel === "POS" || !p.soldOut),
       ),
-    [products, categoryId],
+    [products, categoryId, channel],
   );
 
-  const total = cart.reduce((sum, i) => sum + lineUnit(i), 0);
-  // Precios del catálogo llevan el impuesto incluido: se desglosa en ticket
-  const netTotal = taxRate > 0 ? total / (1 + taxRate / 100) : total;
-  const taxAmount = total - netTotal;
+  const subtotal = cart.reduce((sum, i) => sum + lineUnit(i), 0);
+  // El impuesto se agrega sobre el subtotal — los precios no lo incluyen
+  const taxAmount = Math.round(subtotal * taxRate) / 100;
+  const total = subtotal + taxAmount;
 
   function addToCart(
     product: ProductDto,
@@ -307,6 +316,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   }
 
   function pick(product: ProductDto) {
+    if (product.soldOut) return;
     const customizable =
       product.extras.some((e) => e.active) || product.sizes.some((s) => s.active);
     if (customizable) setCustomizing({ product });
@@ -315,6 +325,22 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
 
   function removeLine(id: number) {
     setCart((prev) => prev.filter((i) => i.id !== id));
+  }
+
+  async function toggleSoldOut(product: ProductDto) {
+    try {
+      const updated = await api<ProductDto>(
+        `/api/products/${product.id}/sold-out`,
+        { method: "PATCH", body: JSON.stringify({ soldOut: !product.soldOut }) },
+      );
+      setProducts((prev) =>
+        prev.map((p) => (p.id === updated.id ? updated : p)),
+      );
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "No se pudo actualizar el producto",
+      );
+    }
   }
 
   function editLine(item: CartItem) {
@@ -411,6 +437,17 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                 })
               : "--:--"}
           </p>
+          {/* acceso al tablero de pedidos desde la caja */}
+          {channel === "POS" && (
+            <Link
+              href="/kitchen"
+              aria-label="Tablero de pedidos"
+              title="Tablero de pedidos"
+              className="flex size-10 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <ChefHat size={17} aria-hidden />
+            </Link>
+          )}
           {/* El kiosco (CUSTOMER) no tiene logout: es una cuenta compartida */}
           {channel === "POS" && (
             <button
@@ -466,41 +503,72 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           ) : (
             <div className="grid min-h-0 flex-1 auto-rows-[268px] grid-cols-2 gap-4 overflow-y-auto pb-1 lg:grid-cols-3 xl:grid-cols-4">
               {visible.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => pick(p)}
-                  aria-label={`Añadir ${p.name} al pedido`}
-                  className="flex flex-col overflow-hidden rounded-2xl bg-background text-left shadow-[0_10px_28px_rgba(68,38,25,0.08)] transition-shadow hover:shadow-[0_14px_34px_rgba(68,38,25,0.14)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
-                  <div className="h-[160px] w-full shrink-0 overflow-hidden bg-surface-warm">
-                    {p.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- URL externa arbitraria
-                      <img
-                        src={p.image}
-                        alt=""
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-text-muted">
-                        <Soup size={36} aria-hidden />
+                <div key={p.id} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => pick(p)}
+                    disabled={p.soldOut}
+                    aria-label={`Añadir ${p.name} al pedido`}
+                    className={`flex size-full flex-col overflow-hidden rounded-2xl bg-background text-left shadow-[0_10px_28px_rgba(68,38,25,0.08)] transition-shadow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                      p.soldOut
+                        ? "opacity-60"
+                        : "hover:shadow-[0_14px_34px_rgba(68,38,25,0.14)]"
+                    }`}
+                  >
+                    <div className="relative h-[160px] w-full shrink-0 overflow-hidden bg-surface-warm">
+                      {p.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- URL externa arbitraria
+                        <img
+                          src={p.image}
+                          alt=""
+                          className={`size-full object-cover ${p.soldOut ? "grayscale" : ""}`}
+                        />
+                      ) : (
+                        <div className="flex size-full items-center justify-center text-text-muted">
+                          <Soup size={36} aria-hidden />
+                        </div>
+                      )}
+                      {p.soldOut && (
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-sm font-extrabold tracking-widest text-white">
+                          AGOTADO
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-1 flex-col gap-2 p-4">
+                      <div className="flex items-start justify-between gap-2.5 font-extrabold text-text-primary">
+                        <p className="min-w-0 flex-1 truncate text-[17px]">
+                          {p.name}
+                        </p>
+                        <p className="pt-0.5 text-xs whitespace-nowrap">
+                          {fmt.format(p.price)}
+                        </p>
                       </div>
-                    )}
-                  </div>
-                  <div className="flex flex-1 flex-col gap-2 p-4">
-                    <div className="flex items-start justify-between gap-2.5 font-extrabold text-text-primary">
-                      <p className="min-w-0 flex-1 truncate text-[17px]">
-                        {p.name}
-                      </p>
-                      <p className="pt-0.5 text-xs whitespace-nowrap">
-                        {fmt.format(p.price)}
+                      <p className="line-clamp-2 text-xs leading-[1.35] font-semibold text-text-secondary">
+                        {p.description}
                       </p>
                     </div>
-                    <p className="line-clamp-2 text-xs leading-[1.35] font-semibold text-text-secondary">
-                      {p.description}
-                    </p>
-                  </div>
-                </button>
+                  </button>
+                  {channel === "POS" && (
+                    <button
+                      type="button"
+                      onClick={() => toggleSoldOut(p)}
+                      aria-pressed={p.soldOut}
+                      aria-label={
+                        p.soldOut
+                          ? `Marcar ${p.name} como disponible`
+                          : `Marcar ${p.name} como agotado`
+                      }
+                      title={p.soldOut ? "Marcar disponible" : "Marcar agotado"}
+                      className={`absolute top-2 right-2 z-10 flex size-8 items-center justify-center rounded-full shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                        p.soldOut
+                          ? "bg-error text-white"
+                          : "bg-white/90 text-text-secondary hover:text-error"
+                      }`}
+                    >
+                      <CircleSlash size={15} aria-hidden />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -590,16 +658,16 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
 
           <div className="border-t border-dashed border-border" />
 
-          {/* TODO: el backend aún no persiste el desglose de impuesto en la orden */}
+          {/* desglose estimado del carrito — el cobrado llega persistido en la orden */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between text-[13px] font-semibold">
               <p className="text-text-secondary">Subtotal</p>
-              <p className="text-text-primary">{fmt.format(netTotal)}</p>
+              <p className="text-text-primary">{fmt.format(subtotal)}</p>
             </div>
             {taxRate > 0 && (
               <div className="flex items-center justify-between text-[13px] font-semibold">
                 <p className="text-text-secondary">
-                  Impuesto incluido ({taxRate}%)
+                  Impuesto ({taxRate}%)
                 </p>
                 <p className="text-text-primary">{fmt.format(taxAmount)}</p>
               </div>
@@ -827,12 +895,11 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                 {receipt.paymentMethod === "CASH" ? "Efectivo" : "Tarjeta"} ·{" "}
                 {receipt.orderType === "DINE_IN" ? "En mesa" : "Para llevar"}
               </p>
-              {taxRate > 0 && (
+              {/* el desglose real viene persistido en la orden */}
+              {receipt.taxAmount > 0 && (
                 <p className="text-xs text-text-muted">
-                  Impuesto incluido ({taxRate}%):{" "}
-                  {fmt.format(
-                    receipt.total - receipt.total / (1 + taxRate / 100),
-                  )}
+                  Impuesto ({receipt.taxRate}%):{" "}
+                  {fmt.format(receipt.taxAmount)}
                 </p>
               )}
               {receipt.change !== null && receipt.change > 0 && (

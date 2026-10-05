@@ -66,10 +66,12 @@ POST/GET/GET{id}/PUT/DELETE   /api/categories        # GET ?storeId=
                                                    #   description, icon, active }
 POST/GET/GET{id}/PUT/DELETE   /api/products          # GET ?storeId=&categoryId=
 PATCH                         /api/products/{id}/active
+PATCH                         /api/products/{id}/sold-out  # "86'd" — ADMIN/MANAGER/EMPLOYEE
 # Product: { categoryId, name, description, sku, image, price,
 #   tokenCost, sizeIds[], extraIds[] }
-# ProductResponse incluye extras[] alfabéticos y sizes[] en el orden
-# global del catálogo (sizes.position).
+# ProductResponse agrega soldOut + extras[] alfabéticos y sizes[] en el
+# orden global del catálogo (sizes.position). soldOut bloquea órdenes;
+# el kiosco los oculta, la caja los muestra apagados para reactivarlos.
 POST/GET/PUT/DELETE           /api/extras            # catálogo por cliente
 POST/GET/PUT/DELETE           /api/sizes             # catálogo por cliente, GET ordenado por position
 PUT                           /api/sizes/order       # body: [ids] → orden global del menú
@@ -94,12 +96,22 @@ GET/PUT   /api/stores/{id}/settings    # { menuName, kitchenOkMin,
 
 ### Stores, clients y users
 
+**Paginación** — los `GET` de lista (`/api/products`, `/api/categories`,
+`/api/clients/{id}/stores`, `/api/users`, `/api/orders`) aceptan
+`?page=&size=&sort=prop,asc|desc&search=`. **Sin** `page`/`size` devuelven
+el array completo (terminales/selects); **con** ellos devuelven `Page`
+de Spring `{ content, totalElements, totalPages, ... }`. `search` filtra
+server-side los campos visibles (case-insensitive). En el frontend esto
+vive en `(panel)/_components/usePagination.tsx` (`usePagination`,
+`PaginationBar`, `PageDto`) + `useTableSort` en modo `remote` para mandar
+el `sort=` — ver `docs/03-todos.md` › paginación.
+
 ```text
 POST/GET/GET{id}/PUT   /api/stores     # ADMIN; ligado a clientId
 POST   /api/clients                    # alta de tenant (plan: maxStores,
 GET    /api/clients/{id}               #  maxPosPerStore, maxKiosksPerStore)
-GET    /api/clients/{id}/stores
-GET    /api/users                      # ADMIN/MANAGER — lista del cliente
+GET    /api/clients/{id}/stores        # lista del cliente — paginable
+GET    /api/users                      # ADMIN/MANAGER — lista del cliente, paginable
 POST   /api/users                      # ADMIN — { name, email, password, role,
                                        #   storeIds[], currentPassword }
 PUT    /api/users/{id}                 # ADMIN — password vacío = sin cambio
@@ -116,7 +128,9 @@ DELETE /api/users/{id}                 # ADMIN — body { currentPassword }
 
 ```text
 POST   /api/orders            # OrderRequest abajo
-GET    /api/orders            # ?storeId=&status= (KDS filtra por estado)
+GET    /api/orders            # ?storeId=&status=&page=&size=&sort=
+                            #  array para KDS · Page para historial
+                            #  (default createdAt desc)
 GET    /api/orders/next-number  # → { nextNumber } — folio semanal (reset lunes)
 GET    /api/orders/{id}
 PATCH  /api/orders/{id}/status
@@ -154,6 +168,12 @@ GET    /api/orders/{id}/ticket   # PENDIENTE backend — payload para impresión
 - `CANCELLED` permitido hasta `PREPARING` inclusive → restaura inventario y
   `refund_status=REFUNDED` (reembolso manual por staff).
 - KDS usa: `PREPARING`, `READY`, `CANCELLED`.
+- `PATCH /status` y `GET /api/orders` abiertos a ADMIN/MANAGER/EMPLOYEE/
+  KITCHEN — el tablero `/kitchen` es accesible para todo el staff.
+- `OrderResponse` incluye `subtotal`, `taxRate` (snapshot del taxRate del
+  cliente al cobrar) y `taxAmount` — el impuesto se AGREGA: precios del
+  catálogo no lo incluyen, `total = subtotal + taxAmount`; órdenes viejas
+  devuelven `subtotal=total`, `taxRate=0`.
 
 **Pendiente en backend:** `cashReceived`/`changeGiven` para pago en efectivo.
 

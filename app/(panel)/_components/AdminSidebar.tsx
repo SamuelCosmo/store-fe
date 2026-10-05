@@ -8,6 +8,7 @@ import {
   getSettings,
 } from "@/lib/settings";
 import {
+  ChefHat,
   LayoutDashboard,
   Settings,
   Soup,
@@ -24,6 +25,7 @@ const items = [
   { href: "/categories", label: "Categorías", icon: Tag },
   { href: "/products", label: "Productos", icon: Soup },
   { href: "/stores", label: "Establecimientos", icon: Store },
+  { href: "/kitchen", label: "Cocina", icon: ChefHat },
   { href: "/users", label: "Usuarios", icon: Users, adminOnly: true },
   { href: "/settings", label: "Configuración", icon: Settings, adminOnly: true },
 ];

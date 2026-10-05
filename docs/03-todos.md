@@ -16,8 +16,14 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       que pertenezcan al producto y calcula `unitPrice` con los cargos.
       Snapshot en `order_items` (`sizeName`, `extras` jsonb, `notes`) y en
       `OrderItemResponse`; el KDS muestra tamaño/extras/notas.
-- [ ] **IVA/descuento en la orden** — el panel muestra solo subtotal=total;
-      agregar cuando el backend los modele.
+- [x] **IVA en la orden** — `orders` persiste `subtotal`, `taxRate`
+      (snapshot del `taxRate` del cliente al cobrar) y `taxAmount`; el
+      impuesto se agrega: los precios del catálogo no lo incluyen y el
+      server suma `taxAmount = subtotal × rate` (`total = subtotal +
+      taxAmount`). `OrderResponse` los devuelve (órdenes viejas →
+      `subtotal=total`, `taxRate=0`) y el ticket de la terminal muestra
+      subtotal + impuesto + total. Pendiente: **descuento** en la
+      orden (monto o % — sin modelar).
 - [ ] **Páginas del sidebar que no existen** — `/inventory` y
       `/reservations` se quitaron del menú hasta implementarse.
       (Reportes vive dentro de `/dashboard`.)
@@ -53,17 +59,24 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       `/categories` (nombre/# productos), `/stores` (nombre/alta),
       `/users` (nombre/rol). La sección Tamaños no se ordena — su orden
       ES el del menú.
-- [ ] **Paginación backend + frontend** — hoy todos los `GET` de lista
-      devuelven todo de golpe y las vistas cargan el catálogo completo.
-      Backend: soportar `page`/`size`/`sort` (Spring `Pageable` → `Page<T>`)
-      en `/api/products`, `/api/categories`, `/api/stores`, `/api/users` y
-      sobre todo `/api/orders` (la lista crece sin parar — paginar por
-      fecha/estatus). Frontend: controles de paginación en las tablas del
-      admin (`/products`, `/categories`, `/stores`, `/users`) que pidan la
-      página al server en vez de ordenar/filtrar todo en cliente — el sort
-      de `useTableSort` debería viajar como `sort=` al endpoint, y el
-      usuario elige filas por página entre 5/10/15/20/25. Mientras tanto,
-      paginación client-side como paso intermedio.
+- [x] **Paginación en tablas del admin (server-side)** — los `GET` de
+      lista aceptan `page`/`size`/`sort`/`search`: sin esos params
+      devuelven el array completo (terminales/selects siguen igual); con
+      ellos devuelven un `Page` de Spring (`content`, `totalElements`,
+      `totalPages`). Implementado en `/api/products`, `/api/categories`,
+      `/api/clients/{id}/stores`, `/api/users` y `/api/orders` (historial:
+      `createdAt desc` por default, filtra por `status`). Las vistas
+      `/products`, `/categories`, `/stores` y `/users` usan
+      `usePagination` + `PaginationBar` (`(panel)/_components/
+      usePagination.tsx`): "n–m de total", flechas ‹ ›, selector de filas
+      5/10/15/20/25; la búsqueda va con debounce 250 ms y el sort viaja
+      como `sort=` al server (`useTableSort` en modo `remote`), así que
+      ordenan/buscan sobre TODO el dataset, no solo la página cargada.
+      Cambiar query/sort/tamaño reinicia a la página 1; borrar la última
+      fila de una página retrocede sola. Detalles: el conteo de productos
+      de una categoría ya viene en `CategoryResponse.products` (no se
+      baja la lista entera); las tabs Tamaños/Extras de `/products`
+      cargan el catálogo completo lazy porque asignan sobre todos.
 - [x] **Refresco automático del catálogo en POS/kiosco** — la terminal
       reconsulta productos/categorías cada 30 s y al recuperar foco
       (`visibilitychange`), así altas/ediciones/bajas del admin se ven sin
@@ -85,16 +98,14 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [ ] **Módulos por usuario** — el sidebar muestra todo; filtrar por
       `user_modules ∩ client_modules` cuando el backend lo exponga.
 - [ ] **Enrutado por rol + módulos tras login** — hoy solo se usa `ROLE_HOME`.
-- [ ] **Pantalla de pedidos de cocina para caja/admin/gerente** — hoy
-      `/kitchen` solo es el home de KITCHEN y no tiene entrada desde el
-      panel ni desde el POS. Dar acceso a `EMPLOYEE` (caja), `ADMIN` y
-      `MANAGER` (link en el sidebar del panel y/o vista dentro de
-      `OrderTerminal`) reutilizando `KitchenBoard`, sobre todo para
-      cancelar pedidos ya hechos (`PATCH /api/orders/{id}/status` →
-      `CANCELLED`, permitido hasta `PREPARING`: restaura inventario y
-      marca `refund_status=REFUNDED`). Verificar en backend que
-      `GET /api/orders` y ese `PATCH` no estén restringidos por
-      `@PreAuthorize` solo a KITCHEN.
+- [x] **Pantalla de pedidos de cocina para caja/admin/gerente** —
+      `/kitchen` ya es accesible para todo el staff: entrada "Cocina" en
+      el sidebar del panel (icono ChefHat) + botón en el header del POS.
+      `KitchenBoard` muestra "Volver" a `ROLE_HOME` para roles ≠ KITCHEN
+      y redirige CUSTOMER → `/kiosk`. Backend ya permitía
+      `PATCH /{id}/status` a ADMIN/MANAGER/EMPLOYEE/KITCHEN y `GET
+      /api/orders` hace scoping por store de sesión — cancelar restaura
+      inventario y marca `refund_status=REFUNDED`.
 - [ ] **Cookie httpOnly para el token** — hoy `localStorage` (MVP); moverlo
       via Route Handler de Next.
 - [ ] **Impresión de ticket en caja** — botón en el modal de éxito del POS
@@ -111,10 +122,12 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       `tokenCost > 0` (`POST /api/tokens/redeem`). Solo en caja, no en
       kiosco. Físicas/anónimas, sin wallet. Ambos endpoints pendientes en
       backend (módulo TOKENS).
-- [ ] **Marcar agotado desde caja** ("86'd") — el cajero podría apagar un
-      producto al vuelo y que deje de aparecer en caja/kiosco; el kiosko
-      solo lee. Requiere flag de disponibilidad en backend (hoy solo existe
-      `active`, pensado para el admin).
+- [x] **Marcar agotado desde caja** ("86'd") — `products.soldOut` +
+      `PATCH /api/products/{id}/sold-out` (ADMIN/MANAGER/EMPLOYEE). En el
+      POS cada tarjeta lleva un toggle (⊘) arriba a la derecha; el
+      producto agotado queda apagado con badge "AGOTADO" y no se puede
+      añadir al pedido; el kiosco lo oculta y `POST /api/orders` lo
+      rechaza si llega en el request. Manual — sin reset diario.
 - [ ] **TanStack Query** — cache/loading/error y polling (el KDS lo
       necesitará). Hoy: `fetch` + `useState` por componente.
 - [ ] **Tema nocturno (dark mode)** — toggle claro/oscuro en `/settings` o
@@ -146,3 +159,12 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
   muestra por línea.
 - ✅ Sort por columnas en tablas del admin, idle del kiosco, login
   case-insensitive y ejes con ticks en "Ventas por hora".
+- ✅ Tablero `/kitchen` accesible para todo el staff (sidebar + botón en
+  el POS); CUSTOMER redirige a su home.
+- ✅ "86'd" desde caja: toggle en cada tarjeta del POS, oculto en kiosco,
+  rechazado por `POST /api/orders`.
+- ✅ IVA persistido en la orden (`subtotal`/`taxRate`/`taxAmount`) y
+  mostrado en el ticket.
+- ✅ Paginación server-side (`page`/`size`/`sort`/`search` → `Page`) con
+  selector 5/10/15/20/25 en las tablas del admin; los endpoints siguen
+  devolviendo array completo sin esos params.

@@ -25,6 +25,11 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTableSort } from "../../_components/useTableSort";
+import {
+  PaginationBar,
+  usePagination,
+  type PageDto,
+} from "../../_components/usePagination";
 import { CategoryModal } from "./CategoryModal";
 
 export type CategoryDto = {
@@ -34,11 +39,10 @@ export type CategoryDto = {
   description: string | null;
   icon: string | null;
   active: boolean;
+  products: number;
 };
 
 export type StoreDto = { id: number; name: string };
-
-type ProductDto = { id: number; categoryId: number };
 
 export type Category = {
   id: number;
@@ -64,12 +68,12 @@ export const CATEGORY_ICONS = {
 
 export type IconKey = keyof typeof CATEGORY_ICONS;
 
-function toCategory(dto: CategoryDto, products: number): Category {
+function toCategory(dto: CategoryDto): Category {
   return {
     id: dto.id,
     name: dto.name,
     description: dto.description ?? "",
-    products,
+    products: dto.products,
     active: dto.active,
     icon:
       dto.icon && dto.icon in CATEGORY_ICONS ? (dto.icon as IconKey) : "tag",
@@ -89,36 +93,54 @@ export function CategoriesView() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!session) return;
-    Promise.all([
-      api<CategoryDto[]>("/api/categories"),
-      api<ProductDto[]>("/api/products"),
-      api<StoreDto[]>(`/api/clients/${session.clientId}/stores`),
-    ])
-      .then(([cats, products, storeList]) => {
-        const counts = new Map<number, number>();
-        for (const p of products) {
-          counts.set(p.categoryId, (counts.get(p.categoryId) ?? 0) + 1);
-        }
-        setCategories(cats.map((c) => toCategory(c, counts.get(c.id) ?? 0)));
-        setStores(storeList);
-      })
-      .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : "No se pudieron cargar"),
-      )
-      .finally(() => setLoading(false));
-  }, [session]);
-
-  const filtered = categories.filter((c) =>
-    `${c.name} ${c.description}`.toLowerCase().includes(query.toLowerCase()),
-  );
-
-  const { sorted, th } = useTableSort(filtered, {
+  const [meta, setMeta] = useState({ total: 0, pages: 1 });
+  const [reload, setReload] = useState(0);
+  const { page, size, setPage, setSize } = usePagination();
+  const { sorted, th, sort } = useTableSort(categories, {
     name: (c) => c.name,
     products: (c) => c.products,
-  });
+  }, { remote: true });
+
+  const SORT_PROP = { name: "name", products: "products" } as const;
+  const sortParam = sort
+    ? `${SORT_PROP[sort.key]},${sort.dir === 1 ? "asc" : "desc"}`
+    : "id,asc";
+
+  // reordenar reinicia a la primera página
+  useEffect(() => setPage(0), [sortParam, setPage]);
+
+  // stores solo para resolver nombres — sin paginar (pocos por cliente)
+  useEffect(() => {
+    if (!session) return;
+    api<StoreDto[]>(`/api/clients/${session.clientId}/stores`)
+      .then(setStores)
+      .catch(() => {});
+  }, [session]);
+
+  // la página la sirve el backend: page/size/sort/search viajan en la query
+  // (el conteo de productos ya viene en CategoryResponse.products)
+  useEffect(() => {
+    if (!session) return;
+    const t = setTimeout(() => {
+      api<PageDto<CategoryDto>>(
+        `/api/categories?page=${page}&size=${size}&sort=${sortParam}&search=${encodeURIComponent(query)}`,
+      )
+        .then((r) => {
+          // la página quedó vacía tras borrar la última fila → retrocede
+          if (r.content.length === 0 && r.totalElements > 0 && page > 0) {
+            setPage(r.totalPages - 1);
+            return;
+          }
+          setCategories(r.content.map(toCategory));
+          setMeta({ total: r.totalElements, pages: Math.max(1, r.totalPages) });
+        })
+        .catch((e: unknown) =>
+          setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+        )
+        .finally(() => setLoading(false));
+    }, query ? 250 : 0);
+    return () => clearTimeout(t);
+  }, [session, page, size, sortParam, query, reload, setPage]);
 
   const storeName = (id: number) =>
     stores.find((s) => s.id === id)?.name ?? `#${id}`;
@@ -143,13 +165,15 @@ export function CategoriesView() {
         { method: editing ? "PUT" : "POST", body },
       );
       setModalOpen(false);
-      setCategories((prev) =>
-        editing
-          ? prev.map((c) =>
-              c.id === saved.id ? toCategory(saved, c.products) : c,
-            )
-          : [...prev, toCategory(saved, 0)],
-      );
+      if (editing) {
+        setCategories((prev) =>
+          prev.map((c) => (c.id === saved.id ? toCategory(saved) : c)),
+        );
+      } else {
+        // el nuevo puede no caer en la página actual → refetch desde la 1a
+        setPage(0);
+        setReload((r) => r + 1);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar");
     }
@@ -168,7 +192,7 @@ export function CategoriesView() {
         }),
       });
       setCategories((prev) =>
-        prev.map((c) => (c.id === saved.id ? toCategory(saved, c.products) : c)),
+        prev.map((c) => (c.id === saved.id ? toCategory(saved) : c)),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo actualizar");
@@ -178,7 +202,7 @@ export function CategoriesView() {
   async function remove(cat: Category) {
     try {
       await api(`/api/categories/${cat.id}`, { method: "DELETE" });
-      setCategories((prev) => prev.filter((c) => c.id !== cat.id));
+      setReload((r) => r + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo eliminar");
     }
@@ -199,7 +223,10 @@ export function CategoriesView() {
           <input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(0);
+            }}
             placeholder="Buscar categoría…"
             className="w-full bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
@@ -366,6 +393,14 @@ export function CategoriesView() {
             );
           })
         )}
+        <PaginationBar
+          page={page}
+          pages={meta.pages}
+          size={size}
+          total={meta.total}
+          onPage={setPage}
+          onSize={setSize}
+        />
       </div>
 
       <CategoryModal

@@ -19,6 +19,11 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTableSort } from "../../_components/useTableSort";
+import {
+  PaginationBar,
+  usePagination,
+  type PageDto,
+} from "../../_components/usePagination";
 import { StoreModal } from "./StoreModal";
 
 export type StoreDto = {
@@ -55,27 +60,45 @@ export function StoresView() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<StoreDto | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!session) return;
-    api<StoreDto[]>(`/api/clients/${session.clientId}/stores`)
-      .then(setStores)
-      .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : "No se pudieron cargar"),
-      )
-      .finally(() => setLoading(false));
-  }, [session]);
-
-  const filtered = stores.filter((s) =>
-    `${s.name} ${s.description ?? ""} ${s.address ?? ""}`
-      .toLowerCase()
-      .includes(query.toLowerCase()),
-  );
-
-  const { sorted, th } = useTableSort(filtered, {
+  const [meta, setMeta] = useState({ total: 0, pages: 1 });
+  const [reload, setReload] = useState(0);
+  const { page, size, setPage, setSize } = usePagination();
+  const { sorted, th, sort } = useTableSort(stores, {
     name: (s) => s.name,
     createdAt: (s) => s.createdAt,
-  });
+  }, { remote: true });
+
+  const SORT_PROP = { name: "name", createdAt: "createdAt" } as const;
+  const sortParam = sort
+    ? `${SORT_PROP[sort.key]},${sort.dir === 1 ? "asc" : "desc"}`
+    : "id,asc";
+
+  // reordenar reinicia a la primera página
+  useEffect(() => setPage(0), [sortParam, setPage]);
+
+  // la página la sirve el backend: page/size/sort/search viajan en la query
+  useEffect(() => {
+    if (!session) return;
+    const t = setTimeout(() => {
+      api<PageDto<StoreDto>>(
+        `/api/clients/${session.clientId}/stores?page=${page}&size=${size}&sort=${sortParam}&search=${encodeURIComponent(query)}`,
+      )
+        .then((r) => {
+          // la página quedó vacía tras borrar la última fila → retrocede
+          if (r.content.length === 0 && r.totalElements > 0 && page > 0) {
+            setPage(r.totalPages - 1);
+            return;
+          }
+          setStores(r.content);
+          setMeta({ total: r.totalElements, pages: Math.max(1, r.totalPages) });
+        })
+        .catch((e: unknown) =>
+          setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+        )
+        .finally(() => setLoading(false));
+    }, query ? 250 : 0);
+    return () => clearTimeout(t);
+  }, [session, page, size, sortParam, query, reload, setPage]);
 
   async function save(data: {
     name: string;
@@ -91,11 +114,13 @@ export function StoresView() {
         { method: editing ? "PUT" : "POST", body },
       );
       setModalOpen(false);
-      setStores((prev) =>
-        editing
-          ? prev.map((s) => (s.id === saved.id ? saved : s))
-          : [...prev, saved],
-      );
+      if (editing) {
+        setStores((prev) => prev.map((s) => (s.id === saved.id ? saved : s)));
+      } else {
+        // el nuevo puede no caer en la página actual → refetch desde la 1a
+        setPage(0);
+        setReload((r) => r + 1);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar");
     }
@@ -132,7 +157,10 @@ export function StoresView() {
           <input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(0);
+            }}
             placeholder="Buscar establecimiento…"
             className="w-full bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
@@ -283,6 +311,14 @@ export function StoresView() {
             );
           })
         )}
+        <PaginationBar
+          page={page}
+          pages={meta.pages}
+          size={size}
+          total={meta.total}
+          onPage={setPage}
+          onSize={setSize}
+        />
       </div>
 
       <StoreModal

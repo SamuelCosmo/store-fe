@@ -4,8 +4,10 @@ import { BrandMark } from "@/components/molecules/BrandMark";
 import { Modal } from "@/components/molecules/Modal";
 import { api } from "@/lib/api";
 import { SETTINGS_CHANGED_EVENT, getSettings } from "@/lib/settings";
-import { TriangleAlert } from "lucide-react";
-import { useSession } from "@/lib/session";
+import { ArrowLeft, TriangleAlert } from "lucide-react";
+import { ROLE_HOME, useSession } from "@/lib/session";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type OrderStatus =
@@ -28,7 +30,8 @@ type OrderDto = {
     productName: string;
     quantity: number;
     sizeName: string | null;
-    extras: { name: string; quantity: number }[];
+    // null en órdenes creadas antes de que existiera el snapshot jsonb
+    extras: { name: string; quantity: number }[] | null;
     notes: string | null;
   }[];
 };
@@ -65,6 +68,7 @@ function ageCls(min: number, okMin: number, warnMin: number) {
 
 export function KitchenBoard() {
   const session = useSession();
+  const router = useRouter();
   const [orders, setOrders] = useState<OrderDto[]>([]);
   const [storeName, setStoreName] = useState("Store");
   const [loading, setLoading] = useState(true);
@@ -92,6 +96,11 @@ export function KitchenBoard() {
       osc.stop(at + 0.3);
     });
   }, []);
+
+  // El tablero es para staff — la cuenta compartida del kiosco vuelve a su home
+  useEffect(() => {
+    if (session?.role === "CUSTOMER") router.replace(ROLE_HOME.CUSTOMER);
+  }, [session, router]);
 
   // AudioContext solo arranca tras un gesto del usuario (autoplay policy)
   useEffect(() => {
@@ -234,14 +243,26 @@ export function KitchenBoard() {
     <div className="flex h-screen flex-col overflow-hidden bg-canvas">
       <header className="flex h-[88px] shrink-0 items-center justify-between border-b border-border bg-background px-8">
         <BrandMark title={storeName.toUpperCase()} subtitle="Cocina" />
-        <p className="text-lg font-bold text-text-secondary tabular-nums">
-          {now
-            ? now.toLocaleTimeString("es-MX", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "--:--"}
-        </p>
+        <div className="flex items-center gap-4">
+          <p className="text-lg font-bold text-text-secondary tabular-nums">
+            {now
+              ? now.toLocaleTimeString("es-MX", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "--:--"}
+          </p>
+          {/* staff que no vive aquí (admin/gerente/caja) puede volver a su home */}
+          {session && session.role !== "KITCHEN" && (
+            <Link
+              href={ROLE_HOME[session.role]}
+              className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-bold text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <ArrowLeft size={14} aria-hidden />
+              Volver
+            </Link>
+          )}
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-6">
@@ -311,11 +332,13 @@ export function KitchenBoard() {
                         </span>
                         <span className="min-w-0">
                           {item.productName}
-                          {(item.sizeName || item.extras.length > 0 || item.notes) && (
+                          {(item.sizeName ||
+                            (item.extras?.length ?? 0) > 0 ||
+                            item.notes) && (
                             <span className="block text-[11px] font-normal text-text-secondary">
                               {[
                                 item.sizeName,
-                                ...item.extras.map((e) =>
+                                ...(item.extras ?? []).map((e) =>
                                   e.quantity > 1
                                     ? `${e.quantity}× ${e.name}`
                                     : e.name,

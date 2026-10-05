@@ -3,26 +3,30 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-/** Client-side column sorting for the admin grid tables.
- *  `th(key, label)` renders a clickable header cell; `sorted` is the
- *  sorted (or original) row array. */
+/** Column sorting for the admin grid tables.
+ *  `th(key, label)` renders a clickable header cell.
+ *  Local mode (default): `sorted` is the client-sorted array.
+ *  `remote: true` (tablas paginadas por backend): `sorted` = rows sin
+ *  tocar y `sort` expone {key, dir} para mandarlo como `sort=` al server. */
 export function useTableSort<T, K extends string>(
   rows: T[],
   accessors: Record<K, (row: T) => string | number>,
+  opts?: { remote?: boolean },
 ) {
   const [sort, setSort] = useState<{ key: K; dir: 1 | -1 } | null>(null);
 
-  const sorted = !sort
-    ? rows
-    : [...rows].sort((a, b) => {
-        const av = accessors[sort.key](a);
-        const bv = accessors[sort.key](b);
-        const cmp =
-          typeof av === "number" && typeof bv === "number"
-            ? av - bv
-            : String(av).localeCompare(String(bv), "es");
-        return cmp * sort.dir;
-      });
+  const sorted =
+    !sort || opts?.remote
+      ? rows
+      : [...rows].sort((a, b) => {
+          const av = accessors[sort.key](a);
+          const bv = accessors[sort.key](b);
+          const cmp =
+            typeof av === "number" && typeof bv === "number"
+              ? av - bv
+              : String(av).localeCompare(String(bv), "es");
+          return cmp * sort.dir;
+        });
 
   function toggle(key: K) {
     setSort((s) =>
@@ -51,5 +55,5 @@ export function useTableSort<T, K extends string>(
     );
   }
 
-  return { sorted, th };
+  return { sorted, th, sort };
 }

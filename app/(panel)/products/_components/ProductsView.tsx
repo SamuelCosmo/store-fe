@@ -22,6 +22,11 @@ import {
   type IconKey,
 } from "../../categories/_components/CategoriesView";
 import { useTableSort } from "../../_components/useTableSort";
+import {
+  PaginationBar,
+  usePagination,
+  type PageDto,
+} from "../../_components/usePagination";
 import { ExtrasSection, type ExtraDto } from "./ExtrasSection";
 import { ProductModal } from "./ProductModal";
 import { SizesSection, type SizeDto } from "./SizesSection";
@@ -35,6 +40,7 @@ export type ProductDto = {
   image: string | null;
   price: number;
   active: boolean;
+  soldOut: boolean;
   tokenCost: number;
   extras: ExtraDto[];
   sizes: SizeDto[];
@@ -49,6 +55,7 @@ export type Product = {
   image: string;
   price: number;
   active: boolean;
+  soldOut: boolean;
   tokenCost: number;
   extraIds: number[];
   sizeIds: number[];
@@ -69,6 +76,7 @@ function toProduct(dto: ProductDto): Product {
     image: dto.image ?? "",
     price: dto.price,
     active: dto.active,
+    soldOut: dto.soldOut,
     tokenCost: dto.tokenCost,
     extraIds: dto.extras.map((e) => e.id),
     sizeIds: dto.sizes.map((s) => s.id),
@@ -99,17 +107,42 @@ export function ProductsView() {
   const [menuId, setMenuId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [tab, setTab] = useState<Tab>("productos");
+  // catálogo completo solo para las tabs de asignación (Tamaños/Extras)
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [allLoaded, setAllLoaded] = useState(false);
+  const [meta, setMeta] = useState({ total: 0, pages: 1 });
+  const [reload, setReload] = useState(0);
+  const { page, size, setPage, setSize } = usePagination();
 
+  const categoryOf = (id: number) => categories.find((c) => c.id === id);
+
+  const { sorted, th, sort } = useTableSort(products, {
+    name: (p) => p.name,
+    category: (p) => categoryOf(p.categoryId)?.name ?? "",
+    price: (p) => p.price,
+  }, { remote: true });
+
+  const SORT_PROP = {
+    name: "name",
+    category: "category.name",
+    price: "price",
+  } as const;
+  const sortParam = sort
+    ? `${SORT_PROP[sort.key]},${sort.dir === 1 ? "asc" : "desc"}`
+    : "id,asc";
+
+  // reordenar reinicia a la primera página
+  useEffect(() => setPage(0), [sortParam, setPage]);
+
+  // catálogos de apoyo sin paginar (selects del modal y columna de categoría)
   useEffect(() => {
     if (!session) return;
     Promise.all([
-      api<ProductDto[]>("/api/products"),
       api<CategoryDto[]>("/api/categories"),
       api<ExtraDto[]>("/api/extras"),
       api<SizeDto[]>("/api/sizes"),
     ])
-      .then(([prods, cats, exts, szs]) => {
-        setProducts(prods.map(toProduct));
+      .then(([cats, exts, szs]) => {
         setCategories(cats);
         setExtras(exts);
         setSizes(szs);
@@ -120,17 +153,41 @@ export function ProductsView() {
       .finally(() => setLoading(false));
   }, [session]);
 
-  const filtered = products.filter((p) =>
-    `${p.name} ${p.description}`.toLowerCase().includes(query.toLowerCase()),
-  );
+  // la página de productos la sirve el backend: page/size/sort/search en la query
+  useEffect(() => {
+    if (!session || tab !== "productos") return;
+    const t = setTimeout(() => {
+      api<PageDto<ProductDto>>(
+        `/api/products?page=${page}&size=${size}&sort=${sortParam}&search=${encodeURIComponent(query)}`,
+      )
+        .then((r) => {
+          // la página quedó vacía tras borrar la última fila → retrocede
+          if (r.content.length === 0 && r.totalElements > 0 && page > 0) {
+            setPage(r.totalPages - 1);
+            return;
+          }
+          setProducts(r.content.map(toProduct));
+          setMeta({ total: r.totalElements, pages: Math.max(1, r.totalPages) });
+        })
+        .catch((e: unknown) =>
+          setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+        );
+    }, query ? 250 : 0);
+    return () => clearTimeout(t);
+  }, [session, page, size, sortParam, query, reload, tab, setPage]);
 
-  const categoryOf = (id: number) => categories.find((c) => c.id === id);
-
-  const { sorted, th } = useTableSort(filtered, {
-    name: (p) => p.name,
-    category: (p) => categoryOf(p.categoryId)?.name ?? "",
-    price: (p) => p.price,
-  });
+  // las tabs de asignación listan TODOS los productos por tamaño/extra — lazy
+  useEffect(() => {
+    if (!session || tab === "productos" || allLoaded) return;
+    api<ProductDto[]>("/api/products")
+      .then((r) => {
+        setAllProducts(r.map(toProduct));
+        setAllLoaded(true);
+      })
+      .catch((e: unknown) =>
+        setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+      );
+  }, [session, tab, allLoaded]);
 
   async function save(data: {
     name: string;
@@ -150,11 +207,20 @@ export function ProductsView() {
         { method: editing ? "PUT" : "POST", body: JSON.stringify(data) },
       );
       setModalOpen(false);
-      setProducts((prev) =>
-        editing
-          ? prev.map((p) => (p.id === saved.id ? toProduct(saved) : p))
-          : [...prev, toProduct(saved)],
-      );
+      const next = toProduct(saved);
+      if (editing) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === saved.id ? next : p)),
+        );
+        setAllProducts((prev) =>
+          prev.map((p) => (p.id === saved.id ? next : p)),
+        );
+      } else {
+        // el nuevo puede no caer en la página actual → refetch desde la 1a
+        setPage(0);
+        setReload((r) => r + 1);
+        if (allLoaded) setAllProducts((prev) => [...prev, next]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar");
     }
@@ -169,6 +235,9 @@ export function ProductsView() {
       setProducts((prev) =>
         prev.map((p) => (p.id === saved.id ? toProduct(saved) : p)),
       );
+      setAllProducts((prev) =>
+        prev.map((p) => (p.id === saved.id ? toProduct(saved) : p)),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo actualizar");
     }
@@ -177,7 +246,8 @@ export function ProductsView() {
   async function remove(product: Product) {
     try {
       await api(`/api/products/${product.id}`, { method: "DELETE" });
-      setProducts((prev) => prev.filter((p) => p.id !== product.id));
+      setAllProducts((prev) => prev.filter((p) => p.id !== product.id));
+      setReload((r) => r + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo eliminar");
     }
@@ -227,7 +297,10 @@ export function ProductsView() {
           <input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(0);
+            }}
             placeholder="Buscar producto…"
             className="w-full bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
@@ -489,6 +562,14 @@ export function ProductsView() {
             );
           })
         )}
+        <PaginationBar
+          page={page}
+          pages={meta.pages}
+          size={size}
+          total={meta.total}
+          onPage={setPage}
+          onSize={setSize}
+        />
       </div>
       </>
       )}
@@ -496,19 +577,19 @@ export function ProductsView() {
       {tab === "tamanos" && (
       <SizesSection
         sizes={sizes}
-        products={products}
+        products={allProducts}
         onChange={(next: SizeDto[], saved?: SizeDto) => {
           setSizes(next);
           if (saved) {
             const wanted = new Set(saved.productIds);
-            setProducts((prev) =>
-              prev.map((p) => ({
-                ...p,
-                sizeIds: wanted.has(p.id)
-                  ? [...new Set([...p.sizeIds, saved.id])]
-                  : p.sizeIds.filter((id) => id !== saved.id),
-              })),
-            );
+            const sync = (p: Product) => ({
+              ...p,
+              sizeIds: wanted.has(p.id)
+                ? [...new Set([...p.sizeIds, saved.id])]
+                : p.sizeIds.filter((id) => id !== saved.id),
+            });
+            setAllProducts((prev) => prev.map(sync));
+            setProducts((prev) => prev.map(sync));
           }
         }}
         onError={setError}
@@ -518,19 +599,19 @@ export function ProductsView() {
       {tab === "extras" && (
       <ExtrasSection
         extras={extras}
-        products={products}
+        products={allProducts}
         onChange={(next: ExtraDto[], saved?: ExtraDto) => {
           setExtras(next);
           if (saved) {
             const wanted = new Set(saved.productIds);
-            setProducts((prev) =>
-              prev.map((p) => ({
-                ...p,
-                extraIds: wanted.has(p.id)
-                  ? [...new Set([...p.extraIds, saved.id])]
-                  : p.extraIds.filter((id) => id !== saved.id),
-              })),
-            );
+            const sync = (p: Product) => ({
+              ...p,
+              extraIds: wanted.has(p.id)
+                ? [...new Set([...p.extraIds, saved.id])]
+                : p.extraIds.filter((id) => id !== saved.id),
+            });
+            setAllProducts((prev) => prev.map(sync));
+            setProducts((prev) => prev.map(sync));
           }
         }}
         onError={setError}

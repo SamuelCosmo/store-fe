@@ -16,6 +16,11 @@ import {
 import { useEffect, useState } from "react";
 import type { StoreDto } from "../../stores/_components/StoresView";
 import { useTableSort } from "../../_components/useTableSort";
+import {
+  PaginationBar,
+  usePagination,
+  type PageDto,
+} from "../../_components/usePagination";
 import { ConfirmPasswordModal } from "./ConfirmPasswordModal";
 import { UserModal, type UserFormData } from "./UserModal";
 
@@ -55,31 +60,52 @@ export function UsersView() {
   const [editing, setEditing] = useState<UserDto | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
-
-  useEffect(() => {
-    if (!session) return;
-    Promise.all([
-      api<UserDto[]>("/api/users"),
-      api<StoreDto[]>(`/api/clients/${session.clientId}/stores`),
-    ])
-      .then(([us, sts]) => {
-        setUsers(us);
-        setStores(sts);
-      })
-      .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : "No se pudieron cargar"),
-      )
-      .finally(() => setLoading(false));
-  }, [session]);
-
-  const filtered = users.filter((u) =>
-    `${u.name} ${u.email}`.toLowerCase().includes(query.toLowerCase()),
-  );
-
-  const { sorted, th } = useTableSort(filtered, {
+  const [meta, setMeta] = useState({ total: 0, pages: 1 });
+  const [reload, setReload] = useState(0);
+  const { page, size, setPage, setSize } = usePagination();
+  const { sorted, th, sort } = useTableSort(users, {
     name: (u) => u.name,
     role: (u) => u.role,
-  });
+  }, { remote: true });
+
+  const SORT_PROP = { name: "name", role: "role" } as const;
+  const sortParam = sort
+    ? `${SORT_PROP[sort.key]},${sort.dir === 1 ? "asc" : "desc"}`
+    : "id,asc";
+
+  // reordenar reinicia a la primera página
+  useEffect(() => setPage(0), [sortParam, setPage]);
+
+  // stores solo para resolver nombres — sin paginar (pocos por cliente)
+  useEffect(() => {
+    if (!session) return;
+    api<StoreDto[]>(`/api/clients/${session.clientId}/stores`)
+      .then(setStores)
+      .catch(() => {});
+  }, [session]);
+
+  // la página de usuarios la sirve el backend: page/size/sort/search en la query
+  useEffect(() => {
+    if (!session) return;
+    const t = setTimeout(() => {
+      api<PageDto<UserDto>>(
+        `/api/users?page=${page}&size=${size}&sort=${sortParam}&search=${encodeURIComponent(query)}`,
+      )
+        .then((r) => {
+          if (r.content.length === 0 && r.totalElements > 0 && page > 0) {
+            setPage(r.totalPages - 1);
+            return;
+          }
+          setUsers(r.content);
+          setMeta({ total: r.totalElements, pages: Math.max(1, r.totalPages) });
+        })
+        .catch((e: unknown) =>
+          setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+        )
+        .finally(() => setLoading(false));
+    }, query ? 250 : 0);
+    return () => clearTimeout(t);
+  }, [session, page, size, sortParam, query, reload, setPage]);
 
   const storeName = (id: number) => stores.find((s) => s.id === id)?.name;
 
@@ -95,11 +121,13 @@ export function UsersView() {
         }),
       },
     );
-    setUsers((prev) =>
-      editing
-        ? prev.map((u) => (u.id === saved.id ? saved : u))
-        : [...prev, saved],
-    );
+    if (editing) {
+      setUsers((prev) => prev.map((u) => (u.id === saved.id ? saved : u)));
+    } else {
+      // el nuevo puede no caer en la página actual → refetch desde la 1a
+      setPage(0);
+      setReload((r) => r + 1);
+    }
   }
 
   async function runConfirm(currentPassword: string) {
@@ -128,7 +156,7 @@ export function UsersView() {
         method: "DELETE",
         body,
       });
-      setUsers((prev) => prev.filter((u) => u.id !== confirm.user.id));
+      setReload((r) => r + 1);
     }
     setConfirm(null);
   }
@@ -146,7 +174,10 @@ export function UsersView() {
           <input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(0);
+            }}
             placeholder="Buscar usuario…"
             className="w-full bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
@@ -303,6 +334,14 @@ export function UsersView() {
             </div>
           ))
         )}
+        <PaginationBar
+          page={page}
+          pages={meta.pages}
+          size={size}
+          total={meta.total}
+          onPage={setPage}
+          onSize={setSize}
+        />
       </div>
 
       <UserModal
