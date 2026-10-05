@@ -1,6 +1,7 @@
 "use client";
 
 import { useSelector } from "react-redux";
+import { getSettings } from "./settings";
 import { clearSession as clearSessionAction, getStore, setSession } from "./store";
 
 export type Role = "ADMIN" | "MANAGER" | "EMPLOYEE" | "CUSTOMER" | "KITCHEN";
@@ -52,7 +53,17 @@ export const SESSION_EXPIRED_EVENT = "store:session-expired";
 export function isSessionExpired(session: AuthResponse): boolean {
   try {
     const payload = JSON.parse(atob(session.token.split(".")[1]));
-    return typeof payload.exp !== "number" || payload.exp * 1000 <= Date.now();
+    if (typeof payload.exp !== "number" || payload.exp * 1000 <= Date.now()) {
+      return true;
+    }
+    // Cierre por rol según settings: horas desde el `iat` del JWT (0 = sin límite).
+    // ponytail: solo client-side — el JWT sigue válido hasta `exp`; TTL real por rol pendiente en backend
+    const hours = getSettings().session.hours[session.role] ?? 0;
+    return (
+      hours > 0 &&
+      typeof payload.iat === "number" &&
+      Date.now() - payload.iat * 1000 > hours * 3_600_000
+    );
   } catch {
     return true;
   }

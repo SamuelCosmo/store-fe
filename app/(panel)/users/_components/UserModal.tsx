@@ -2,7 +2,7 @@
 
 import { Modal } from "@/components/molecules/Modal";
 import { ROLE_LABEL, type Role } from "@/lib/session";
-import { Check, X } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { StoreDto } from "../../stores/_components/StoresView";
 import type { UserDto } from "./UsersView";
@@ -133,18 +133,24 @@ function UserForm({
         >
           Rol
         </label>
-        <select
-          id="user-role"
-          value={role}
-          onChange={(e) => setRole(e.target.value as Role)}
-          className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
-        >
-          {roleOptions.map((r) => (
-            <option key={r} value={r}>
-              {ROLE_LABEL[r]}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            id="user-role"
+            value={role}
+            onChange={(e) => setRole(e.target.value as Role)}
+            className="h-11 w-full appearance-none rounded-lg border border-border bg-background px-3.5 pr-9 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+          >
+            {roleOptions.map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABEL[r]}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            aria-hidden
+            className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-text-muted"
+          />
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5">

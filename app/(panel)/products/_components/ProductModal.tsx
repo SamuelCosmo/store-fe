@@ -1,7 +1,7 @@
 "use client";
 
 import { Modal } from "@/components/molecules/Modal";
-import { ImagePlus } from "lucide-react";
+import { ChevronDown, ImagePlus } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { CategoryDto } from "../../categories/_components/CategoriesView";
 import type { ExtraDto } from "./ExtrasSection";
@@ -187,19 +187,25 @@ function ProductForm({
           >
             Categoría
           </label>
-          <select
-            id="prod-category"
-            value={categoryId}
-            onChange={(e) => setCategoryId(Number(e.target.value))}
-            required
-            className={inputClass}
-          >
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              id="prod-category"
+              value={categoryId}
+              onChange={(e) => setCategoryId(Number(e.target.value))}
+              required
+              className={`${inputClass} appearance-none pr-9`}
+            >
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              aria-hidden
+              className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-text-muted"
+            />
+          </div>
         </div>
       </div>
 

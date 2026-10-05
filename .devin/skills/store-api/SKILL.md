@@ -77,6 +77,19 @@ POST/GET/PUT/DELETE           /api/sizes             # catálogo por cliente
 GET/PUT                       /api/inventory/{productId}
 ```
 
+### Settings (GET para todo el tenant; PUT solo ADMIN)
+
+```text
+GET/PUT   /api/clients/{id}/settings   # { currency, taxRate,
+                                       #   kioskReceiptSeconds,
+                                       #   sessionHours: { rol: horas } } (0 = no cerrar)
+GET/PUT   /api/stores/{id}/settings    # { menuName, kitchenOkMin,
+                                       #   kitchenWarnMin, kitchenSound }
+# menuName vacío → se usa el name del store. El frontend cachea ambos en
+# localStorage (lib/settings.ts: getSettings/refreshSettings) para lectura
+# sync en terminales y en el chequeo de expiración de sesión.
+```
+
 ### Stores, clients y users
 
 ```text

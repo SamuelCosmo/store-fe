@@ -4,9 +4,9 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 
 ## Bloqueantes / corto plazo
 
-- [ ] **Route guard del panel** — `(panel)/layout.tsx` no protege rutas:
-      sin sesión se puede navegar a `/products`. Redirect a `/` en un client
-      component tras hidratar (localStorage no existe en SSR).
+- [x] **Route guard del panel** — `PanelGuard` en `(panel)/layout.tsx`:
+      sin sesión (o expirada) → `/`; `/users` y `/settings` solo ADMIN,
+      otros roles → `ROLE_HOME`. Sidebar filtra esas rutas por rol.
 - [ ] **Upload de imágenes de producto** — `ProductModal` tiene el
       contenedor placeholder; falta el servicio de subida (Azure Blob u
       otro) que devuelva el URL a guardar en `products.image`.
@@ -18,33 +18,59 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       `OrderTerminal.tsx`.
 - [ ] **IVA/descuento en la orden** — el panel muestra solo subtotal=total;
       agregar cuando el backend los modele.
-- [ ] **Páginas del sidebar que no existen** — `/settings` enlaza a 404;
-      `/inventory` y `/reservations` se quitaron del menú hasta implementarse.
+- [ ] **Páginas del sidebar que no existen** — `/inventory` y
+      `/reservations` se quitaron del menú hasta implementarse.
       (Reportes vive dentro de `/dashboard`.)
-- [ ] **Pantalla de configuración del admin** (`/settings`) — parámetros por
-      establecimiento/terminal: ajustes de la pantalla de cocina (umbrales de
-      tiempo verde/amarillo/rojo, sonido de alerta), del kiosco (pantalla de
-      espera, mensajes) y de la caja (propinas, métodos de pago habilitados),
-      más parámetros generales del administrador. Requiere modelo/endpoints
-      de settings en el backend (no existe).
+- [x] **Settings persistidos en backend** — `/settings` sincroniza con
+      `GET/PUT /api/clients/{id}/settings` (moneda, impuesto, countdown del
+      kiosco, sesión por rol) y `GET/PUT /api/stores/{id}/settings`
+      (nombre del menú + umbrales/sonido KDS por establecimiento).
+      `localStorage` queda solo como cache (`lib/settings.ts`) que las
+      terminales refrescan cada 60 s y al recuperar foco (`Providers`). El
+      cierre
+      de sesión por rol sigue siendo client-side (`iat` del JWT) — el `exp`
+      sigue fijo hasta que el backend tenga TTL por rol. Pendiente ampliar
+      parámetros (impresión, idle del kiosco) y usar `currency`/`taxRate`
+      al cobrar.
 - [ ] **Cerrar sesión en caja** — `OrderTerminal` no tiene logout; el
       único está en el sidebar del panel. Agregar botón en el header de la
       terminal solo cuando `channel === "POS"` — el kiosco (CUSTOMER) no
       debe tenerlo (limpia `store.session` y vuelve a `/`).
-- [ ] **Orden de tamaños por producto** — hoy `product.sizes` viene de un
-      `Set` sin orden; el kiosco preselecciona el primero que llegue. Falta
-      campo de orden (ej. `position` en `product_sizes` o lista ordenada en
-      `sizeIds`) + UI de reordenar en el modal de producto.
+- [ ] **Orden de tamaños y extras por producto** — hoy `product.sizes` y
+      `product.extras` vienen de un `Set` sin orden; el kiosco preselecciona
+      el primero que llegue. Falta campo de prioridad (ej. `position` en
+      `product_sizes`/`product_extras`, o respetar el orden de los arrays
+      `sizeIds`/`extraIds` que ya se envían) + reordenar con drag and drop
+      los seleccionados en `ProductModal.tsx`.
+- [ ] **Tamaño default al pedir** — `ExtrasModal` ya preselecciona
+      `sizes[0]`, pero ese primero es arbitrario hasta que exista la
+      prioridad anterior; el default debe ser el primer tamaño asignado
+      según el orden definido en el producto.
 - [ ] **Ordenar por columnas en tablas del admin** — `/products`,
       `/categories`, `/stores`, `/users`: headers clickeables con sort
       asc/desc (estado local basta, los datos ya vienen completos).
 - [ ] **Paginación en tablas del admin** — hoy cargan todo el catálogo;
       cuando crezca, paginar (cliente-side o `page`/`size` en el backend).
 - [ ] **Refresco automático del catálogo en POS/kiosco** — la terminal
-      carga productos/categorías/extras/tamaños solo al montar; dar de alta
-      o editar algo requiere reload manual. Opciones: polling con
-      `setInterval`, refetch al recuperar foco (`visibilitychange`) o SSE;
-      TanStack Query lo resolvería con `refetchInterval`.
+      carga productos/categorías/extras/tamaños solo al montar; la caja y
+      el kiosco deben reflejar sin reload manual cuando el admin/gerente:
+      crea/edita/desactiva un producto o categoría, y asigna o quita un
+      extra o tamaño a un producto (desde `ProductsView`/`ProductModal` o
+      las secciones Extras/Tamaños). Opciones: polling con `setInterval`,
+      refetch al recuperar foco (`visibilitychange`) o SSE; TanStack Query
+      lo resolvería con `refetchInterval`.
+- [ ] **Login de correo case-insensitive** — `Usuario@x.com` y
+      `usuario@x.com` deben ser la misma cuenta: normalizar
+      (`trim().toLowerCase()`) al hacer login (`app/page.tsx`), al crear
+      usuarios (`UserModal.tsx`) y en la búsqueda de credenciales del
+      backend (columna unique en minúsculas o `lower(email)`).
+- [ ] **Gráfica "Ventas por hora" del dashboard rota** — el bar chart
+      manual de `DashboardView.tsx` (divs con height %) no está mostrando
+      los datos de `GET /api/reports/dashboard` (`hourly`). Corregirlo
+      (revisar el shape de `hourly`, horas faltantes y el cálculo de
+      `maxHourly`) o reemplazarlo por una librería de charts — Recharts es
+      la opción habitual en React; alternativas ligeras: Chart.js o
+      Apache ECharts.
 
 ## Iteración siguiente
 
@@ -73,6 +99,12 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       `active`, pensado para el admin).
 - [ ] **TanStack Query** — cache/loading/error y polling (el KDS lo
       necesitará). Hoy: `fetch` + `useState` por componente.
+- [ ] **Tema nocturno (dark mode)** — toggle claro/oscuro en `/settings` o
+      en el header. Los tokens viven en `@theme` de `globals.css`; con
+      Tailwind v4 basta `@custom-variant dark` + overrides de las variables
+      bajo `.dark`, y el toggle pone/quita la clase en `<html>` persistida
+      en `localStorage` (preferencia por dispositivo, no por backend).
+      Ojo con colores hardcodeados como `bg-[#fcfaf7]` en inputs.
 - [ ] **i18n** — copy en español hardcodeado; selector pendiente.
 
 ## Hechos recientes (referencia)
@@ -85,3 +117,8 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - ✅ KDS `/kitchen`: parrilla FIFO con fondo por antigüedad, avance
   PENDING→PREPARING→READY→COMPLETED, cancelación con modal, alerta sonora
   y rol `KITCHEN` (ruteo → `/kitchen`).
+- ✅ `/settings` sincronizada con la base de datos: por establecimiento
+  (nombre del menú, umbrales/sonido KDS) y por cliente (moneda, impuesto,
+  countdown del kiosco, duración de sesión por rol).
+- ✅ Guard del panel con sesión + rol: `/users` y `/settings` solo para
+  ADMIN; sidebar sticky a `h-screen`.

@@ -3,6 +3,11 @@
 import { BrandMark } from "@/components/molecules/BrandMark";
 import { Modal } from "@/components/molecules/Modal";
 import { api } from "@/lib/api";
+import {
+  SETTINGS_CHANGED_EVENT,
+  getSettings,
+  type StoreSettings,
+} from "@/lib/settings";
 import { useSession } from "@/lib/session";
 import type { CategoryDto } from "@/app/(panel)/categories/_components/CategoriesView";
 import type { ProductDto } from "@/app/(panel)/products/_components/ProductsView";
@@ -19,11 +24,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExtrasModal, type ItemSelection } from "./ExtrasModal";
-
-const MXN = new Intl.NumberFormat("es-MX", {
-  style: "currency",
-  currency: "MXN",
-});
 
 type CartItem = {
   id: number;
@@ -98,6 +98,26 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   const [cashReceived, setCashReceived] = useState("");
   const [nextNumber, setNextNumber] = useState<number | null>(null);
   const [now, setNow] = useState<Date | null>(null);
+  // null hasta que el cache del backend esté listo → fallbacks por campo
+  const [settings, setSettings] = useState<StoreSettings | null>(null);
+
+  useEffect(() => {
+    const read = () => setSettings(getSettings());
+    const id = setTimeout(read, 0);
+    window.addEventListener(SETTINGS_CHANGED_EVENT, read);
+    return () => {
+      clearTimeout(id);
+      window.removeEventListener(SETTINGS_CHANGED_EVENT, read);
+    };
+  }, []);
+
+  const currency = settings?.currency ?? "MXN";
+  const taxRate = settings?.taxRate ?? 0;
+  const fmt = useMemo(
+    () =>
+      new Intl.NumberFormat("es-MX", { style: "currency", currency }),
+    [currency],
+  );
 
   useEffect(() => {
     const tick = () => setNow(new Date());
@@ -149,6 +169,9 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   );
 
   const total = cart.reduce((sum, i) => sum + lineUnit(i), 0);
+  // Precios del catálogo llevan el impuesto incluido: se desglosa en ticket
+  const netTotal = taxRate > 0 ? total / (1 + taxRate / 100) : total;
+  const taxAmount = total - netTotal;
 
   function addToCart(
     product: ProductDto,
@@ -208,7 +231,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       });
       setCart([]);
       setPayOpen(false);
-      setCountdown(10);
+      setCountdown(getSettings().kiosk.receiptSeconds);
       // change es solo display — el backend aún no guarda cashReceived/changeGiven
       setReceipt({
         ...order,
@@ -237,7 +260,10 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       () => setCountdown((c) => Math.max(0, c - 1)),
       1000,
     );
-    const close = setTimeout(closeReceipt, 10_000);
+    const close = setTimeout(
+      closeReceipt,
+      getSettings().kiosk.receiptSeconds * 1000,
+    );
     return () => {
       clearInterval(tick);
       clearTimeout(close);
@@ -248,7 +274,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     <div className="flex h-screen flex-col overflow-hidden bg-canvas">
       <header className="flex h-[88px] shrink-0 items-center justify-between border-b border-border bg-background px-8">
         <BrandMark
-          title={storeName.toUpperCase()}
+          title={(settings?.general.menuName || storeName).toUpperCase()}
           subtitle={channel === "POS" ? "Punto de venta" : "Kiosko"}
         />
         <p className="text-lg font-bold text-text-secondary tabular-nums">
@@ -330,7 +356,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                         {p.name}
                       </p>
                       <p className="pt-0.5 text-xs whitespace-nowrap">
-                        {MXN.format(p.price)}
+                        {fmt.format(p.price)}
                       </p>
                     </div>
                     <p className="line-clamp-2 text-xs leading-[1.35] font-semibold text-text-secondary">
@@ -396,7 +422,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                     </p>
                   </div>
                   <p className="shrink-0 text-right text-sm font-semibold whitespace-nowrap text-text-primary">
-                    {MXN.format(lineUnit(item))}
+                    {fmt.format(lineUnit(item))}
                   </p>
                   <button
                     aria-label={`Opciones de ${item.product.name}`}
@@ -427,15 +453,23 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
 
           <div className="border-t border-dashed border-border" />
 
-          {/* TODO: IVA y descuento cuando el backend los soporte en la orden */}
+          {/* TODO: el backend aún no persiste el desglose de impuesto en la orden */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between text-[13px] font-semibold">
               <p className="text-text-secondary">Subtotal</p>
-              <p className="text-text-primary">{MXN.format(total)}</p>
+              <p className="text-text-primary">{fmt.format(netTotal)}</p>
             </div>
+            {taxRate > 0 && (
+              <div className="flex items-center justify-between text-[13px] font-semibold">
+                <p className="text-text-secondary">
+                  Impuesto incluido ({taxRate}%)
+                </p>
+                <p className="text-text-primary">{fmt.format(taxAmount)}</p>
+              </div>
+            )}
             <div className="flex items-center justify-between font-extrabold text-text-primary">
               <p className="text-base">Total</p>
-              <p className="text-xl">{MXN.format(total)}</p>
+              <p className="text-xl">{fmt.format(total)}</p>
             </div>
           </div>
 
@@ -566,7 +600,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                 min={0}
                 step="0.01"
                 inputMode="decimal"
-                placeholder={MXN.format(total)}
+                placeholder={fmt.format(total)}
                 value={cashReceived}
                 onChange={(e) => setCashReceived(e.target.value)}
                 className="h-11 rounded-xl border border-border bg-background px-3.5 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
@@ -574,11 +608,11 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               {cashReceived !== "" &&
                 (Number(cashReceived) >= total ? (
                   <p className="rounded-lg border border-success/40 bg-success/5 px-3.5 py-2.5 text-sm font-semibold text-success">
-                    Cambio a devolver: {MXN.format(Number(cashReceived) - total)}
+                    Cambio a devolver: {fmt.format(Number(cashReceived) - total)}
                   </p>
                 ) : (
                   <p className="rounded-lg border border-error/40 bg-error/5 px-3.5 py-2.5 text-sm font-semibold text-error">
-                    Faltan {MXN.format(total - Number(cashReceived))}
+                    Faltan {fmt.format(total - Number(cashReceived))}
                   </p>
                 ))}
             </div>
@@ -594,7 +628,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
             }
             className="w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
           >
-            {paying ? "Cobrando…" : `Cobrar ${MXN.format(total)}`}
+            {paying ? "Cobrando…" : `Cobrar ${fmt.format(total)}`}
           </button>
         </div>
       </Modal>
@@ -612,13 +646,21 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                 Pedido #{receipt.number ?? receipt.id}
               </p>
               <p className="text-sm text-text-secondary">
-                {MXN.format(receipt.total)} ·{" "}
+                {fmt.format(receipt.total)} ·{" "}
                 {receipt.paymentMethod === "CASH" ? "Efectivo" : "Tarjeta"} ·{" "}
                 {receipt.orderType === "DINE_IN" ? "En mesa" : "Para llevar"}
               </p>
+              {taxRate > 0 && (
+                <p className="text-xs text-text-muted">
+                  Impuesto incluido ({taxRate}%):{" "}
+                  {fmt.format(
+                    receipt.total - receipt.total / (1 + taxRate / 100),
+                  )}
+                </p>
+              )}
               {receipt.change !== null && receipt.change > 0 && (
                 <p className="mt-1 rounded-lg border border-success/40 bg-success/5 px-3.5 py-2 text-sm font-bold text-success">
-                  Cambio a devolver: {MXN.format(receipt.change)}
+                  Cambio a devolver: {fmt.format(receipt.change)}
                 </p>
               )}
               <p className="mt-1 text-xs text-text-muted">

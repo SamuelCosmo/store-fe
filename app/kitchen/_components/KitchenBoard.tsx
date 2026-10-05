@@ -3,6 +3,7 @@
 import { BrandMark } from "@/components/molecules/BrandMark";
 import { Modal } from "@/components/molecules/Modal";
 import { api } from "@/lib/api";
+import { SETTINGS_CHANGED_EVENT, getSettings } from "@/lib/settings";
 import { TriangleAlert } from "lucide-react";
 import { useSession } from "@/lib/session";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -48,10 +49,10 @@ function elapsedMin(createdAt: string, now: Date) {
   );
 }
 
-// verde < 8 min, amarillo 8–14, rojo >= 15
-function ageCls(min: number) {
-  if (min >= 15) return "bg-error/15";
-  if (min >= 8) return "bg-warning/20";
+// umbrales configurables en /settings (default: verde <8, amarillo <15, rojo ≥15)
+function ageCls(min: number, okMin: number, warnMin: number) {
+  if (min >= warnMin) return "bg-error/15";
+  if (min >= okMin) return "bg-warning/20";
   return "bg-success/15";
 }
 
@@ -68,6 +69,7 @@ export function KitchenBoard() {
   const knownIds = useRef<Set<number> | null>(null);
 
   const chime = useCallback(() => {
+    if (!getSettings().kitchen.sound) return;
     const ctx = (audioRef.current ??= new AudioContext());
     if (ctx.state === "suspended") void ctx.resume();
     [880, 1318].forEach((freq, i) => {
@@ -106,6 +108,20 @@ export function KitchenBoard() {
     return () => {
       clearTimeout(first);
       clearInterval(id);
+    };
+  }, []);
+
+  // El nombre del menú viene de settings del establecimiento (con cache)
+  useEffect(() => {
+    const read = () => {
+      const name = getSettings().general.menuName;
+      if (name) setStoreName(name);
+    };
+    const id = setTimeout(read, 0);
+    window.addEventListener(SETTINGS_CHANGED_EVENT, read);
+    return () => {
+      clearTimeout(id);
+      window.removeEventListener(SETTINGS_CHANGED_EVENT, read);
     };
   }, []);
 
@@ -249,10 +265,11 @@ export function KitchenBoard() {
               const next = NEXT[o.status];
               const chip = STATUS_CHIP[o.status];
               const min = now ? elapsedMin(o.createdAt, now) : 0;
+              const { okMin, warnMin } = getSettings().kitchen;
               return (
                 <article
                   key={o.id}
-                  className={`flex flex-col gap-3 rounded-xl p-4 shadow-[0_10px_28px_rgba(68,38,25,0.12)] ${ageCls(min)}`}
+                  className={`flex flex-col gap-3 rounded-xl p-4 shadow-[0_10px_28px_rgba(68,38,25,0.12)] ${ageCls(min, okMin, warnMin)}`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xl font-extrabold text-text-primary tabular-nums">

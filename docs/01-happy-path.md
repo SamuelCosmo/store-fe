@@ -132,6 +132,21 @@ Mismo componente (`app/pos/_components/OrderTerminal.tsx`) con prop
   desbloquea con el primer click/tecla del usuario (autoplay policy) y la
   carga inicial no suena.
 - Rol `KITCHEN` enruta aquí tras login (`ROLE_HOME`).
+- Umbrales de color y alerta sonora configurables en `/settings`.
+
+## Configuración → `/settings` ✅
+
+`app/(panel)/settings` — parámetros por navegador en `localStorage`
+(`lib/settings.ts`, pendiente persistencia en backend).
+
+- **General**: nombre del negocio (se usa en el `BrandMark` del sidebar).
+- **Cocina (KDS)**: minutos "a tiempo" y "atrasado" (verde/amarillo/rojo
+  de las tarjetas) + toggle de alerta sonora.
+- **Caja (POS)**: toggle "Aceptar efectivo" — oculta el método Efectivo y
+  el campo de cambio en el modal de cobro.
+- **Kiosco**: segundos del modal de confirmación antes del auto-reset
+  (3–60).
+- Botón "Guardar cambios" en el header; `warnMin` se clampa a `okMin + 1`.
 
 ## Superficies pendientes ⬜
 

@@ -15,7 +15,7 @@ export function Sidebar({
   const session = useSession();
 
   return (
-    <aside className="flex w-[248px] shrink-0 flex-col gap-7 self-stretch overflow-clip border-r border-border bg-background px-5 pb-6 pt-7">
+    <aside className="sticky top-0 flex h-screen w-[248px] shrink-0 flex-col gap-7 overflow-clip border-r border-border bg-background px-5 pb-6 pt-7">
       <BrandMark title={brand.title} subtitle={brand.subtitle} />
       <nav className="flex w-full flex-col gap-1.5">
         {items.map((item) => (
