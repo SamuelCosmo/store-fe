@@ -21,6 +21,7 @@ import {
   type CategoryDto,
   type IconKey,
 } from "../../categories/_components/CategoriesView";
+import { useTableSort } from "../../_components/useTableSort";
 import { ExtrasSection, type ExtraDto } from "./ExtrasSection";
 import { ProductModal } from "./ProductModal";
 import { SizesSection, type SizeDto } from "./SizesSection";
@@ -124,6 +125,12 @@ export function ProductsView() {
   );
 
   const categoryOf = (id: number) => categories.find((c) => c.id === id);
+
+  const { sorted, th } = useTableSort(filtered, {
+    name: (p) => p.name,
+    category: (p) => categoryOf(p.categoryId)?.name ?? "",
+    price: (p) => p.price,
+  });
 
   async function save(data: {
     name: string;
@@ -243,9 +250,9 @@ export function ProductsView() {
         <div
           className={`grid ${GRID} items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase`}
         >
-          <span>Producto</span>
-          <span>Categoría</span>
-          <span>Precio</span>
+          {th("name", "Producto")}
+          {th("category", "Categoría")}
+          {th("price", "Precio")}
           <span>Disponibilidad</span>
           <span>Acción</span>
         </div>
@@ -270,14 +277,14 @@ export function ProductsView() {
               Ir a Categorías
             </Link>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
             {query
               ? `Sin resultados para “${query}”`
               : "Aún no hay productos. Crea el primero."}
           </p>
         ) : (
-          filtered.map((product) => {
+          sorted.map((product) => {
             const cat = categoryOf(product.categoryId);
             const Icon = cat?.icon
               ? CATEGORY_ICONS[cat.icon as IconKey] ?? Tag

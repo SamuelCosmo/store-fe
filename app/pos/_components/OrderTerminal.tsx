@@ -8,7 +8,7 @@ import {
   getSettings,
   type StoreSettings,
 } from "@/lib/settings";
-import { useSession } from "@/lib/session";
+import { clearSession, useSession } from "@/lib/session";
 import type { CategoryDto } from "@/app/(panel)/categories/_components/CategoriesView";
 import type { ProductDto } from "@/app/(panel)/products/_components/ProductsView";
 import {
@@ -17,12 +17,15 @@ import {
   CircleCheck,
   CopyPlus,
   CreditCard,
+  LogOut,
   MoreHorizontal,
   Pencil,
   Soup,
   Trash2,
+  TriangleAlert,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExtrasModal, type ItemSelection } from "./ExtrasModal";
 
 type CartItem = {
@@ -64,9 +67,64 @@ function lineNote(item: CartItem) {
     .join(" · ");
 }
 
+// kiosco 90 s / caja 3 min sin tocar → pantalla de espera
+const IDLE_MS = { KIOSK: 90_000, POS: 180_000 } as const;
+
+// olas del attract screen — cada SVG es 2× el ancho con el patrón
+// periódico dos veces → translateX(-50%) da un loop infinito sin corte
+const IDLE_WAVES = [
+  {
+    color: "#1e5fb8",
+    height: "46%",
+    duration: 30,
+    reverse: false,
+    d: "M0,60 Q300,20 600,60 T1200,60 T1800,60 T2400,60 L2400,120 L0,120 Z",
+  },
+  {
+    color: "#2f74d6",
+    height: "33%",
+    duration: 19,
+    reverse: true,
+    d: "M0,70 Q300,15 600,70 T1200,70 T1800,70 T2400,70 L2400,120 L0,120 Z",
+  },
+  {
+    color: "#5b9df0",
+    height: "22%",
+    duration: 12,
+    reverse: false,
+    d: "M0,65 Q200,20 400,65 T800,65 T1200,65 T1600,65 T2000,65 T2400,65 L2400,120 L0,120 Z",
+  },
+];
+
+function SeaWaves() {
+  return (
+    <div aria-hidden className="absolute inset-0 overflow-hidden bg-[#0b3d91]">
+      <style>{`@keyframes wave-drift { to { transform: translateX(-50%); } }`}</style>
+      {IDLE_WAVES.map((w, i) => (
+        <div
+          key={i}
+          className="absolute inset-x-0 bottom-0"
+          style={{ height: w.height }}
+        >
+          <svg
+            viewBox="0 0 2400 120"
+            preserveAspectRatio="none"
+            className="h-full w-[200%]"
+            style={{
+              animation: `wave-drift ${w.duration}s linear infinite ${w.reverse ? "reverse" : ""}`,
+            }}
+          >
+            <path fill={w.color} d={w.d} />
+          </svg>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 
 export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
+  const router = useRouter();
   const session = useSession();
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
@@ -91,11 +149,14 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     left: number;
   } | null>(null);
   const [payOpen, setPayOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [payment, setPayment] = useState<"CASH" | "CARD">(
     channel === "KIOSK" ? "CARD" : "CASH",
   );
   const [paying, setPaying] = useState(false);
   const [cashReceived, setCashReceived] = useState("");
+  const [idle, setIdle] = useState(false);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [nextNumber, setNextNumber] = useState<number | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   // null hasta que el cache del backend esté listo → fallbacks por campo
@@ -129,29 +190,88 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!session) return;
-    Promise.all([
+  const load = useCallback(async () => {
+    const [prods, cats] = await Promise.all([
       api<ProductDto[]>("/api/products?activeOnly=true"),
       api<CategoryDto[]>("/api/categories"),
-      api<{ id: number; name: string }[]>(
-        `/api/clients/${session.clientId}/stores`,
-      ).catch(() => []),
-    ])
-      .then(([prods, cats, stores]) => {
-        setProducts(prods);
-        setCategories(cats.filter((c) => c.active));
-        setStoreName(
-          stores.find((s) => s.id === session.storeId)?.name ??
-            stores[0]?.name ??
-            "Store",
-        );
-      })
-      .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : "No se pudo cargar el menú"),
-      )
-      .finally(() => setLoading(false));
-  }, [session]);
+    ]);
+    setProducts(prods);
+    setCategories(cats.filter((c) => c.active));
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    const first = setTimeout(() => {
+      load()
+        .then(() =>
+          api<{ id: number; name: string }[]>(
+            `/api/clients/${session.clientId}/stores`,
+          ).catch(() => []),
+        )
+        .then((stores) => {
+          if (cancelled) return;
+          setStoreName(
+            stores.find((s) => s.id === session.storeId)?.name ??
+              stores[0]?.name ??
+              "Store",
+          );
+          setError(null);
+        })
+        .catch((e: unknown) => {
+          if (!cancelled) {
+            setError(
+              e instanceof Error ? e.message : "No se pudo cargar el menú",
+            );
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 0);
+    // El catálogo se refresca solo: cada 30s y al recuperar foco
+    const poll = setInterval(() => load().catch(() => {}), 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      clearTimeout(first);
+      clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [session, load]);
+
+  const resetTerminal = useCallback(() => {
+    setCart([]);
+    setMenu(null);
+    setCustomizing(null);
+    setPayOpen(false);
+    setConfirmLogout(false);
+    setReceipt(null);
+  }, []);
+
+  useEffect(() => {
+    if (idle) return;
+    // kiosco: el cliente abandonó → reinicia; caja: solo muestra la espera
+    const goIdle = () => {
+      setIdle(true);
+      if (channel === "KIOSK") resetTerminal();
+    };
+    const arm = () => {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      idleTimer.current = setTimeout(goIdle, IDLE_MS[channel]);
+    };
+    arm();
+    window.addEventListener("pointerdown", arm);
+    window.addEventListener("keydown", arm);
+    return () => {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      window.removeEventListener("pointerdown", arm);
+      window.removeEventListener("keydown", arm);
+    };
+  }, [channel, idle, resetTerminal]);
 
   useEffect(() => {
     if (!session) return;
@@ -216,7 +336,6 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     setPaying(true);
     setError(null);
     try {
-      // TODO: enviar sizeId/extraIds/notas por item cuando el backend los soporte.
       const order = await api<OrderDto>("/api/orders", {
         method: "POST",
         body: JSON.stringify({
@@ -226,6 +345,12 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           items: cart.map((i) => ({
             productId: i.product.id,
             quantity: 1,
+            sizeId: i.selection.size?.id ?? null,
+            extras: i.selection.extras.map((p) => ({
+              extraId: p.extra.id,
+              quantity: p.quantity,
+            })),
+            notes: i.selection.notes || null,
           })),
         }),
       });
@@ -277,14 +402,26 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           title={(settings?.general.menuName || storeName).toUpperCase()}
           subtitle={channel === "POS" ? "Punto de venta" : "Kiosko"}
         />
-        <p className="text-lg font-bold text-text-secondary tabular-nums">
-          {now
-            ? now.toLocaleTimeString("es-MX", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "--:--"}
-        </p>
+        <div className="flex items-center gap-4">
+          <p className="text-lg font-bold text-text-secondary tabular-nums">
+            {now
+              ? now.toLocaleTimeString("es-MX", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "--:--"}
+          </p>
+          {/* El kiosco (CUSTOMER) no tiene logout: es una cuenta compartida */}
+          {channel === "POS" && (
+            <button
+              onClick={() => setConfirmLogout(true)}
+              aria-label="Cerrar sesión"
+              className="flex size-10 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-error/50 hover:text-error focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <LogOut size={17} aria-hidden />
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1 gap-6 p-6">
@@ -634,6 +771,46 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       </Modal>
 
       <Modal
+        open={confirmLogout}
+        onClose={() => setConfirmLogout(false)}
+        title="Cerrar sesión"
+      >
+        <div className="flex flex-col gap-5">
+          <div className="flex items-start gap-3">
+            <TriangleAlert
+              size={22}
+              className="mt-0.5 shrink-0 text-error"
+              aria-hidden
+            />
+            <p className="text-sm leading-relaxed text-text-secondary">
+              ¿Estás seguro que quieres cerrar sesión?
+              {cart.length > 0 &&
+                " El pedido en curso se descartará."}
+            </p>
+          </div>
+          <div className="flex justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={() => setConfirmLogout(false)}
+              className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface"
+            >
+              Volver
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                clearSession();
+                router.push("/");
+              }}
+              className="rounded-lg bg-error px-4 py-2.5 text-sm font-bold text-white transition-colors hover:opacity-90"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         open={receipt !== null}
         onClose={closeReceipt}
         title="Pedido enviado"
@@ -677,6 +854,54 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           </div>
         )}
       </Modal>
+
+      {idle && channel === "KIOSK" && (
+        <button
+          onClick={() => setIdle(false)}
+          className="fixed inset-0 z-[60] text-white"
+        >
+          <SeaWaves />
+          <span className="relative z-10 flex h-full flex-col items-center justify-center gap-3">
+            <span className="text-4xl font-extrabold tracking-tight">
+              {(settings?.general.menuName || storeName).toUpperCase()}
+            </span>
+            <span className="text-base font-medium opacity-90">
+              Toca para comenzar tu pedido
+            </span>
+          </span>
+        </button>
+      )}
+
+      {idle && channel === "POS" && (
+        <div className="fixed inset-0 z-[60] text-white">
+          <SeaWaves />
+          <div className="relative z-10 flex h-full flex-col items-center justify-center gap-5">
+            <p className="text-4xl font-extrabold tracking-tight">
+              {(settings?.general.menuName || storeName).toUpperCase()}
+            </p>
+            <p className="text-base font-medium opacity-90">
+              La caja quedó en espera
+            </p>
+            <div className="mt-2 flex gap-3">
+              <button
+                onClick={() => setIdle(false)}
+                className="rounded-xl border border-white/50 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-white/10"
+              >
+                Continuar con el pedido
+              </button>
+              <button
+                onClick={() => {
+                  resetTerminal();
+                  setIdle(false);
+                }}
+                className="rounded-xl bg-white px-6 py-3 text-sm font-extrabold text-primary transition-colors hover:opacity-90"
+              >
+                Comenzar pedido nuevo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

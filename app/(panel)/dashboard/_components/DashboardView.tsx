@@ -11,6 +11,36 @@ const MXN = new Intl.NumberFormat("es-MX", {
   currency: "MXN",
 });
 
+const MXN_AXIS = new Intl.NumberFormat("es-MX", {
+  style: "currency",
+  currency: "MXN",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+/** Nice Y ticks: step from {1,2,2.5,5}×10ⁿ so ~4 lines cover `max`. */
+function yAxisTicks(max: number) {
+  const rawStep = Math.max(1, max) / 4;
+  const mag = 10 ** Math.floor(Math.log10(rawStep));
+  const step =
+    [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= rawStep) ??
+    10 * mag;
+  const top = step * Math.ceil(max / step);
+  const ticks: number[] = [];
+  for (let v = 0; v <= top; v += step) ticks.push(v);
+  return { top, ticks };
+}
+
+function hourLabel(hour: number) {
+  return hour === 0
+    ? "12am"
+    : hour < 12
+      ? `${hour}am`
+      : hour === 12
+        ? "12pm"
+        : `${hour - 12}pm`;
+}
+
 const RANGES = [
   { id: "hoy", label: "Hoy", days: 0 },
   { id: "7d", label: "7 días", days: 6 },
@@ -83,6 +113,7 @@ export function DashboardView() {
       : 0;
 
   const maxHourly = Math.max(1, ...(data?.hourly.map((h) => h.total) ?? []));
+  const yAxis = yAxisTicks(maxHourly);
   const maxRevenue = Math.max(1, ...(data?.topProducts.map((p) => p.revenue) ?? []));
   const maxEmp = Math.max(1, ...(data?.employees.map((e) => e.total) ?? []));
 
@@ -147,19 +178,64 @@ export function DashboardView() {
                   Sin ventas en el rango.
                 </p>
               ) : (
-                <div className="flex h-44 items-end gap-2">
-                  {data.hourly.map(({ hour, total }) => (
-                    <div key={hour} className="flex flex-1 flex-col items-center gap-1.5">
-                      <div
-                        title={MXN.format(total)}
-                        className="w-full rounded-t-md bg-primary/85 transition-colors hover:bg-primary"
-                        style={{ height: `${(total / maxHourly) * 100}%` }}
-                      />
-                      <span className="text-[10px] text-text-muted">
-                        {hour < 12 ? `${hour}a` : hour === 12 ? "12p" : `${hour - 12}p`}
-                      </span>
+                <div className="flex flex-col">
+                  <div className="flex h-44 items-stretch gap-1.5">
+                    <div className="flex w-9 shrink-0 flex-col-reverse justify-between text-right">
+                      {yAxis.ticks.map((t, i) => (
+                        <span
+                          key={t}
+                          className={`text-[10px] leading-none tabular-nums text-text-muted ${
+                            i === 0
+                              ? "translate-y-1/2"
+                              : i === yAxis.ticks.length - 1
+                                ? "-translate-y-1/2"
+                                : ""
+                          }`}
+                        >
+                          {MXN_AXIS.format(t)}
+                        </span>
+                      ))}
                     </div>
-                  ))}
+                    <div className="relative min-w-0 flex-1 border-b border-l border-border/60">
+                      {yAxis.ticks.map((t) => (
+                        <div
+                          key={t}
+                          aria-hidden
+                          className="absolute right-0 left-0 border-t border-border/50"
+                          style={{ bottom: `${(t / yAxis.top) * 100}%` }}
+                        />
+                      ))}
+                      <div className="absolute inset-0 flex items-end gap-2 pl-1.5">
+                        {data.hourly.map(({ hour, total }) => (
+                          <div
+                            key={hour}
+                            className="flex h-full min-w-0 flex-1 flex-col justify-end"
+                          >
+                            <div
+                              title={MXN.format(total)}
+                              className="w-full rounded-t-md bg-primary/85 transition-colors hover:bg-primary"
+                              style={{
+                                height: `${(total / yAxis.top) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pl-12">
+                    {data.hourly.map(({ hour }) => (
+                      <span
+                        key={hour}
+                        className="min-w-0 flex-1 pt-1.5 text-center text-[10px] text-text-muted"
+                      >
+                        {hourLabel(hour)}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="pt-1.5 pl-12 text-center text-[10px] tracking-wide text-text-muted uppercase">
+                    Hora del día
+                  </p>
                 </div>
               )}
             </section>

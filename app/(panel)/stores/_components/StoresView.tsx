@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTableSort } from "../../_components/useTableSort";
 import { StoreModal } from "./StoreModal";
 
 export type StoreDto = {
@@ -70,6 +71,11 @@ export function StoresView() {
       .toLowerCase()
       .includes(query.toLowerCase()),
   );
+
+  const { sorted, th } = useTableSort(filtered, {
+    name: (s) => s.name,
+    createdAt: (s) => s.createdAt,
+  });
 
   async function save(data: {
     name: string;
@@ -156,10 +162,10 @@ export function StoresView() {
         <div
           className={`grid ${GRID} items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase`}
         >
-          <span>Establecimiento</span>
+          {th("name", "Establecimiento")}
           <span>Dirección</span>
           <span>Tipo</span>
-          <span>Alta</span>
+          {th("createdAt", "Alta")}
           <span>Estado</span>
           <span>Acción</span>
         </div>
@@ -172,14 +178,14 @@ export function StoresView() {
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
             Cargando…
           </p>
-        ) : filtered.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
             {query
               ? `Sin resultados para “${query}”`
               : "Aún no hay establecimientos. Crea el primero."}
           </p>
         ) : (
-          filtered.map((store) => {
+          sorted.map((store) => {
             const type = BUSINESS_TYPES[store.businessType];
             const Icon = type?.icon ?? Building2;
             return (

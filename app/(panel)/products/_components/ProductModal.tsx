@@ -16,6 +16,55 @@ const MXN = new Intl.NumberFormat("es-MX", {
   currency: "MXN",
 });
 
+function OptionChecklist({
+  items,
+  selectedIds,
+  onToggle,
+  emptyHint,
+}: {
+  items: { id: number; name: string; price: number }[];
+  selectedIds: number[];
+  onToggle: (id: number) => void;
+  emptyHint: string;
+}) {
+  if (items.length === 0) {
+    return <p className="text-xs text-text-muted">{emptyHint}</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      {items.map((item) => {
+        const selected = selectedIds.includes(item.id);
+        return (
+          <label
+            key={item.id}
+            className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+              selected
+                ? "border-primary bg-primary-light"
+                : "border-border hover:bg-surface"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => onToggle(item.id)}
+              className="size-4 shrink-0 accent-primary"
+            />
+            <span className="min-w-0 flex-1 truncate text-text-primary">
+              {item.name}
+            </span>
+            {item.price > 0 && (
+              <span className="shrink-0 text-xs text-text-secondary">
+                +{MXN.format(item.price)}
+              </span>
+            )}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
 type FormData = {
   name: string;
   description: string;
@@ -291,37 +340,15 @@ function ProductForm({
           <p className="text-sm font-medium text-text-primary" aria-hidden>
             Tamaños
           </p>
-          {sizes.filter((s) => s.active).length === 0 ? (
-            <p className="text-xs text-text-muted">
-              Aún no hay tamaños — créalos abajo en la sección Tamaños.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {sizes
-                .filter((s) => s.active)
-                .map((size) => (
-                  <label
-                    key={size.id}
-                    className="flex cursor-pointer items-center justify-between gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm text-text-primary transition-colors hover:bg-surface has-checked:border-primary has-checked:bg-primary-light"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <input
-                        type="checkbox"
-                        checked={sizeIds.includes(size.id)}
-                        onChange={() => toggleSize(size.id)}
-                        className="size-4 accent-primary"
-                      />
-                      {size.name}
-                    </span>
-                    {size.price > 0 && (
-                      <span className="text-xs text-text-secondary">
-                        +{MXN.format(size.price)}
-                      </span>
-                    )}
-                  </label>
-                ))}
-            </div>
-          )}
+          <OptionChecklist
+            items={sizes.filter((s) => s.active)}
+            selectedIds={sizeIds}
+            onToggle={toggleSize}
+            emptyHint="Aún no hay tamaños — créalos abajo en la sección Tamaños."
+          />
+          <p className="text-[11px] text-text-muted">
+            El orden lo define la sección Tamaños.
+          </p>
         </fieldset>
 
         <fieldset className="flex flex-col gap-1.5">
@@ -329,35 +356,12 @@ function ProductForm({
           <p className="text-sm font-medium text-text-primary" aria-hidden>
             Extras
           </p>
-        {extras.filter((e) => e.active).length === 0 ? (
-          <p className="text-xs text-text-muted">
-            Aún no hay extras — créalos abajo en la sección Extras.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-1">
-            {extras
-              .filter((e) => e.active)
-              .map((extra) => (
-                <label
-                  key={extra.id}
-                  className="flex cursor-pointer items-center justify-between gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm text-text-primary transition-colors hover:bg-surface has-checked:border-primary has-checked:bg-primary-light"
-                >
-                  <span className="flex items-center gap-2.5">
-                    <input
-                      type="checkbox"
-                      checked={extraIds.includes(extra.id)}
-                      onChange={() => toggleExtra(extra.id)}
-                      className="size-4 accent-primary"
-                    />
-                    {extra.name}
-                  </span>
-                  <span className="text-xs text-text-secondary">
-                    +{MXN.format(extra.price)}
-                  </span>
-                </label>
-              ))}
-          </div>
-        )}
+          <OptionChecklist
+            items={extras.filter((e) => e.active)}
+            selectedIds={extraIds}
+            onToggle={toggleExtra}
+            emptyHint="Aún no hay extras — créalos abajo en la sección Extras."
+          />
         </fieldset>
       </div>
 

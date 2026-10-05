@@ -68,9 +68,11 @@ POST/GET/GET{id}/PUT/DELETE   /api/products          # GET ?storeId=&categoryId=
 PATCH                         /api/products/{id}/active
 # Product: { categoryId, name, description, sku, image, price,
 #   tokenCost, sizeIds[], extraIds[] }
-# ProductResponse incluye extras[] y sizes[] resueltos.
+# ProductResponse incluye extras[] alfabéticos y sizes[] en el orden
+# global del catálogo (sizes.position).
 POST/GET/PUT/DELETE           /api/extras            # catálogo por cliente
-POST/GET/PUT/DELETE           /api/sizes             # catálogo por cliente
+POST/GET/PUT/DELETE           /api/sizes             # catálogo por cliente, GET ordenado por position
+PUT                           /api/sizes/order       # body: [ids] → orden global del menú
 # Extra/Size: { name, price, active, productIds[] } — asignación
 # bidireccional: desde el producto (extraIds/sizeIds) o desde el
 # extra/tamaño (productIds). price = cargo adicional sobre el precio.
@@ -127,8 +129,15 @@ GET    /api/orders/{id}/ticket   # PENDIENTE backend — payload para impresión
   "channel": "POS | KIOSK",
   "orderType": "DINE_IN | TAKEAWAY",
   "paymentMethod": "CASH | CARD",
-  "items": [{ "productId": 1, "quantity": 2 }]
+  "items": [{
+    "productId": 1, "quantity": 2,
+    "sizeId": 3,                                // opcional — asignado al producto
+    "extras": [{ "extraId": 5, "quantity": 2 }],// opcional — idem
+    "notes": "sin cebolla"                      // opcional, máx 500
+  }]
 }
+// OrderItemResponse: + sizeName, extras[] ({name,price,quantity}), notes
+// — snapshots; unitPrice ya incluye cargos de tamaño/extras (server-side).
 ```
 
 ```json
@@ -139,13 +148,14 @@ GET    /api/orders/{id}/ticket   # PENDIENTE backend — payload para impresión
 **Reglas:**
 - `channel=KIOSK` ⇒ solo `CARD`. `CUSTOMER` solo crea órdenes `KIOSK`.
 - Validación backend: productos activos del store de sesión + stock →
-  descuenta inventario en la misma transacción. Items duplicados se fusionan.
+  descuenta inventario en la misma transacción. `sizeId`/`extras` deben
+  estar asignados al producto (si no → 400); mismo producto con distinta
+  selección queda como líneas separadas.
 - `CANCELLED` permitido hasta `PREPARING` inclusive → restaura inventario y
   `refund_status=REFUNDED` (reembolso manual por staff).
 - KDS usa: `PREPARING`, `READY`, `CANCELLED`.
 
-**Pendiente en backend:** items de orden aún no aceptan `sizeId`/`extraIds`;
-tampoco `cashReceived`/`changeGiven` para pago en efectivo.
+**Pendiente en backend:** `cashReceived`/`changeGiven` para pago en efectivo.
 
 ### Extras del cliente (módulos opcionales — TODOS pendientes en backend)
 

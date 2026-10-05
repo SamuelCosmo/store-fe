@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTableSort } from "../../_components/useTableSort";
 import { CategoryModal } from "./CategoryModal";
 
 export type CategoryDto = {
@@ -113,6 +114,11 @@ export function CategoriesView() {
   const filtered = categories.filter((c) =>
     `${c.name} ${c.description}`.toLowerCase().includes(query.toLowerCase()),
   );
+
+  const { sorted, th } = useTableSort(filtered, {
+    name: (c) => c.name,
+    products: (c) => c.products,
+  });
 
   const storeName = (id: number) =>
     stores.find((s) => s.id === id)?.name ?? `#${id}`;
@@ -225,9 +231,9 @@ export function CategoriesView() {
         <div
           className={`grid ${GRID} items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase`}
         >
-          <span>Categoría</span>
+          {th("name", "Categoría")}
           <span>Descripción</span>
-          <span>Productos</span>
+          {th("products", "Productos")}
           <span>Estado</span>
           <span>Acción</span>
         </div>
@@ -252,14 +258,14 @@ export function CategoriesView() {
               Ir a Establecimientos
             </Link>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
             {query
               ? `Sin resultados para “${query}”`
               : "Aún no hay categorías. Crea la primera."}
           </p>
         ) : (
-          filtered.map((cat) => {
+          sorted.map((cat) => {
             const Icon = CATEGORY_ICONS[cat.icon];
             return (
               <div

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { StoreDto } from "../../stores/_components/StoresView";
+import { useTableSort } from "../../_components/useTableSort";
 import { ConfirmPasswordModal } from "./ConfirmPasswordModal";
 import { UserModal, type UserFormData } from "./UserModal";
 
@@ -74,6 +75,11 @@ export function UsersView() {
   const filtered = users.filter((u) =>
     `${u.name} ${u.email}`.toLowerCase().includes(query.toLowerCase()),
   );
+
+  const { sorted, th } = useTableSort(filtered, {
+    name: (u) => u.name,
+    role: (u) => u.role,
+  });
 
   const storeName = (id: number) => stores.find((s) => s.id === id)?.name;
 
@@ -170,8 +176,8 @@ export function UsersView() {
         <div
           className={`grid ${GRID} items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase`}
         >
-          <span>Usuario</span>
-          <span>Rol</span>
+          {th("name", "Usuario")}
+          {th("role", "Rol")}
           <span>Establecimientos</span>
           <span>Acción</span>
         </div>
@@ -184,14 +190,14 @@ export function UsersView() {
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
             Cargando…
           </p>
-        ) : filtered.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
             {query
               ? `Sin resultados para “${query}”`
               : "Aún no hay usuarios. Crea el primero."}
           </p>
         ) : (
-          filtered.map((user) => (
+          sorted.map((user) => (
             <div
               key={user.id}
               className={`grid ${GRID} min-h-[74px] items-center gap-4 border-b border-border px-3.5 py-3 last:border-b-0 ${user.active ? "" : "opacity-60"}`}

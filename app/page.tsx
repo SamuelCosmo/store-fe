@@ -51,7 +51,9 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: data.get("email"),
+          email: String(data.get("email") ?? "")
+            .trim()
+            .toLowerCase(),
           password: data.get("password"),
         }),
       });

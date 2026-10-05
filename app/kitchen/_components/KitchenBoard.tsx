@@ -23,7 +23,14 @@ type OrderDto = {
   paymentMethod: "CASH" | "CARD";
   status: OrderStatus;
   createdAt: string;
-  items: { productId: number; productName: string; quantity: number }[];
+  items: {
+    productId: number;
+    productName: string;
+    quantity: number;
+    sizeName: string | null;
+    extras: { name: string; quantity: number }[];
+    notes: string | null;
+  }[];
 };
 
 const ACTIVE: OrderStatus[] = ["PENDING", "CONFIRMED", "PREPARING", "READY"];
@@ -302,7 +309,24 @@ export function KitchenBoard() {
                         <span className="font-bold tabular-nums">
                           {item.quantity}×
                         </span>
-                        <span>{item.productName}</span>
+                        <span className="min-w-0">
+                          {item.productName}
+                          {(item.sizeName || item.extras.length > 0 || item.notes) && (
+                            <span className="block text-[11px] font-normal text-text-secondary">
+                              {[
+                                item.sizeName,
+                                ...item.extras.map((e) =>
+                                  e.quantity > 1
+                                    ? `${e.quantity}× ${e.name}`
+                                    : e.name,
+                                ),
+                                item.notes,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </span>
+                          )}
+                        </span>
                       </li>
                     ))}
                   </ul>

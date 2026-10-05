@@ -5,12 +5,13 @@ import { api } from "@/lib/api";
 import {
   Eye,
   EyeOff,
+  GripVertical,
   MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import type { Product } from "./ProductsView";
 
 export type SizeDto = {
@@ -40,6 +41,18 @@ export function SizesSection({
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<SizeDto | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
+  const dragId = useRef<number | null>(null);
+
+  async function persistOrder() {
+    try {
+      await api("/api/sizes/order", {
+        method: "PUT",
+        body: JSON.stringify(sizes.map((s) => s.id)),
+      });
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "No se pudo guardar el orden");
+    }
+  }
 
   async function save(data: { name: string; price: number; active: boolean }) {
     try {
@@ -90,7 +103,9 @@ export function SizesSection({
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold text-text-primary">Tamaños</h2>
           <p className="text-xs text-text-secondary">
-            Presentaciones o porciones que ajustan el precio del producto
+            Presentaciones o porciones que ajustan el precio del producto.
+            Arrastra para ordenar en el menú — el primero es el tamaño por
+            defecto.
           </p>
         </div>
         <button
@@ -122,9 +137,35 @@ export function SizesSection({
           sizes.map((size) => (
             <div
               key={size.id}
+              draggable
+              onDragStart={() => {
+                dragId.current = size.id;
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (dragId.current === null || dragId.current === size.id) return;
+                const from = sizes.findIndex((s) => s.id === dragId.current);
+                const to = sizes.findIndex((s) => s.id === size.id);
+                if (from === -1 || to === -1) return;
+                const next = [...sizes];
+                const [moved] = next.splice(from, 1);
+                next.splice(to, 0, moved);
+                onChange(next);
+              }}
+              onDragEnd={() => {
+                dragId.current = null;
+                persistOrder();
+              }}
               className="grid grid-cols-[1fr_140px_110px_110px_60px] min-h-[60px] items-center gap-4 border-b border-border px-3.5 py-3 last:border-b-0"
             >
-              <p className="text-[13px] text-text-primary">{size.name}</p>
+              <p className="flex items-center gap-1.5 text-[13px] text-text-primary">
+                <GripVertical
+                  size={15}
+                  aria-hidden
+                  className="shrink-0 cursor-grab text-text-muted"
+                />
+                {size.name}
+              </p>
               <p
                 className="truncate text-xs text-text-secondary"
                 title={size.productIds

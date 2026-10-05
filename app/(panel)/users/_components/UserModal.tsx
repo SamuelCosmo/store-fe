@@ -99,7 +99,7 @@ function UserForm({
     }
     onSubmit({
       name: name.trim(),
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       password,
       role,
       storeIds,
