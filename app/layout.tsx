@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Store Platform",
+  title: "SAC+",
   description: "Punto de venta multi-tienda",
 };
 

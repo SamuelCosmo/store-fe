@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -90,7 +91,15 @@ export default function LoginPage() {
       </div>
       <div className="flex h-[640px] w-full max-w-[1120px] overflow-hidden rounded-2xl border border-border bg-background shadow-[0_10px_28px_rgba(68,38,25,0.08)]">
         <aside className="hidden w-[360px] shrink-0 flex-col gap-4 overflow-hidden bg-primary p-10 text-white sm:flex">
-          <p className="text-[11px] font-semibold">Acceso general</p>
+          <Image
+            src="/sac-logo.png"
+            alt="SAC+"
+            width={150}
+            height={56}
+            unoptimized
+            priority
+            className="h-14 w-auto self-start"
+          />
           <div className="flex flex-col gap-3">
             <h1 className="text-[32px] leading-[1.1] font-extrabold">
               Bienvenido
@@ -125,6 +134,16 @@ export default function LoginPage() {
         </aside>
 
         <main className="flex min-w-0 flex-1 flex-col gap-6 bg-surface p-8 sm:p-12">
+          {/* logo solo en móvil — en desktop vive en el aside */}
+          <Image
+            src="/sac-logo.png"
+            alt="SAC+"
+            width={140}
+            height={52}
+            unoptimized
+            priority
+            className="h-[52px] w-auto self-start sm:hidden"
+          />
           <div className="flex flex-col gap-1.5">
             <h2 className="text-[32px] leading-none font-extrabold text-text-primary">
               Acceder

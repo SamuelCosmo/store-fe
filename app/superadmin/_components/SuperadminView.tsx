@@ -10,6 +10,7 @@ import {
   type AuthResponse,
 } from "@/lib/session";
 import { Building2, LogOut, Pencil, Plus } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -93,7 +94,15 @@ function SuperadminLogin() {
         className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-border bg-background p-7 shadow-[0_10px_28px_rgba(68,38,25,0.08)]"
       >
         <div className="flex flex-col gap-1.5">
-          <h1 className="text-2xl font-extrabold text-text-primary">
+          <Image
+            src="/sac-logo.png"
+            alt="SAC+"
+            width={128}
+            height={48}
+            unoptimized
+            className="h-12 w-auto self-center"
+          />
+          <h1 className="pt-2 text-2xl font-extrabold text-text-primary">
             Plataforma
           </h1>
           <p className="text-sm text-text-secondary">
