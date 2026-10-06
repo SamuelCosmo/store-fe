@@ -105,7 +105,17 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [ ] **Módulos por usuario** — el sidebar muestra todo; filtrar por
       `user_modules ∩ client_modules` cuando el backend lo exponga.
 - [ ] **Enrutado por rol + módulos tras login** — hoy solo se usa `ROLE_HOME`.
-- [x] **Pantalla de pedidos de cocina para caja/admin/gerente** —
+- [ ] **Ruta `/superadmin` (admin de plataforma)** — pantalla fuera del
+      panel del tenant para administrar los clientes del SaaS: listar
+      clientes, darlos de alta (`POST /api/clients`) y configurar cada
+      uno — tipo de cliente/plan (`maxStores`, `maxPosPerStore` =
+      cantidad de cajas, `maxKiosksPerStore`), módulos contratados
+      (`PUT /api/clients/{id}/modules`), settings del cliente
+      (`/api/clients/{id}/settings`) y sus usuarios admin. Falta en
+      backend: rol `SUPERADMIN` sin `clientId` en el JWT (hoy todo rol
+      cuelga de un cliente), `GET /api/clients` (solo existe POST y
+      GET `{id}`) y `PUT /api/clients/{id}` para editar el plan.
+      Front: route group aparte con su propio guard (no `PanelGuard`).
       `/kitchen` ya es accesible para todo el staff: entrada "Cocina" en
       el sidebar del panel (icono ChefHat) + botón en el header del POS.
       `KitchenBoard` muestra "Volver" a `ROLE_HOME` para roles ≠ KITCHEN
@@ -115,9 +125,30 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       inventario y marca `refund_status=REFUNDED`.
 - [ ] **Cookie httpOnly para el token** — hoy `localStorage` (MVP); moverlo
       via Route Handler de Next.
-- [ ] **Impresión de ticket en caja** — botón en el modal de éxito del POS
-      para imprimir ticket fiscal/cortesía; el kiosko solo muestra el folio.
-      Requiere `GET /api/orders/{id}/ticket` en backend (pendiente).
+- [x] **Impresión/reimpresión de tickets** — `OrderTicket` +
+      `TicketModal` compartidos (`components/molecules/OrderTicket.tsx`)
+      renderizan el ticket desde `OrderResponse` (items, tamaño/extras/
+      notas, subtotal/impuesto/total, canal/pago/tipo, CANCELADA marcada)
+      y `window.print()` + `@media print` en `globals.css` imprimen solo
+      `#print-ticket`. Botón "Imprimir ticket" en el recibo del POS,
+      icono de impresora por orden en `/kitchen`, y nueva página `/orders`
+      del panel (historial paginado con filtro de estatus) para reimprimir
+      tickets viejos — usa `GET /api/orders/{id}/ticket` (backend: trae
+      `storeName`/`storeAddress` para el encabezado; scoping por store de
+      sesión, abierto a CUSTOMER para el kiosco). POS/KDS imprimen con la
+      orden que ya tienen en memoria.
+      **Decisión de hardware**: impresora por equipo = impresora
+      predeterminada del SO en cada caja/kiosco (nivel 1, sin agente ni
+      cola de impresión). Para impresión silenciosa lanzar Chrome con
+      `--kiosk-printing`. Si se necesita ESC/POS (corte, cajón, impresora
+      de cocina aparte) → agente local tipo QZ Tray.
+- [ ] **Corregir formato de impresión del ticket** — el `#print-ticket`
+      actual es una tarjeta ~280px pensada para pantalla; al imprimir
+      falta ajustar para térmica de 80mm: ancho fijo en mm
+      (`width: 80mm`, `@page { margin: 0 }`), tipografía/márgenes reales
+      de papel, quitar borde/dashed que no sale bien en térmica y probar
+      corte de página (`page-break`). Verificar impresión real desde
+      POS, KDS y `/orders`.
 - [x] **Modo idle en caja y kiosco** — en `OrderTerminal`: kiosco 90 s /
       caja 3 min sin `pointerdown`/`keydown` → pantalla de espera. Kiosco
       limpia el pedido y un toque lo descarta; caja NO limpia — la

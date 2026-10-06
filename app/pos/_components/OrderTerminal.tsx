@@ -22,6 +22,7 @@ import {
   LogOut,
   MoreHorizontal,
   Pencil,
+  Printer,
   Soup,
   Trash2,
   TriangleAlert,
@@ -29,6 +30,10 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  TicketModal,
+  type TicketOrder,
+} from "@/components/molecules/OrderTicket";
 import { ExtrasModal, type ItemSelection } from "./ExtrasModal";
 
 type CartItem = {
@@ -39,16 +44,7 @@ type CartItem = {
 
 let nextCartId = 1;
 
-type OrderDto = {
-  id: number;
-  status: string;
-  total: number;
-  subtotal: number;
-  taxRate: number;
-  taxAmount: number;
-  paymentMethod: "CASH" | "CARD";
-  orderType: "DINE_IN" | "TAKEAWAY";
-};
+type OrderDto = TicketOrder;
 
 function lineUnit(item: CartItem) {
   return (
@@ -141,6 +137,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     (OrderDto & { number: number | null; change: number | null }) | null
   >(null);
   const [countdown, setCountdown] = useState(10);
+  const [ticket, setTicket] = useState<OrderDto | null>(null);
   const [categoryId, setCategoryId] = useState(0);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orderType, setOrderType] = useState<"DINE_IN" | "TAKEAWAY">("DINE_IN");
@@ -918,9 +915,23 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
             >
               Nuevo pedido ({countdown}s)
             </button>
+            <button
+              type="button"
+              onClick={() => setTicket(receipt)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-bold text-text-secondary transition-colors hover:bg-surface"
+            >
+              <Printer size={16} aria-hidden />
+              Imprimir ticket
+            </button>
           </div>
         )}
       </Modal>
+
+      <TicketModal
+        order={ticket}
+        storeName={storeName}
+        onClose={() => setTicket(null)}
+      />
 
       {idle && channel === "KIOSK" && (
         <button

@@ -1,0 +1,5 @@
+{
+  // @theme/@custom-variant son at-rules válidas de Tailwind v4
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore"
+}

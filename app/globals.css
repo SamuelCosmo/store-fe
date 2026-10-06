@@ -40,3 +40,25 @@ button:not(:disabled),
 [role="button"]:not([aria-disabled="true"]) {
   cursor: pointer;
 }
+
+/* reimpresión de tickets: solo #print-ticket sale en papel */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  dialog::backdrop {
+    display: none;
+  }
+  #print-ticket,
+  #print-ticket * {
+    visibility: visible;
+  }
+  #print-ticket {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    border: none;
+  }
+}

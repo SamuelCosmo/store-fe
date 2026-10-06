@@ -134,7 +134,12 @@ GET    /api/orders            # ?storeId=&status=&page=&size=&sort=
 GET    /api/orders/next-number  # → { nextNumber } — folio semanal (reset lunes)
 GET    /api/orders/{id}
 PATCH  /api/orders/{id}/status
-GET    /api/orders/{id}/ticket   # PENDIENTE backend — payload para impresión
+GET    /api/orders/{id}/ticket   # payload autocontenido para imprimir:
+                                 #  OrderResponse + storeName (menuName ?: name)
+                                 #  + storeAddress. Cualquier rol autenticado
+                                 #  (CUSTOMER del kiosco incluido), scoping por
+                                 #  store de sesión. El front imprime con
+                                 #  window.print + #print-ticket (globals.css)
 ```
 
 ```json

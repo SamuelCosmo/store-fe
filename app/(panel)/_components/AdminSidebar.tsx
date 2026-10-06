@@ -10,6 +10,7 @@ import {
 import {
   ChefHat,
   LayoutDashboard,
+  ReceiptText,
   Settings,
   Soup,
   Store,
@@ -26,6 +27,7 @@ const items = [
   { href: "/products", label: "Productos", icon: Soup },
   { href: "/stores", label: "Establecimientos", icon: Store },
   { href: "/kitchen", label: "Cocina", icon: ChefHat },
+  { href: "/orders", label: "Pedidos", icon: ReceiptText },
   { href: "/users", label: "Usuarios", icon: Users, adminOnly: true },
   { href: "/settings", label: "Configuración", icon: Settings, adminOnly: true },
 ];

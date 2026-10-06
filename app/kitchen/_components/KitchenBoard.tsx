@@ -4,7 +4,11 @@ import { BrandMark } from "@/components/molecules/BrandMark";
 import { Modal } from "@/components/molecules/Modal";
 import { api } from "@/lib/api";
 import { SETTINGS_CHANGED_EVENT, getSettings } from "@/lib/settings";
-import { ArrowLeft, TriangleAlert } from "lucide-react";
+import {
+  TicketModal,
+  type TicketOrder,
+} from "@/components/molecules/OrderTicket";
+import { ArrowLeft, Printer, TriangleAlert } from "lucide-react";
 import { ROLE_HOME, useSession } from "@/lib/session";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,23 +22,7 @@ type OrderStatus =
   | "COMPLETED"
   | "CANCELLED";
 
-type OrderDto = {
-  id: number;
-  channel: "POS" | "KIOSK";
-  orderType: "DINE_IN" | "TAKEAWAY";
-  paymentMethod: "CASH" | "CARD";
-  status: OrderStatus;
-  createdAt: string;
-  items: {
-    productId: number;
-    productName: string;
-    quantity: number;
-    sizeName: string | null;
-    // null en órdenes creadas antes de que existiera el snapshot jsonb
-    extras: { name: string; quantity: number }[] | null;
-    notes: string | null;
-  }[];
-};
+type OrderDto = TicketOrder & { status: OrderStatus };
 
 const ACTIVE: OrderStatus[] = ["PENDING", "CONFIRMED", "PREPARING", "READY"];
 
@@ -75,6 +63,7 @@ export function KitchenBoard() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<OrderDto | null>(null);
+  const [ticket, setTicket] = useState<OrderDto | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const knownIds = useRef<Set<number> | null>(null);
@@ -355,6 +344,15 @@ export function KitchenBoard() {
                   </ul>
 
                   <div className="mt-auto flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setTicket(o)}
+                      title="Reimprimir ticket"
+                      aria-label={`Reimprimir ticket del pedido ${o.id}`}
+                      className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-text-primary/20 bg-background/60 text-text-secondary transition-colors hover:text-primary"
+                    >
+                      <Printer size={16} aria-hidden />
+                    </button>
                     {next && (
                       <button
                         type="button"
@@ -420,6 +418,12 @@ export function KitchenBoard() {
           </div>
         </div>
       </Modal>
+
+      <TicketModal
+        order={ticket}
+        storeName={storeName}
+        onClose={() => setTicket(null)}
+      />
     </div>
   );
 }
