@@ -189,6 +189,34 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       Front: sección "Marca" en `/settings` con preview del logo; usar
       logo+nombre en login, terminales (`BrandMark`) y ticket.
 - [ ] **i18n** — copy en español hardcodeado; selector pendiente.
+- [ ] **`cashReceived`/`changeGiven` en la orden** — hoy el efectivo
+      recibido y el cambio solo viven en memoria del recibo; persistirlos
+      en `orders` para que el ticket reimpreso muestre el cambio.
+- [ ] **Folio de ticket persistido** — hoy el POS muestra `nextNumber`
+      estimado (conteo semanal +1, no guardado) mientras KDS y `/orders`
+      muestran `#id`: dos números distintos para la misma orden y
+      `next-number` es racy con cajas en paralelo. Persistir
+      `orders.ticket_number` (consecutivo semanal por store, calculado
+      dentro de la transacción de creación) o implementar la tabla
+      `tickets` que describe `store-be/docs/06-database.md`.
+
+## Producción (antes de Railway)
+
+- [ ] **`DataSeeder` sin perfil** — `CommandLineRunner` sin `@Profile`:
+      en una DB vacía de producción crea `admin@test.com`/`admin_test`
+      con rol ADMIN completo. Poner `@Profile("dev")` o gate por env.
+- [ ] **Endpoints de alta abiertos** — `POST /api/clients` y
+      `POST /api/auth/register` son públicos (onboarding de desarrollo);
+      cerrarlos a `SUPERADMIN` o a un flujo de invitación antes de
+      exponer la API.
+- [ ] **Config por env** — `JWT_SECRET` trae un default dev embebido y
+      CORS está hardcodeado a `localhost:3000` en `SecurityConfig`;
+      ambos deben venir de env y `application.yml` no debe cargar
+      secrets de prod.
+- [ ] **Bucket de producción** — política de lectura pública en el
+      bucket S3 real (`PUBLIC_URL` apuntando al dominio público) y
+      decidir el borrado de objetos viejos al reemplazar/borrar
+      imágenes (hoy quedan huérfanas).
 
 ## Hechos recientes (referencia)
 
