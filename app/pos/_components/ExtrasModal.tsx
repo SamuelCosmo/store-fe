@@ -17,6 +17,18 @@ export type ItemSelection = {
   notes: string;
 };
 
+/** Etiqueta de sección — barra azul + texto (patrón del diseño). */
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <div className="flex items-center gap-2 pb-3.5">
+      <span aria-hidden className="h-3.5 w-[3px] rounded-[2px] bg-primary" />
+      <p className="text-[11px] font-bold tracking-wide text-text-muted uppercase">
+        {children}
+      </p>
+    </div>
+  );
+}
+
 export function ExtrasModal({
   product,
   initial,
@@ -62,29 +74,53 @@ export function ExtrasModal({
       aria-modal="true"
       aria-label={`Extras para ${product.name}`}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="grid w-full max-w-[712px] grid-cols-2 gap-5 rounded-2xl bg-background p-6 shadow-xl"
+        className="flex max-h-[90vh] w-full max-w-[960px] flex-col overflow-hidden rounded-2xl bg-background shadow-[0_24px_48px_rgba(0,0,0,0.15)]"
       >
-        <div className="flex min-h-0 flex-col gap-3">
-          <h2 className="text-xl font-extrabold text-text-primary">Extras</h2>
-          <div className="flex max-h-[320px] flex-col gap-1.5 overflow-y-auto pr-1">
+        {/* header: producto + precio base */}
+        <div className="flex shrink-0 items-center justify-between gap-6 border-b border-border px-8 py-6">
+          <div className="flex min-w-0 flex-col gap-1">
+            <h2 className="truncate text-[22px] font-extrabold text-text-primary">
+              {product.name}
+            </h2>
+            {product.description && (
+              <p className="truncate text-[13px] font-medium text-text-secondary">
+                {product.description}
+              </p>
+            )}
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-0.5">
+            <p className="text-[11px] font-semibold text-text-muted">Desde</p>
+            <p className="text-[22px] font-extrabold text-primary">
+              {MXN.format(product.price)}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex min-h-0 flex-1">
+          {/* panel de personalización */}
+          <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 pt-5 pb-6">
+            {sizes.length === 0 && extras.length === 0 && (
+              <p className="py-4 text-sm text-text-muted">
+                Este producto no tiene opciones.
+              </p>
+            )}
+
             {sizes.length > 0 && (
-              <>
-                <p className="text-xs font-bold tracking-wide text-text-muted uppercase">
-                  Tamaño
-                </p>
+              <section>
+                <SectionLabel>Tamaños</SectionLabel>
                 {sizes.map((s) => (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => setSizeId(sizeId === s.id ? null : s.id)}
                     aria-pressed={sizeId === s.id}
-                    className="flex items-center justify-between gap-3 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-surface"
+                    className="flex w-full items-center justify-between border-b border-border py-2.5 text-left transition-colors hover:bg-surface/50"
                   >
-                    <span className="flex items-center gap-3 text-[15px] text-text-primary">
+                    <span className="flex items-center gap-3 text-sm font-semibold text-text-primary">
                       <span
                         aria-hidden
                         className={`size-[18px] rounded-full border-2 ${
@@ -96,130 +132,146 @@ export function ExtrasModal({
                       {s.name}
                     </span>
                     {s.price > 0 && (
-                      <span className="text-[13px] text-text-secondary">
+                      <span className="text-xs text-text-secondary tabular-nums">
                         +{MXN.format(s.price)}
                       </span>
                     )}
                   </button>
                 ))}
-                <p className="mt-2 text-xs font-bold tracking-wide text-text-muted uppercase">
-                  Extras
-                </p>
-              </>
+              </section>
             )}
-            {extras.length === 0 && sizes.length === 0 && (
-              <p className="py-4 text-[15px] text-text-muted">
-                Este producto no tiene extras.
-              </p>
-            )}
-            {extras.map((extra) => (
-              <div
-                key={extra.id}
-                className="flex items-center justify-between gap-3 py-2"
-              >
-                <div className="flex min-w-0 flex-col">
-                  <p className="truncate text-[15px] text-text-primary">
-                    {extra.name}
-                  </p>
-                  <p className="text-xs text-text-secondary">
-                    +{MXN.format(extra.price)}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-3 tabular-nums">
-                  <button
-                    type="button"
-                    aria-label={`Quitar ${extra.name}`}
-                    onClick={() => bump(extra.id, -1)}
-                    disabled={(qty[extra.id] ?? 0) === 0}
-                    className="rounded-md p-0.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary disabled:opacity-30"
-                  >
-                    <Minus size={17} aria-hidden />
-                  </button>
-                  <span className="w-5 text-center text-[15px] font-semibold text-text-primary">
-                    {qty[extra.id] ?? 0}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label={`Agregar ${extra.name}`}
-                    onClick={() => bump(extra.id, 1)}
-                    className="rounded-md p-0.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary"
-                  >
-                    <Plus size={17} aria-hidden />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="flex min-w-0 flex-col gap-4">
-          <div className="flex flex-col gap-3 rounded-xl bg-surface p-4">
-            <div className="flex items-start justify-between gap-3">
-              <p className="text-lg font-extrabold text-text-primary">
-                {product.name}
-              </p>
-              <p className="pt-0.5 text-[15px] font-semibold whitespace-nowrap text-text-primary">
-                {MXN.format(unitPrice)}
-              </p>
-            </div>
-            {!size && picked.length === 0 && !notes.trim() ? (
-              <p className="text-[13px] text-text-secondary">Sin extras</p>
-            ) : (
-              <ul className="flex flex-col gap-1.5 text-[13px] text-text-secondary">
-                {size && (
-                  <li className="flex items-center justify-between gap-3">
-                    <span>Tamaño: {size.name}</span>
-                    {size.price > 0 && (
-                      <span className="tabular-nums">
-                        +{MXN.format(size.price)}
+            {extras.length > 0 && (
+              <section className={sizes.length > 0 ? "pt-5" : ""}>
+                <SectionLabel>Extras</SectionLabel>
+                {extras.map((extra) => (
+                  <div
+                    key={extra.id}
+                    className="flex items-center justify-between border-b border-border py-2.5"
+                  >
+                    <div className="flex min-w-0 flex-col">
+                      <p className="truncate text-sm font-semibold text-text-primary">
+                        {extra.name}
+                      </p>
+                      <p className="text-xs text-text-secondary tabular-nums">
+                        +{MXN.format(extra.price)}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center overflow-hidden rounded-[10px] border border-border bg-surface">
+                      <button
+                        type="button"
+                        aria-label={`Quitar ${extra.name}`}
+                        onClick={() => bump(extra.id, -1)}
+                        disabled={(qty[extra.id] ?? 0) === 0}
+                        className="flex size-9 items-center justify-center text-text-secondary transition-colors hover:text-primary disabled:opacity-30"
+                      >
+                        <Minus size={16} aria-hidden />
+                      </button>
+                      <span className="flex h-9 w-8 items-center justify-center bg-background text-sm font-bold text-text-primary tabular-nums">
+                        {qty[extra.id] ?? 0}
                       </span>
-                    )}
-                  </li>
-                )}
-                {picked.map((p) => (
-                  <li
-                    key={p.extra.id}
-                    className="flex items-center justify-between gap-3"
-                  >
-                    <span>
-                      {p.quantity > 1 ? `${p.quantity}× ` : ""}
-                      {p.extra.name}
-                    </span>
-                    <span className="tabular-nums">
-                      +{MXN.format(p.extra.price * p.quantity)}
-                    </span>
-                  </li>
+                      <button
+                        type="button"
+                        aria-label={`Agregar ${extra.name}`}
+                        onClick={() => bump(extra.id, 1)}
+                        className="flex size-9 items-center justify-center text-primary transition-colors hover:bg-primary/5"
+                      >
+                        <Plus size={16} aria-hidden />
+                      </button>
+                    </div>
+                  </div>
                 ))}
-                {notes.trim() && <li className="italic">“{notes.trim()}”</li>}
-              </ul>
+              </section>
             )}
           </div>
 
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Notas…"
-            rows={3}
-            className="w-full resize-none rounded-xl border border-border bg-background px-3.5 py-2.5 text-[15px] text-text-primary outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/25"
-          />
+          <div aria-hidden className="w-px shrink-0 bg-border" />
 
-          <div className="mt-auto flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl border border-border py-3 text-[15px] font-semibold text-text-primary transition-colors hover:bg-surface"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                onAdd(product, { size, extras: picked, notes: notes.trim() })
-              }
-              className="flex-1 rounded-xl bg-primary py-3 text-[15px] font-extrabold text-white transition-colors hover:bg-primary-hover"
-            >
-              Añadir
-            </button>
+          {/* panel de resumen */}
+          <div className="flex w-[340px] shrink-0 flex-col bg-surface">
+            <div className="flex flex-col gap-4 border-b border-border px-7 pt-6 pb-5">
+              <SectionLabel>Resumen</SectionLabel>
+              <div className="flex flex-col gap-1.5 rounded-[10px] border border-border bg-background p-4">
+                <div className="flex items-start justify-between gap-3 text-sm font-bold text-text-primary">
+                  <p className="min-w-0 flex-1">{product.name}</p>
+                  <p className="shrink-0 tabular-nums">
+                    {MXN.format(unitPrice)}
+                  </p>
+                </div>
+                {(size || picked.length > 0 || notes.trim()) && (
+                  <ul className="flex flex-col gap-1 border-t border-border/60 pt-2 text-xs text-text-secondary">
+                    {size && (
+                      <li className="flex items-center justify-between gap-3">
+                        <span>Tamaño: {size.name}</span>
+                        {size.price > 0 && (
+                          <span className="tabular-nums">
+                            +{MXN.format(size.price)}
+                          </span>
+                        )}
+                      </li>
+                    )}
+                    {picked.map((p) => (
+                      <li
+                        key={p.extra.id}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <span>
+                          {p.quantity > 1 ? `${p.quantity}× ` : ""}
+                          {p.extra.name}
+                        </span>
+                        <span className="tabular-nums">
+                          +{MXN.format(p.extra.price * p.quantity)}
+                        </span>
+                      </li>
+                    ))}
+                    {notes.trim() && <li className="italic">“{notes.trim()}”</li>}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 border-b border-border px-7 py-5">
+              <SectionLabel>Notas</SectionLabel>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Instrucciones especiales..."
+                rows={3}
+                maxLength={500}
+                className="h-20 w-full resize-none rounded-[10px] border border-border bg-background px-3.5 py-3 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/25"
+              />
+            </div>
+
+            <div className="flex-1" />
+
+            <div className="flex flex-col gap-3 border-t border-border bg-background px-7 pt-4 pb-6">
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] font-semibold text-text-secondary">
+                  Total estimado
+                </p>
+                <p className="text-xl font-extrabold text-text-primary tabular-nums">
+                  {MXN.format(unitPrice)}
+                </p>
+              </div>
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-[104px] shrink-0 rounded-xl border border-border py-3.5 text-[13px] font-semibold text-text-primary transition-colors hover:bg-surface"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onAdd(product, { size, extras: picked, notes: notes.trim() })
+                  }
+                  className="flex-1 rounded-xl bg-primary py-3.5 text-[13px] font-extrabold text-white transition-colors hover:bg-primary-hover"
+                >
+                  Añadir al pedido
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
