@@ -1,7 +1,8 @@
 "use client";
 
 import { Modal } from "@/components/molecules/Modal";
-import { ChevronDown, ImagePlus } from "lucide-react";
+import { api } from "@/lib/api";
+import { ChevronDown, ImagePlus, Loader2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { CategoryDto } from "../../categories/_components/CategoriesView";
 import type { ExtraDto } from "./ExtrasSection";
@@ -135,10 +136,9 @@ function ProductForm({
   const [name, setName] = useState(product?.name ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
   const [sku, setSku] = useState(product?.sku ?? "");
-  // TODO: product image upload — wire this container to an upload service
-  // (e.g. Azure Blob) and persist the resulting URL in `products.image`.
-  // ponytail: image is read-only until then — field stays in the payload.
-  const image = product?.image ?? "";
+  const [image, setImage] = useState(product?.image ?? "");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState(
     product?.categoryId ?? categories[0]?.id ?? 0,
   );
@@ -158,6 +158,24 @@ function ProductForm({
     setExtraIds((prev) =>
       prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id],
     );
+  }
+
+  async function uploadImage(file: File) {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await api<{ url: string }>("/api/uploads", {
+        method: "POST",
+        body: fd,
+      });
+      setImage(res.url);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "No se pudo subir");
+    } finally {
+      setUploading(false);
+    }
   }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -311,24 +329,56 @@ function ProductForm({
 
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-medium text-text-primary">Imagen</p>
-        <div
-          aria-disabled
-          className="flex h-32 flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border bg-surface/50 text-text-muted"
+        <input
+          id="product-image-upload"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="sr-only"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) uploadImage(file);
+            e.target.value = "";
+          }}
+        />
+        <label
+          htmlFor="product-image-upload"
+          className="flex h-32 cursor-pointer flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border-2 border-dashed border-border bg-surface/50 text-text-muted transition-colors hover:border-primary hover:text-primary"
         >
-          {image ? (
-            // eslint-disable-next-line @next/next/no-img-element -- URL externa arbitraria
+          {uploading ? (
+            <>
+              <Loader2 size={22} aria-hidden className="animate-spin" />
+              <p className="text-xs">Subiendo…</p>
+            </>
+          ) : image ? (
+            // eslint-disable-next-line @next/next/no-img-element -- URL del bucket
             <img
               src={image}
               alt={name}
-              className="h-full w-full rounded-xl object-cover"
+              className="h-full w-full object-cover"
             />
           ) : (
             <>
               <ImagePlus size={22} aria-hidden />
-              <p className="text-xs">
-                Próximamente — subida de imágenes
-              </p>
+              <p className="text-xs">Clic para subir imagen</p>
             </>
+          )}
+        </label>
+        <div className="flex items-center justify-between">
+          {uploadError ? (
+            <p className="text-xs text-error">{uploadError}</p>
+          ) : (
+            <p className="text-[11px] text-text-muted">
+              JPG/PNG/WebP/GIF, máx. 5 MB
+            </p>
+          )}
+          {image && !uploading && (
+            <button
+              type="button"
+              onClick={() => setImage("")}
+              className="text-[11px] font-semibold text-text-secondary transition-colors hover:text-error"
+            >
+              Quitar
+            </button>
           )}
         </div>
       </div>

@@ -9,10 +9,12 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getSession()?.token;
+  // FormData (uploads) lleva su propio Content-Type con boundary
+  const isForm = init?.body instanceof FormData;
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(isForm ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },

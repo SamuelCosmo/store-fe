@@ -7,10 +7,17 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [x] **Route guard del panel** — `PanelGuard` en `(panel)/layout.tsx`:
       sin sesión (o expirada) → `/`; `/users` y `/settings` solo ADMIN,
       otros roles → `ROLE_HOME`. Sidebar filtra esas rutas por rol.
-- [ ] **Upload de imágenes de producto** — `ProductModal` tiene el
-      contenedor placeholder; falta el servicio de subida (Azure Blob u
-      otro) que devuelva el URL a guardar en `products.image`.
-      TODO en `ProductModal.tsx`.
+- [x] **Upload de imágenes de producto** — bucket S3-compatible local
+      (`adobe/s3mock` en docker-compose, servicio `storage`, :9090,
+      persiste en volumen) + `POST /api/uploads` (ADMIN/MANAGER,
+      multipart `file`, máx 5 MB, jpg/png/webp/gif) via `StorageService`
+      (MinIO SDK apuntando al endpoint). Devuelve `{url}` público que se
+      guarda en `products.image`; s3mock sirve GETs anónimos → los
+      `<img>` leen directo. `ProductModal`: clic en el área → file
+      picker → sube y muestra preview + "Quitar". Migración a Railway:
+      cambiar las env `STORAGE_*` al bucket real (S3-compatible).
+      Pendiente de producción: política de lectura pública del bucket y
+      borrar la imagen vieja al reemplazarla.
 - [x] **Items de orden con extras/tamaños** — `OrderItemRequest` acepta
       `sizeId`, `extras[{extraId,quantity}]` y `notes`; el server valida
       que pertenezcan al producto y calcula `unitPrice` con los cargos.
