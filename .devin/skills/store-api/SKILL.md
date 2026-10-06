@@ -32,7 +32,9 @@ POST /api/auth/login        # { email, password, storeId } → { token, role, ..
 - JWT con claims `clientId`, `storeId`, `role` — enviar como
   `Authorization: Bearer <token>`.
 - Roles: `ADMIN`, `MANAGER`, `EMPLOYEE`, `CUSTOMER` (cuenta genérica de kiosko),
-  `KITCHEN` (KDS; puede actualizar estatus de órdenes).
+  `KITCHEN` (KDS; puede actualizar estatus de órdenes) y `SUPERADMIN`
+  (cuenta de plataforma — `clientId`/`storeId` null en JWT y AuthResponse;
+  su home es `/superadmin`).
 - MVP: token en `localStorage`. Futuro: cookie httpOnly via Route Handler.
 - Un usuario puede operar varios stores (`user_stores`); el `storeId` activo
   se elige en el login y viaja en el JWT.
@@ -110,6 +112,8 @@ el `sort=` — ver `docs/03-todos.md` › paginación.
 POST/GET/GET{id}/PUT   /api/stores     # ADMIN; ligado a clientId
 POST   /api/clients                    # alta de tenant (plan: maxStores,
 GET    /api/clients/{id}               #  maxPosPerStore, maxKiosksPerStore)
+GET    /api/clients                    # SUPERADMIN — todos los tenants
+PUT    /api/clients/{id}               # SUPERADMIN — nombre + límites del plan
 GET    /api/clients/{id}/stores        # lista del cliente — paginable
 GET    /api/users                      # ADMIN/MANAGER — lista del cliente, paginable
 POST   /api/users                      # ADMIN — { name, email, password, role,

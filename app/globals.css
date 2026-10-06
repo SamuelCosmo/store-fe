@@ -41,6 +41,33 @@ button:not(:disabled),
   cursor: pointer;
 }
 
+/* Tema nocturno — todas las utilidades usan var(--color-*): basta
+   sobreescribir los tokens bajo .dark (clase en <html>, ver layout.tsx
+   y components/molecules/ThemeToggle.tsx). Misma paleta base adaptada:
+   primary/secundario aclarados para contraste, superficies elevadas en
+   grises fríos, semánticos algo más brillantes. */
+.dark {
+  --background: #1d2125;
+  --foreground: #eceeef;
+  --color-primary: #2f7cb8;
+  --color-primary-hover: #3d8fd0;
+  --color-primary-light: #15344c;
+  --color-secondary: #c9a887;
+  --color-secondary-dark: #d8bfa0;
+  --color-secondary-light: #3a3026;
+  --color-background: #1d2125;
+  --color-surface: #262b31;
+  --color-surface-warm: #2f343c;
+  --color-canvas: #14171a;
+  --color-text-primary: #eceeef;
+  --color-text-secondary: #a6abb1;
+  --color-text-muted: #767c84;
+  --color-border: #383e46;
+  --color-success: #4aa877;
+  --color-warning: #d09a42;
+  --color-error: #d9605a;
+}
+
 /* reimpresión de tickets: solo #print-ticket sale en papel */
 @media print {
   body * {

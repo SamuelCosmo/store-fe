@@ -24,8 +24,11 @@ export function Providers({ children }: { children: ReactNode }) {
     const stored = readStoredSession();
     if (stored && !isSessionExpired(stored)) {
       store.dispatch(hydrateSession(stored));
-      // Cache de settings del backend; si falla se queda el cache anterior
-      refreshSettings(stored.clientId, stored.storeId).catch(() => {});
+      // Cache de settings del backend; si falla se queda el cache anterior.
+      // SUPERADMIN no tiene tenant → nada que refrescar.
+      if (stored.clientId != null) {
+        refreshSettings(stored.clientId, stored.storeId).catch(() => {});
+      }
     } else if (stored) {
       store.dispatch(clearSession());
       if (pathname !== "/") router.replace("/?expired=1");
@@ -44,7 +47,9 @@ export function Providers({ children }: { children: ReactNode }) {
         window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
         return;
       }
-      refreshSettings(session.clientId, session.storeId).catch(() => {});
+      if (session.clientId != null) {
+        refreshSettings(session.clientId, session.storeId).catch(() => {});
+      }
     };
     const id = setInterval(sync, 60_000);
     const onVisible = () => {

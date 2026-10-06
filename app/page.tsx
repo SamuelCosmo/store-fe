@@ -1,5 +1,6 @@
 "use client";
 
+import { ThemeToggle } from "@/components/molecules/ThemeToggle";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -83,7 +84,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-1 items-center justify-center bg-canvas p-6">
+    <div className="relative flex min-h-screen flex-1 items-center justify-center bg-canvas p-6">
+      <div className="absolute top-5 right-5">
+        <ThemeToggle />
+      </div>
       <div className="flex h-[640px] w-full max-w-[1120px] overflow-hidden rounded-2xl border border-border bg-background shadow-[0_10px_28px_rgba(68,38,25,0.08)]">
         <aside className="hidden w-[360px] shrink-0 flex-col gap-4 overflow-hidden bg-primary p-10 text-white sm:flex">
           <p className="text-[11px] font-semibold">Acceso general</p>

@@ -36,7 +36,14 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   taxRate: 0,
   kiosk: { receiptSeconds: 10 },
   session: {
-    hours: { ADMIN: 12, MANAGER: 12, EMPLOYEE: 8, KITCHEN: 12, CUSTOMER: 24 },
+    hours: {
+      ADMIN: 12,
+      MANAGER: 12,
+      EMPLOYEE: 8,
+      KITCHEN: 12,
+      CUSTOMER: 24,
+      SUPERADMIN: 12,
+    },
   },
 };
 

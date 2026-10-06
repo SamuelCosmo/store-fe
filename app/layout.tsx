@@ -15,8 +15,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es" className={`${inter.variable} h-full antialiased`}>
+    <html
+      lang="es"
+      suppressHydrationWarning
+      className={`${inter.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col">
+        {/* aplica el tema guardado antes del primer paint (evita flash) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'try{if(localStorage.getItem("store.theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}',
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

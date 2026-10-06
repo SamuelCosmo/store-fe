@@ -42,6 +42,7 @@ const ROLE_STYLE: Record<Role, string> = {
   EMPLOYEE: "bg-surface text-text-secondary",
   CUSTOMER: "bg-warning/10 text-warning",
   KITCHEN: "bg-secondary/15 text-secondary-dark",
+  SUPERADMIN: "bg-error/10 text-error",
 };
 
 type Confirm =

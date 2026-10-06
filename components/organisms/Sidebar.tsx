@@ -2,6 +2,7 @@
 
 import { BrandMark } from "@/components/molecules/BrandMark";
 import { NavItem, type NavItemDef } from "@/components/molecules/NavItem";
+import { ThemeToggle } from "@/components/molecules/ThemeToggle";
 import { UserCard } from "@/components/molecules/UserCard";
 import { ROLE_LABEL, useSession } from "@/lib/session";
 
@@ -23,10 +24,15 @@ export function Sidebar({
         ))}
       </nav>
       <div className="flex-1" />
-      <UserCard
-        name={session?.name ?? "…"}
-        roleLabel={session ? ROLE_LABEL[session.role] : ""}
-      />
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <UserCard
+            name={session?.name ?? "…"}
+            roleLabel={session ? ROLE_LABEL[session.role] : ""}
+          />
+        </div>
+        <ThemeToggle />
+      </div>
     </aside>
   );
 }

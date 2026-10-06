@@ -4,7 +4,13 @@ import { useSelector } from "react-redux";
 import { getSettings } from "./settings";
 import { clearSession as clearSessionAction, getStore, setSession } from "./store";
 
-export type Role = "ADMIN" | "MANAGER" | "EMPLOYEE" | "CUSTOMER" | "KITCHEN";
+export type Role =
+  | "ADMIN"
+  | "MANAGER"
+  | "EMPLOYEE"
+  | "CUSTOMER"
+  | "KITCHEN"
+  | "SUPERADMIN";
 
 export type AuthResponse = {
   token: string;
@@ -12,7 +18,8 @@ export type AuthResponse = {
   name: string;
   email: string;
   role: Role;
-  clientId: number;
+  // null solo para SUPERADMIN (cuenta de plataforma, sin tenant)
+  clientId: number | null;
   storeId: number | null;
 };
 
@@ -22,6 +29,7 @@ export const ROLE_HOME: Record<Role, string> = {
   EMPLOYEE: "/pos",
   CUSTOMER: "/kiosk",
   KITCHEN: "/kitchen",
+  SUPERADMIN: "/superadmin",
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -30,6 +38,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   EMPLOYEE: "Empleado",
   CUSTOMER: "Cliente",
   KITCHEN: "Cocina",
+  SUPERADMIN: "Plataforma",
 };
 
 export function saveSession(session: AuthResponse) {

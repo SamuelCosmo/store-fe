@@ -23,7 +23,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 
 const inputClass =
-  "h-11 w-full rounded-lg border border-border bg-[#fcfaf7] px-3.5 text-[13px] text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25";
+  "h-11 w-full rounded-lg border border-border bg-surface px-3.5 text-[13px] text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25";
 
 const SESSION_ROLES: Role[] = [
   "ADMIN",
@@ -212,7 +212,9 @@ export function SettingsView() {
       }
       setForm({ ...form, kitchen });
       // refresca el cache local del establecimiento de esta sesión
-      await refreshSettings(session.clientId, session.storeId).catch(() => {});
+      if (session.clientId != null) {
+        await refreshSettings(session.clientId, session.storeId).catch(() => {});
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
@@ -437,7 +439,7 @@ export function SettingsView() {
                           },
                         })
                       }
-                      className="h-9 w-20 rounded-lg border border-border bg-[#fcfaf7] px-3 text-[13px] text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+                      className="h-9 w-20 rounded-lg border border-border bg-surface px-3 text-[13px] text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
                     />
                     <span className="text-[11px] text-text-secondary">h</span>
                   </div>
@@ -455,7 +457,7 @@ export function SettingsView() {
               <h2 className="text-[15px] font-extrabold text-text-primary">
                 Estado
               </h2>
-              <div className="flex items-center gap-3 rounded-xl bg-[#e7f4ec] p-3.5">
+              <div className="flex items-center gap-3 rounded-xl bg-success/10 p-3.5">
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success">
                   <Check className="size-4 text-white" />
                 </div>

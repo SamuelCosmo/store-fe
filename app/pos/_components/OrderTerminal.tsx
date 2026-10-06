@@ -34,6 +34,7 @@ import {
   TicketModal,
   type TicketOrder,
 } from "@/components/molecules/OrderTicket";
+import { ThemeToggle } from "@/components/molecules/ThemeToggle";
 import { ExtrasModal, type ItemSelection } from "./ExtrasModal";
 
 type CartItem = {
@@ -434,6 +435,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                 })
               : "--:--"}
           </p>
+          <ThemeToggle />
           {/* acceso al tablero de pedidos desde la caja */}
           {channel === "POS" && (
             <Link

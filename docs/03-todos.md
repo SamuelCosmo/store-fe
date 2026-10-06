@@ -105,17 +105,15 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [ ] **Módulos por usuario** — el sidebar muestra todo; filtrar por
       `user_modules ∩ client_modules` cuando el backend lo exponga.
 - [ ] **Enrutado por rol + módulos tras login** — hoy solo se usa `ROLE_HOME`.
-- [ ] **Ruta `/superadmin` (admin de plataforma)** — pantalla fuera del
-      panel del tenant para administrar los clientes del SaaS: listar
-      clientes, darlos de alta (`POST /api/clients`) y configurar cada
-      uno — tipo de cliente/plan (`maxStores`, `maxPosPerStore` =
-      cantidad de cajas, `maxKiosksPerStore`), módulos contratados
-      (`PUT /api/clients/{id}/modules`), settings del cliente
-      (`/api/clients/{id}/settings`) y sus usuarios admin. Falta en
-      backend: rol `SUPERADMIN` sin `clientId` en el JWT (hoy todo rol
-      cuelga de un cliente), `GET /api/clients` (solo existe POST y
-      GET `{id}`) y `PUT /api/clients/{id}` para editar el plan.
-      Front: route group aparte con su propio guard (no `PanelGuard`).
+- [x] **Ruta `/superadmin` (admin de plataforma)** — login propio +
+      listado/alta/edición de clientes (nombre + límites del plan:
+      `maxStores`, `maxPosPerStore`, `maxKiosksPerStore`). Backend: rol
+      `SUPERADMIN` sin `clientId`/`storeId` en el JWT, `GET /api/clients`
+      y `PUT /api/clients/{id}` restringidos a ese rol. La cuenta se crea
+      por SQL directo (no por la app). Pendiente: módulos contratados
+      (`PUT /api/clients/{id}/modules`), settings del cliente y gestión
+      de sus usuarios admin.
+- [x] **Pantalla de pedidos de cocina para caja/admin/gerente** —
       `/kitchen` ya es accesible para todo el staff: entrada "Cocina" en
       el sidebar del panel (icono ChefHat) + botón en el header del POS.
       `KitchenBoard` muestra "Volver" a `ROLE_HOME` para roles ≠ KITCHEN
@@ -154,6 +152,12 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       limpia el pedido y un toque lo descarta; caja NO limpia — la
       pantalla ofrece "Continuar con el pedido" o "Comenzar pedido nuevo"
       (este último sí resetea).
+- [ ] **Terminal Bancomer para pago con tarjeta** — hoy `paymentMethod:
+      CARD` se registra sin procesar nada. Integrar la terminal bancaria
+      (Bancomer/BBVA): cobro en el dispositivo físico y confirmación en el
+      POS antes de crear la orden — definir si va por SDK de la terminal,
+      app del banco o link de pago. Backend guardaría referencia/autorización
+      del cobro en `orders`.
 - [ ] **Fichas (venta y canje)** — pantalla o sección por definir (idea no
       cerrada): vender fichas en caja (`POST /api/tokens/purchase` —
       `{quantity, paymentMethod}`) y canjearlas por productos con
@@ -168,12 +172,22 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       rechaza si llega en el request. Manual — sin reset diario.
 - [ ] **TanStack Query** — cache/loading/error y polling (el KDS lo
       necesitará). Hoy: `fetch` + `useState` por componente.
-- [ ] **Tema nocturno (dark mode)** — toggle claro/oscuro en `/settings` o
-      en el header. Los tokens viven en `@theme` de `globals.css`; con
-      Tailwind v4 basta `@custom-variant dark` + overrides de las variables
-      bajo `.dark`, y el toggle pone/quita la clase en `<html>` persistida
-      en `localStorage` (preferencia por dispositivo, no por backend).
-      Ojo con colores hardcodeados como `bg-[#fcfaf7]` en inputs.
+- [x] **Tema nocturno (dark mode)** — `ThemeToggle` compartido
+      (`components/molecules/ThemeToggle.tsx`) alterna la clase `.dark`
+      en `<html>` persistida en `localStorage["store.theme"]`; un script
+      inline en `layout.tsx` la aplica antes del primer paint. Los tokens
+      se sobreescriben bajo `.dark` en `globals.css` (paleta propia:
+      superficies gris-frío, primary `#2f7cb8`, semánticos adaptados) —
+      sin variantes `dark:` porque las utilidades ya usan `var()`.
+      Toggle presente en: login, footer del sidebar, header del POS,
+      header de cocina y `/superadmin`.
+- [ ] **Branding del cliente (logo + nombre)** — el tenant debe poder
+      subir el logotipo de su empresa y editar el nombre del negocio
+      desde `/settings`. Backend: campos `logo_url` (+ nombre editable
+      vía settings o `PUT /api/clients/{id}`), reutilizando
+      `POST /api/uploads` con folder propio (`clients/{id}/brand/`).
+      Front: sección "Marca" en `/settings` con preview del logo; usar
+      logo+nombre en login, terminales (`BrandMark`) y ticket.
 - [ ] **i18n** — copy en español hardcodeado; selector pendiente.
 
 ## Hechos recientes (referencia)

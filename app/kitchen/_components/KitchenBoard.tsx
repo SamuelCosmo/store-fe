@@ -8,6 +8,7 @@ import {
   TicketModal,
   type TicketOrder,
 } from "@/components/molecules/OrderTicket";
+import { ThemeToggle } from "@/components/molecules/ThemeToggle";
 import { ArrowLeft, Printer, TriangleAlert } from "lucide-react";
 import { ROLE_HOME, useSession } from "@/lib/session";
 import Link from "next/link";
@@ -241,6 +242,7 @@ export function KitchenBoard() {
                 })
               : "--:--"}
           </p>
+          <ThemeToggle />
           {/* staff que no vive aquí (admin/gerente/caja) puede volver a su home */}
           {session && session.role !== "KITCHEN" && (
             <Link
