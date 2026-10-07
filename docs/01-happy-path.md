@@ -102,8 +102,9 @@ Mismo componente (`app/pos/_components/OrderTerminal.tsx`) con prop
   KIOSK → solo Tarjeta (regla del backend). `POST /api/orders` con
   `{ channel, orderType, paymentMethod, items: [{productId, quantity: 1}] }`
   — `storeId` sale del JWT. Éxito → modal "Pedido enviado" con el
-  folio semanal (`GET /api/orders/next-number` → "Pedido #N", conteo
-  por store que se resetea cada lunes), total, método y tipo; se
+  folio semanal persistido (`ticketNumber` en la respuesta → "Pedido
+  #N", consecutivo por store que se resetea cada lunes), total, método
+  y tipo; se
   cierra solo a los 10s o con "Nuevo pedido" → el carrito ya limpio y
   el terminal queda listo para el siguiente pedido.
 - ⬜ Los items aún NO mandan `sizeId`/`extraIds`/notas ni totales con

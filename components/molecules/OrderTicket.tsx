@@ -7,6 +7,8 @@ import { Modal } from "./Modal";
 /** Campos de OrderResponse que necesita el ticket. */
 export type TicketOrder = {
   id: number;
+  // folio semanal por tienda persistido en la orden (backend: id para viejas)
+  ticketNumber?: number | null;
   storeId: number;
   // vienen del endpoint /{id}/ticket; el POS/KDS pueden pasar el nombre por prop
   storeName?: string;
@@ -60,7 +62,9 @@ export function OrderTicket({
           {order.storeAddress}
         </p>
       )}
-      <p className="text-center text-xs">Pedido #{order.id}</p>
+      <p className="text-center text-xs">
+        Pedido #{order.ticketNumber ?? order.id}
+      </p>
       <p className="mt-1 text-center text-[11px] text-text-secondary">
         {when} · {order.channel === "KIOSK" ? "Kiosco" : "Caja"} ·{" "}
         {order.orderType === "DINE_IN" ? "En mesa" : "Para llevar"}

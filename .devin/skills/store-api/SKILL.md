@@ -135,7 +135,6 @@ POST   /api/orders            # OrderRequest abajo
 GET    /api/orders            # ?storeId=&status=&page=&size=&sort=
                             #  array para KDS · Page para historial
                             #  (default createdAt desc)
-GET    /api/orders/next-number  # → { nextNumber } — folio semanal (reset lunes)
 GET    /api/orders/{id}
 PATCH  /api/orders/{id}/status
 GET    /api/orders/{id}/ticket   # payload autocontenido para imprimir:
@@ -183,6 +182,9 @@ GET    /api/orders/{id}/ticket   # payload autocontenido para imprimir:
   cliente al cobrar) y `taxAmount` — el impuesto se AGREGA: precios del
   catálogo no lo incluyen, `total = subtotal + taxAmount`; órdenes viejas
   devuelven `subtotal=total`, `taxRate=0`.
+- `ticketNumber` es el folio semanal consecutivo por tienda (persistido
+  en `orders.ticket_number` al crear, con lock sobre el store — no hay
+  estimado front-side); mostrar `ticketNumber ?? id` (viejas → id).
 
 **Pendiente en backend:** `cashReceived`/`changeGiven` para pago en efectivo.
 

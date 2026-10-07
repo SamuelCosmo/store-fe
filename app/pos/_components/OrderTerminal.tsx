@@ -161,7 +161,6 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   const [cashReceived, setCashReceived] = useState("");
   const [idle, setIdle] = useState(false);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [nextNumber, setNextNumber] = useState<number | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   // null hasta que el cache del backend esté listo → fallbacks por campo
   const [settings, setSettings] = useState<StoreSettings | null>(null);
@@ -277,12 +276,6 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     };
   }, [channel, idle, resetTerminal]);
 
-  useEffect(() => {
-    if (!session) return;
-    api<{ nextNumber: number }>("/api/orders/next-number")
-      .then((r) => setNextNumber(r.nextNumber))
-      .catch(() => setNextNumber(null));
-  }, [session, receipt]);
 
   // el kiosco esconde los agotados; la caja los muestra para poder reactivarlos
   const visible = useMemo(
@@ -384,7 +377,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       // change es solo display — el backend aún no guarda cashReceived/changeGiven
       setReceipt({
         ...order,
-        number: nextNumber,
+        number: order.ticketNumber ?? null,
         change:
           payment === "CASH" ? Number(cashReceived) - total : null,
       });

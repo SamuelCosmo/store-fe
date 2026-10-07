@@ -159,7 +159,7 @@ export function OrdersView() {
               className={`grid ${GRID} min-h-[56px] items-center gap-4 border-b border-border px-3.5 py-2.5 text-sm last:border-b-0 ${o.status === "CANCELLED" ? "opacity-60" : ""}`}
             >
               <span className="font-extrabold text-text-primary tabular-nums">
-                #{o.id}
+                #{o.ticketNumber ?? o.id}
               </span>
               <span className="text-text-secondary tabular-nums">
                 {new Date(o.createdAt).toLocaleString("es-MX", {

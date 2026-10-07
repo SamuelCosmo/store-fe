@@ -292,7 +292,7 @@ export function KitchenBoard() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xl font-extrabold text-text-primary tabular-nums">
-                      #{o.id}
+                      #{o.ticketNumber ?? o.id}
                     </p>
                     <div className="flex items-center gap-2">
                       {chip && (
