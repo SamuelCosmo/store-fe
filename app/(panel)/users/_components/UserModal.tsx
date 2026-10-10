@@ -1,6 +1,7 @@
 "use client";
 
 import { Modal } from "@/components/molecules/Modal";
+import { PASSWORD_RULES } from "@/lib/password";
 import { ROLE_LABEL, type Role } from "@/lib/session";
 import { Check, ChevronDown, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -8,13 +9,6 @@ import type { StoreDto } from "../../stores/_components/StoresView";
 import type { UserDto } from "./UsersView";
 
 const ROLES: Role[] = ["MANAGER", "EMPLOYEE", "CUSTOMER", "KITCHEN"];
-
-const PASSWORD_RULES: { label: string; test: (p: string) => boolean }[] = [
-  { label: "Mínimo 8 caracteres", test: (p) => p.length >= 8 },
-  { label: "Una mayúscula", test: (p) => /[A-Z]/.test(p) },
-  { label: "Una minúscula", test: (p) => /[a-z]/.test(p) },
-  { label: "Un número", test: (p) => /\d/.test(p) },
-];
 
 export type UserFormData = {
   name: string;

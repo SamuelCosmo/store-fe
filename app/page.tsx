@@ -1,5 +1,6 @@
 "use client";
 
+import { Modal } from "@/components/molecules/Modal";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [expired, setExpired] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
+  // cuando la cuenta opera varias tiendas el login pide elegir una (modal)
+  const [stores, setStores] = useState<{ id: number; name: string }[] | null>(
+    null,
+  );
+  const [storeId, setStoreId] = useState<number | null>(null);
+  const [pending, setPending] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
   const session = useSession();
 
   useEffect(() => {
@@ -43,34 +53,82 @@ export default function LoginPage() {
     };
   }, []);
 
+  async function login(email: string, password: string, store: number | null) {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        ...(store != null ? { storeId: store } : {}),
+      }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      const message = String(body?.message ?? "No se pudo iniciar sesión");
+      // la cuenta opera varias tiendas → traer las elegibles y elegir
+      if (message.startsWith("storeId required")) {
+        const storesRes = await fetch(`${API_URL}/api/auth/stores`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const list = (await storesRes.json().catch(() => null)) as
+          | { id: number; name: string }[]
+          | null;
+        if (storesRes.ok && list?.length) {
+          setStores(list);
+          setStoreId(list[0].id);
+          setPending({ email, password });
+          return;
+        }
+      }
+      setError(
+        message === "Invalid credentials"
+          ? "Correo o contraseña incorrectos."
+          : message,
+      );
+      return;
+    }
+    const session = body as AuthResponse;
+    saveSession(session);
+    router.push(ROLE_HOME[session.role] ?? "/");
+  }
+
+  function closeStorePicker() {
+    setStores(null);
+    setPending(null);
+    setStoreId(null);
+  }
+
+  async function confirmStore() {
+    if (!pending || storeId == null) return;
+    setLoading(true);
+    try {
+      await login(pending.email, pending.password, storeId);
+    } catch {
+      setError(
+        "Sin conexión con el servidor — verifica que el backend esté corriendo",
+      );
+    } finally {
+      setLoading(false);
+      closeStorePicker();
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     const data = new FormData(e.currentTarget);
     try {
-      const res = await fetch(`${API_URL}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: String(data.get("email") ?? "")
-            .trim()
-            .toLowerCase(),
-          password: data.get("password"),
-        }),
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        setError(
-          body?.message === "Invalid credentials"
-            ? "Correo o contraseña incorrectos."
-            : (body?.message ?? "No se pudo iniciar sesión"),
-        );
-        return;
-      }
-      const session = body as AuthResponse;
-      saveSession(session);
-      router.push(ROLE_HOME[session.role] ?? "/");
+      await login(
+        String(data.get("email") ?? "")
+          .trim()
+          .toLowerCase(),
+        String(data.get("password") ?? ""),
+        null,
+      );
     } catch {
       setError(
         "Sin conexión con el servidor — verifica que el backend esté corriendo",
@@ -236,6 +294,53 @@ export default function LoginPage() {
           </form>
         </main>
       </div>
+
+      <Modal
+        open={stores !== null}
+        onClose={closeStorePicker}
+        title="Elige el establecimiento"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-text-secondary">
+            Tu cuenta opera en varias tiendas — elige dónde trabajas hoy.
+          </p>
+          <label
+            htmlFor="store"
+            className="flex flex-col gap-2 text-[13px] font-semibold text-text-primary"
+          >
+            Establecimiento
+            <select
+              id="store"
+              value={storeId ?? ""}
+              onChange={(e) => setStoreId(Number(e.target.value))}
+              className={inputClass}
+            >
+              {stores?.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={closeStorePicker}
+              className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={confirmStore}
+              disabled={loading}
+              className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

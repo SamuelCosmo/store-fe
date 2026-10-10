@@ -102,10 +102,10 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       categories → products): cambiar a borrado lógico (`deletedAt` o
       reutilizar `active`) en productos, categorías, usuarios, tiendas,
       extras y tamaños, y filtrar `deleted` en los `GET`/queries.
-      Caso especial: **una categoría con alimentos enlazados no se puede
-      eliminar** — el backend debe rechazarla con mensaje legible
-      ("quita el enlace de los productos antes") y el front mostrarlo en
-      la confirmación, no borrar en cascada ni fallar por FK.
+      ~~Caso especial~~ ✅ **hecho**: `DELETE /api/categories/{id}`
+      rechaza con 400 legible ("La categoría tiene N producto(s)
+      enlazado(s)…") cuando hay productos vinculados — no hay cascada
+      ni error de FK; el front muestra el mensaje en la confirmación.
 
 ## Iteración siguiente
 
@@ -121,28 +121,30 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [ ] **Módulos por usuario** — el sidebar muestra todo; filtrar por
       `user_modules ∩ client_modules` cuando el backend lo exponga.
 - [ ] **Enrutado por rol + módulos tras login** — hoy solo se usa `ROLE_HOME`.
-- [ ] **Selector de establecimiento en login** — cocina (KITCHEN), caja
-      (POS) y kiosco (KIOSK): si el usuario tiene varias tiendas el front
-      debe mostrar un selector y mandar `storeId` en
-      `POST /api/auth/login` (hoy no se envía). Backend ya lo soporta:
-      `AuthService.resolveStore()` lo exige cuando hay varias asignadas
-      (error `storeId required`) — falta el flujo de selección en la UI
-      (lista de tiendas → elegir antes de operar). `AuthService.login()`
-      — marcado con TODO.
+- [x] **Selector de establecimiento en login** — cuando login responde
+      `storeId required` (rol operativo con varias tiendas asignadas) el
+      front consulta `POST /api/auth/stores` (mismas credenciales →
+      `[{id, name}]`) y abre un modal "Elige el establecimiento" con
+      select + Aceptar; el reintento manda `storeId`. Una sola tienda →
+      flujo igual que antes. El ADMIN nunca elige: entra `clientId`-wide
+      y filtra tiendas en cada página (con 1 asignada se resuelve sola).
 - [x] **Ruta `/superadmin` (admin de plataforma)** — login propio +
       listado/alta/edición de clientes (nombre + límites del plan:
       `maxStores`, `maxPosPerStore`, `maxKiosksPerStore`). Backend: rol
       `SUPERADMIN` sin `clientId`/`storeId` en el JWT, `GET /api/clients`
       y `PUT /api/clients/{id}` restringidos a ese rol. La cuenta se crea
-      por SQL directo (no por la app). Pendiente: módulos contratados
-      (`PUT /api/clients/{id}/modules`), settings del cliente y gestión
-      de sus usuarios admin.
-- [ ] **Superadmin: crear admin al crear cliente** — `POST /api/clients`
-      solo crea el tenant (nombre + límites del plan); falta crear también
-      el `User` con rol `ADMIN` del cliente (email + contraseña pedidos
-      en el form de alta) para que el tenant pueda iniciar sesión sin
-      pasar por `/api/auth/register`. Backend: `ClientService.create()`
-      — marcado con TODO.
+      por SQL directo (no por la app). Edición del admin del tenant:
+      `GET/PUT /api/clients/{id}/admin` (SUPERADMIN, confirma su propia
+      contraseña; la nueva del admin valida las reglas de `UserRequest`)
+      + modal "Admin" por fila en la tabla. Pendiente: módulos
+      contratados (`PUT /api/clients/{id}/modules`) y settings del
+      cliente.
+- [x] **Superadmin: crear admin al crear cliente** — `ClientRequest`
+      acepta `adminName`/`adminEmail`/`adminPassword` opcionales; si viene
+      email, `ClientService.create()` crea el `User` ADMIN del tenant en
+      la misma transacción (email normalizado + duplicados → 400/409; si
+      falla, rollback del cliente). El form de alta de `/superadmin` pide
+      los 3 campos (email+password requeridos); el PUT los ignora.
 - [x] **Pantalla de pedidos de cocina para caja/admin/gerente** —
       `/kitchen` ya es accesible para todo el staff: entrada "Cocina" en
       el sidebar del panel (icono ChefHat) + botón en el header del POS.

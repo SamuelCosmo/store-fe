@@ -27,6 +27,11 @@ NEXT_PUBLIC_API_URL=http://localhost:8080   # .env.local
 ```text
 POST /api/auth/register     # solo crea el PRIMER usuario (ADMIN) del tenant
 POST /api/auth/login        # { email, password, storeId } → { token, role, ... }
+POST /api/auth/stores       # { email, password } → [{id,name}] — pedirla cuando
+                            # login responde "storeId required" (roles
+                            # operativos con varias tiendas asignadas) →
+                            # selector + reintento con storeId. El ADMIN no
+                            # elige: entra client-wide y filtra por página
 ```
 
 - JWT con claims `clientId`, `storeId`, `role` — enviar como
@@ -64,6 +69,7 @@ El frontend oculta rutas sin permiso (UX); el backend refuerza con
 
 ```text
 POST/GET/GET{id}/PUT/DELETE   /api/categories        # GET ?storeId=
+                            # DELETE → 400 si tiene productos enlazados
                                                    # Category: { storeIds[], name,
                                                    #   description, icon, active }
 POST/GET/GET{id}/PUT/DELETE   /api/products          # GET ?storeId=&categoryId=
@@ -111,9 +117,14 @@ el `sort=` — ver `docs/03-todos.md` › paginación.
 ```text
 POST/GET/GET{id}/PUT   /api/stores     # ADMIN; ligado a clientId
 POST   /api/clients                    # alta de tenant (plan: maxStores,
+                            # adminName/adminEmail/adminPassword opcionales
+                            # → crea también el ADMIN del tenant)
 GET    /api/clients/{id}               #  maxPosPerStore, maxKiosksPerStore)
 GET    /api/clients                    # SUPERADMIN — todos los tenants
 PUT    /api/clients/{id}               # SUPERADMIN — nombre + límites del plan
+GET/PUT /api/clients/{id}/admin        # SUPERADMIN — admin del tenant; el PUT
+                            # pide superadminPassword (401 si falla) y la nueva
+                            # adminPassword valida 8+ con may/min/dígito
 GET    /api/clients/{id}/stores        # lista del cliente — paginable
 GET    /api/users                      # ADMIN/MANAGER — lista del cliente, paginable
 POST   /api/users                      # ADMIN — { name, email, password, role,
