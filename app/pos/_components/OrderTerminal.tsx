@@ -359,6 +359,9 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           channel,
           orderType,
           paymentMethod: payment,
+          ...(payment === "CASH" && cashReceived !== ""
+            ? { cashReceived: Number(cashReceived) }
+            : {}),
           items: cart.map((i) => ({
             productId: i.product.id,
             quantity: 1,
@@ -374,12 +377,13 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       setCart([]);
       setPayOpen(false);
       setCountdown(getSettings().kiosk.receiptSeconds);
-      // change es solo display — el backend aún no guarda cashReceived/changeGiven
       setReceipt({
         ...order,
         number: order.ticketNumber ?? null,
+        // changeGiven viene del backend (persistido); fallback al cálculo local
         change:
-          payment === "CASH" ? Number(cashReceived) - total : null,
+          order.changeGiven ??
+          (payment === "CASH" ? Number(cashReceived) - total : null),
       });
     } catch (e) {
       setPayOpen(false);
@@ -416,8 +420,12 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     <div className="flex h-screen flex-col overflow-hidden bg-canvas">
       <header className="flex h-[88px] shrink-0 items-center justify-between border-b border-border bg-background px-8">
         <BrandMark
-          title={(settings?.general.menuName || storeName).toUpperCase()}
+          title={
+            (session?.clientName || settings?.general.menuName || storeName
+            ).toUpperCase()
+          }
           subtitle={channel === "POS" ? "Punto de venta" : "Kiosko"}
+          logoUrl={session?.clientLogoUrl}
         />
         <div className="flex items-center gap-4">
           <p className="text-lg font-bold text-text-secondary tabular-nums">

@@ -1,9 +1,8 @@
 "use client";
 
 import { clearSession } from "@/lib/session";
-import { ChevronUp, LogOut, Settings } from "lucide-react";
+import { ChevronUp, LogOut } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -33,14 +32,8 @@ export function UserCard({
             className="fixed inset-0 z-10 cursor-default"
           />
           <div className="absolute bottom-full left-0 z-20 mb-2 w-full overflow-hidden rounded-xl border border-border bg-background shadow-lg">
-            <Link
-              href="/settings"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-text-primary transition-colors hover:bg-surface"
-            >
-              <Settings size={16} aria-hidden />
-              Configuración
-            </Link>
+            {/* "Configuración" va a ser una página de CUENTA (settings del
+                usuario logueado, no del establecimiento) — pendiente. */}
             <button
               onClick={logout}
               className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-error transition-colors hover:bg-surface"

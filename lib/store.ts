@@ -7,7 +7,8 @@ import {
 } from "@reduxjs/toolkit";
 import type { AuthResponse } from "./session";
 
-const KEY = "store.session";
+export const SESSION_KEY = "store.session";
+const KEY = SESSION_KEY;
 
 export function readStoredSession(): AuthResponse | null {
   try {

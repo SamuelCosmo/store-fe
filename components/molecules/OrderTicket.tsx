@@ -10,9 +10,13 @@ export type TicketOrder = {
   // folio semanal por tienda persistido en la orden (backend: id para viejas)
   ticketNumber?: number | null;
   storeId: number;
+  // nombre del negocio del tenant — gana sobre storeName en el encabezado
+  clientName?: string | null;
   // vienen del endpoint /{id}/ticket; el POS/KDS pueden pasar el nombre por prop
   storeName?: string;
   storeAddress?: string | null;
+  // logo del tenant — encabezado del ticket cuando existe
+  logoUrl?: string | null;
   channel: "POS" | "KIOSK";
   orderType: "DINE_IN" | "TAKEAWAY";
   paymentMethod: "CASH" | "CARD";
@@ -22,6 +26,9 @@ export type TicketOrder = {
   taxRate: number;
   taxAmount: number;
   total: number;
+  // solo pagos en efectivo — el cambio lo calcula el backend
+  cashReceived?: number | null;
+  changeGiven?: number | null;
   items: {
     productId: number;
     productName: string;
@@ -54,8 +61,16 @@ export function OrderTicket({
       id="print-ticket"
       className="mx-auto w-full max-w-70 rounded-lg border border-dashed border-border bg-background px-5 py-4 font-mono text-[13px] leading-snug text-text-primary"
     >
+      {order.logoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={order.logoUrl}
+          alt=""
+          className="mx-auto mb-1.5 max-h-16 w-auto object-contain"
+        />
+      )}
       <p className="text-center text-sm font-bold uppercase">
-        {order.storeName ?? storeName ?? "Store"}
+        {order.clientName ?? order.storeName ?? storeName ?? "Store"}
       </p>
       {order.storeAddress && (
         <p className="text-center text-[11px] text-text-secondary">
@@ -118,6 +133,20 @@ export function OrderTicket({
           <dt>Total</dt>
           <dd className="tabular-nums">{fmt.format(order.total)}</dd>
         </div>
+        {order.cashReceived != null && (
+          <>
+            <div className="flex justify-between">
+              <dt className="text-text-secondary">Recibido</dt>
+              <dd className="tabular-nums">{fmt.format(order.cashReceived)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-text-secondary">Cambio</dt>
+              <dd className="tabular-nums">
+                {fmt.format(order.changeGiven ?? 0)}
+              </dd>
+            </div>
+          </>
+        )}
       </dl>
       <p className="mt-2 text-center text-[11px] text-text-secondary">
         Pago: {order.paymentMethod === "CASH" ? "Efectivo" : "Tarjeta"}

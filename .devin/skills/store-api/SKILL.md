@@ -92,12 +92,20 @@ GET/PUT                       /api/inventory/{productId}
 ### Settings (GET para todo el tenant; PUT solo ADMIN)
 
 ```text
-GET/PUT   /api/clients/{id}/settings   # { currency, taxRate,
+GET/PUT   /api/clients/{id}/settings   # { name, logoUrl, currency, taxRate,
                                        #   kioskReceiptSeconds,
                                        #   sessionHours: { rol: horas } } (0 = no cerrar)
+                                       # marca del tenant: name vacío se ignora;
+                                       # logoUrl "" quita el logo. El logo se sube
+                                       # con POST /api/uploads/brand (solo ADMIN →
+                                       # clients/{id}/brand/; productos usa /api/uploads).
+                                       # AuthResponse trae clientName/clientLogoUrl
+                                       # (null en SUPERADMIN) — BrandMark los usa.
 GET/PUT   /api/stores/{id}/settings    # { menuName, kitchenOkMin,
                                        #   kitchenWarnMin, kitchenSound }
-# menuName vacío → se usa el name del store. El frontend cachea ambos en
+# menuName es LEGACY (sin input en /settings): en pantallas y tickets se
+# muestra clientName (clients.name — sección Marca); menuName vacío →
+# fallback al name del store. El frontend cachea ambos en
 # localStorage (lib/settings.ts: getSettings/refreshSettings) para lectura
 # sync en terminales y en el chequeo de expiración de sesión.
 ```
@@ -150,7 +158,10 @@ GET    /api/orders/{id}
 PATCH  /api/orders/{id}/status
 GET    /api/orders/{id}/ticket   # payload autocontenido para imprimir:
                                  #  OrderResponse + storeName (menuName ?: name)
-                                 #  + storeAddress. Cualquier rol autenticado
+                                 #  + storeAddress + clientName/logoUrl (marca
+                                 #  del tenant; OrderResponse también las trae —
+                                 #  encabezado del ticket cuando existe).
+                                 #  Cualquier rol autenticado
                                  #  (CUSTOMER del kiosco incluido), scoping por
                                  #  store de sesión. El front imprime con
                                  #  window.print + #print-ticket (globals.css)
@@ -197,7 +208,10 @@ GET    /api/orders/{id}/ticket   # payload autocontenido para imprimir:
   en `orders.ticket_number` al crear, con lock sobre el store — no hay
   estimado front-side); mostrar `ticketNumber ?? id` (viejas → id).
 
-**Pendiente en backend:** `cashReceived`/`changeGiven` para pago en efectivo.
+- Pago en efectivo: `OrderRequest.cashReceived` (solo CASH) — el server
+  valida ≥ total y persiste `changeGiven = cashReceived - total`;
+  ambos vuelven en `OrderResponse`/`TicketResponse` (ticket muestra
+  Recibido/Cambio). `null` en CARD.
 
 ### Extras del cliente (módulos opcionales — TODOS pendientes en backend)
 

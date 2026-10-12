@@ -29,15 +29,21 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       server suma `taxAmount = subtotal × rate` (`total = subtotal +
       taxAmount`). `OrderResponse` los devuelve (órdenes viejas →
       `subtotal=total`, `taxRate=0`) y el ticket de la terminal muestra
-      subtotal + impuesto + total. Pendiente: **descuento** en la
-      orden (monto o % — sin modelar).
+      subtotal + impuesto + total.
+- [ ] **Descuento en la orden** — sin modelar. Diseño preferido:
+      `orders.discount` (monto, no %) validado server-side
+      (`total = subtotal + impuesto - descuento`, nunca negativo),
+      input en el modal de cobro del POS y línea propia en el desglose
+      del ticket. Por orden completa, no por línea.
 - [ ] **Páginas del sidebar que no existen** — `/inventory` y
       `/reservations` se quitaron del menú hasta implementarse.
       (Reportes vive dentro de `/dashboard`.)
 - [x] **Settings persistidos en backend** — `/settings` sincroniza con
-      `GET/PUT /api/clients/{id}/settings` (moneda, impuesto, countdown del
-      kiosco, sesión por rol) y `GET/PUT /api/stores/{id}/settings`
-      (nombre del menú + umbrales/sonido KDS por establecimiento).
+      `GET/PUT /api/clients/{id}/settings` (marca: nombre+logo, moneda,
+      impuesto, countdown del kiosco, sesión por rol) y
+      `GET/PUT /api/stores/{id}/settings` (umbrales/sonido KDS por
+      establecimiento; `menuName` quedó legacy oculto — en pantallas se
+      muestra `clientName` de Marca).
       `localStorage` queda solo como cache (`lib/settings.ts`) que las
       terminales refrescan cada 60 s y al recuperar foco (`Providers`). El
       cierre
@@ -172,13 +178,13 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       cola de impresión). Para impresión silenciosa lanzar Chrome con
       `--kiosk-printing`. Si se necesita ESC/POS (corte, cajón, impresora
       de cocina aparte) → agente local tipo QZ Tray.
-- [ ] **Corregir formato de impresión del ticket** — el `#print-ticket`
-      actual es una tarjeta ~280px pensada para pantalla; al imprimir
-      falta ajustar para térmica de 80mm: ancho fijo en mm
-      (`width: 80mm`, `@page { margin: 0 }`), tipografía/márgenes reales
-      de papel, quitar borde/dashed que no sale bien en térmica y probar
-      corte de página (`page-break`). Verificar impresión real desde
-      POS, KDS y `/orders`.
+- [x] **Corregir formato de impresión del ticket** — `globals.css` ahora
+      imprime térmico: `@page { size: 80mm auto; margin: 0 }` (rollo
+      continuo sin alto fijo), `#print-ticket` a `width: 80mm` con
+      padding `4mm 3mm`, fuente 11px/1.35, sin borde ni radio, y el logo
+      limitado a `14mm` de alto para no quemar tinta. Aplica igual en
+      POS, KDS y reimpresión de `/orders`. Pendiente solo la prueba en
+      impresora física real.
 - [x] **Modo idle en caja y kiosco** — en `OrderTerminal`: kiosco 90 s /
       caja 3 min sin `pointerdown`/`keydown` → pantalla de espera. Kiosco
       limpia el pedido y un toque lo descarta; caja NO limpia — la
@@ -213,17 +219,30 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       sin variantes `dark:` porque las utilidades ya usan `var()`.
       Toggle presente en: login, footer del sidebar, header del POS,
       header de cocina y `/superadmin`.
-- [ ] **Branding del cliente (logo + nombre)** — el tenant debe poder
-      subir el logotipo de su empresa y editar el nombre del negocio
-      desde `/settings`. Backend: campos `logo_url` (+ nombre editable
-      vía settings o `PUT /api/clients/{id}`), reutilizando
-      `POST /api/uploads` con folder propio (`clients/{id}/brand/`).
-      Front: sección "Marca" en `/settings` con preview del logo; usar
-      logo+nombre en login, terminales (`BrandMark`) y ticket.
+- [x] **Branding del cliente (logo + nombre)** — `clients.logo_url` +
+      `name`/`logoUrl` en `GET/PUT /api/clients/{id}/settings` (`""`
+      quita el logo); `POST /api/uploads/brand` (solo ADMIN) guarda en
+      `clients/{id}/brand/`; `AuthResponse` trae `clientName`/
+      `clientLogoUrl` y `OrderResponse`/`TicketResponse` traen `logoUrl`.
+      Front: sección "Marca" en `/settings` (nombre + upload + preview +
+      quitar), `BrandMark` muestra logo+nombre del tenant en sidebar/
+      POS/kiosco/KDS (`session.clientName` gana sobre `menuName`; cae al
+      logo/nombre de plataforma si no hay), y el ticket imprime
+      `clientName`+logo en el encabezado (fallback `storeName`). El
+      login conserva la marca SAC+ (el tenant aún no se conoce ahí).
+- [ ] **Página de cuenta (settings por usuario)** — el menú del
+      `UserCard` tenía un item "Configuración" que apuntaba a `/settings`
+      (settings del tenant) — se quitó porque ahí va una página aparte
+      con ajustes de la CUENTA logueada: cambiar su nombre, su correo y
+      su contraseña (con confirmación), quizá tema preferido. Endpoints
+      pendientes en backend (`PATCH /api/users/me` o similar; hoy solo el
+      admin edita usuarios vía `/api/users/{id}`).
 - [ ] **i18n** — copy en español hardcodeado; selector pendiente.
-- [ ] **`cashReceived`/`changeGiven` en la orden** — hoy el efectivo
-      recibido y el cambio solo viven en memoria del recibo; persistirlos
-      en `orders` para que el ticket reimpreso muestre el cambio.
+- [x] **`cashReceived`/`changeGiven` en la orden** — `OrderRequest`
+      acepta `cashReceived` (solo CASH); el server valida ≥ total y
+      persiste `change_given = cash_received - total`. Vuelven en
+      `OrderResponse`/`TicketResponse` y el ticket impreso muestra
+      Recibido/Cambio; el recibo del POS usa `changeGiven` del backend.
 - [x] **Folio de ticket persistido** — `orders.ticket_number`:
       consecutivo semanal por tienda (max+1 desde el lunes) asignado en
       `OrderService.create` con lock pesimista sobre el store — no hay

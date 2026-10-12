@@ -232,7 +232,11 @@ export function KitchenBoard() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-canvas">
       <header className="flex h-[88px] shrink-0 items-center justify-between border-b border-border bg-background px-8">
-        <BrandMark title={storeName.toUpperCase()} subtitle="Cocina" />
+        <BrandMark
+          title={(session?.clientName || storeName).toUpperCase()}
+          subtitle="Cocina"
+          logoUrl={session?.clientLogoUrl}
+        />
         <div className="flex items-center gap-4">
           <p className="text-lg font-bold text-text-secondary tabular-nums">
             {now

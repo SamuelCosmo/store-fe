@@ -20,6 +20,9 @@ export type AuthResponse = {
   role: Role;
   // null solo para SUPERADMIN (cuenta de plataforma, sin tenant)
   clientId: number | null;
+  // branding del tenant — null para SUPERADMIN
+  clientName?: string | null;
+  clientLogoUrl?: string | null;
   storeId: number | null;
 };
 

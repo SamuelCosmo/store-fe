@@ -2,6 +2,7 @@
 
 import { api } from "./api";
 import type { Role } from "./session";
+import { getStore, setSession } from "./store";
 
 // Settings sincronizados con el backend y cacheados en localStorage (el
 // cache da lectura sync a isSessionExpired y a las terminales).
@@ -16,6 +17,8 @@ export type StoreSettings = {
 };
 
 export type ClientSettingsDto = {
+  name: string;
+  logoUrl: string | null;
   currency: string;
   taxRate: number;
   kioskReceiptSeconds: number;
@@ -90,6 +93,23 @@ export async function refreshSettings(
   const client = await api<ClientSettingsDto>(
     `/api/clients/${clientId}/settings`,
   );
+  // Marca del tenant → parchea la sesión para que terminales y sidebar la
+  // vean sin re-login (setSession escribe localStorage → evento `storage`
+  // la propaga al instante a otras pestañas del mismo navegador).
+  const session = getStore().getState().session.value;
+  if (
+    session &&
+    (session.clientName !== client.name ||
+      session.clientLogoUrl !== client.logoUrl)
+  ) {
+    getStore().dispatch(
+      setSession({
+        ...session,
+        clientName: client.name,
+        clientLogoUrl: client.logoUrl,
+      }),
+    );
+  }
   const settings: StoreSettings = {
     general: { ...DEFAULT_SETTINGS.general },
     kitchen: { ...DEFAULT_SETTINGS.kitchen },

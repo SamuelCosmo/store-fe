@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  SESSION_KEY,
   clearSession,
   getStore,
   hydrateSession,
@@ -67,6 +68,19 @@ export function Providers({ children }: { children: ReactNode }) {
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
   }, [router]);
+
+  // Otra pestaña escribió la sesión (login, logout o cambio de marca desde
+  // /settings) → rehidrata para reflejar logo/nombre al instante.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== SESSION_KEY) return;
+      const s = readStoredSession();
+      if (s) store.dispatch(hydrateSession(s));
+      else store.dispatch(clearSession());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [store]);
 
   return <Provider store={store}>{children}</Provider>;
 }

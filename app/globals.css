@@ -68,7 +68,13 @@ button:not(:disabled),
   --color-error: #d9605a;
 }
 
-/* reimpresión de tickets: solo #print-ticket sale en papel */
+/* reimpresión de tickets: solo #print-ticket sale en papel.
+   Térmica 80mm — `size: 80mm auto` = rollo continuo sin alto fijo. */
+@page {
+  size: 80mm auto;
+  margin: 0;
+}
+
 @media print {
   body * {
     visibility: hidden;
@@ -84,8 +90,17 @@ button:not(:disabled),
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    max-width: none;
+    width: 80mm;
+    max-width: 80mm;
+    margin: 0;
+    padding: 4mm 3mm;
     border: none;
+    border-radius: 0;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  /* el logo imprime en grises — limita su alto para no quemar tinta */
+  #print-ticket img {
+    max-height: 14mm;
   }
 }

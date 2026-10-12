@@ -2,7 +2,7 @@
 
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { api } from "@/lib/api";
-import { ROLE_LABEL, useSession, type Role } from "@/lib/session";
+import { ROLE_LABEL, saveSession, useSession, type Role } from "@/lib/session";
 import {
   DEFAULT_SETTINGS,
   refreshSettings,
@@ -17,7 +17,7 @@ import {
   Clock,
   Coins,
   MonitorSmartphone,
-  Store,
+  Palette,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -109,22 +109,34 @@ export function SettingsView() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [storeId, setStoreId] = useState<number | null>(null);
   const [form, setForm] = useState<StoreSettings | null>(null);
+  const [brand, setBrand] = useState<{
+    name: string;
+    logoUrl: string | null;
+  } | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Deps primitivos: saveSession crea un objeto session nuevo al guardar
+  // marca — depender del objeto re-dispararía este fetch y resetearía el
+  // form a defaults antes de que el de tienda pueda reponerlo.
+  const clientId = session?.clientId;
+  const sessionStoreId = session?.storeId;
+
   useEffect(() => {
-    if (!session) return;
+    if (clientId == null) return;
     let cancelled = false;
     (async () => {
       try {
         const [client, storeList] = await Promise.all([
-          api<ClientSettingsDto>(`/api/clients/${session.clientId}/settings`),
-          api<StoreOption[]>(`/api/clients/${session.clientId}/stores`),
+          api<ClientSettingsDto>(`/api/clients/${clientId}/settings`),
+          api<StoreOption[]>(`/api/clients/${clientId}/stores`),
         ]);
         if (cancelled) return;
         setStores(storeList);
-        setStoreId(session.storeId ?? storeList[0]?.id ?? null);
+        setStoreId(sessionStoreId ?? storeList[0]?.id ?? null);
+        setBrand({ name: client.name, logoUrl: client.logoUrl });
         setForm({
           general: { ...DEFAULT_SETTINGS.general },
           kitchen: { ...DEFAULT_SETTINGS.kitchen },
@@ -147,7 +159,7 @@ export function SettingsView() {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [clientId, sessionStoreId]);
 
   // Los campos por establecimiento se recargan al cambiar la selección
   useEffect(() => {
@@ -180,6 +192,25 @@ export function SettingsView() {
     };
   }, [storeId]);
 
+  async function uploadLogo(file: File) {
+    if (!brand) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await api<{ url: string }>("/api/uploads/brand", {
+        method: "POST",
+        body: fd,
+      });
+      setBrand({ ...brand, logoUrl: res.url });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo subir el logo");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function save() {
     if (!form || !session) return;
     setSaving(true);
@@ -193,6 +224,10 @@ export function SettingsView() {
       await api(`/api/clients/${session.clientId}/settings`, {
         method: "PUT",
         body: JSON.stringify({
+          // logoUrl "" le dice al server que quite el logo
+          ...(brand
+            ? { name: brand.name.trim(), logoUrl: brand.logoUrl ?? "" }
+            : {}),
           currency: form.currency,
           taxRate: form.taxRate,
           kioskReceiptSeconds: form.kiosk.receiptSeconds,
@@ -211,6 +246,14 @@ export function SettingsView() {
         });
       }
       setForm({ ...form, kitchen });
+      // marca al instante en sidebar/terminales sin re-login
+      if (brand) {
+        saveSession({
+          ...session,
+          clientName: brand.name.trim(),
+          clientLogoUrl: brand.logoUrl,
+        });
+      }
       // refresca el cache local del establecimiento de esta sesión
       if (session.clientId != null) {
         await refreshSettings(session.clientId, session.storeId).catch(() => {});
@@ -223,8 +266,6 @@ export function SettingsView() {
       setSaving(false);
     }
   }
-
-  const storeName = stores.find((s) => s.id === storeId)?.name;
 
   return (
     <div className="flex flex-col gap-6">
@@ -244,8 +285,66 @@ export function SettingsView() {
       ) : (
         <div className="flex flex-col items-start gap-5 lg:flex-row">
           <div className="flex w-full min-w-0 flex-1 flex-col gap-5">
-            <Card icon={Store} title="Establecimiento">
-              <Field label="Configurar">
+            {brand && (
+              <Card icon={Palette} title="Marca">
+                <Field label="Nombre del negocio">
+                  <input
+                    type="text"
+                    value={brand.name}
+                    onChange={(e) =>
+                      setBrand({ ...brand, name: e.target.value })
+                    }
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label="Logotipo">
+                  <input
+                    id="brand-logo-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void uploadLogo(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  <label
+                    htmlFor="brand-logo-upload"
+                    className="flex h-24 cursor-pointer items-center justify-center rounded-lg border border-dashed border-border bg-surface text-[12px] text-text-secondary transition-colors hover:border-primary"
+                  >
+                    {uploading ? (
+                      <span>Subiendo…</span>
+                    ) : brand.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={brand.logoUrl}
+                        alt="Logo"
+                        className="max-h-20 w-auto object-contain p-2"
+                      />
+                    ) : (
+                      <span>Clic para subir logo (máx. 5 MB)</span>
+                    )}
+                  </label>
+                  {brand.logoUrl && !uploading && (
+                    <button
+                      type="button"
+                      onClick={() => setBrand({ ...brand, logoUrl: null })}
+                      className="self-start text-[11px] text-error hover:underline"
+                    >
+                      Quitar logo
+                    </button>
+                  )}
+                </Field>
+                <p className="text-[11px] text-text-secondary">
+                  El nombre y el logo se muestran en el panel, las terminales
+                  y el ticket impreso.
+                </p>
+              </Card>
+            )}
+
+            <Card icon={ChefHat} title="Cocina (KDS)">
+              <Field label="Establecimiento">
                 <div className="relative">
                   <select
                     value={storeId ?? ""}
@@ -264,27 +363,6 @@ export function SettingsView() {
                   />
                 </div>
               </Field>
-              <Field label="Nombre en el menú">
-                <input
-                  type="text"
-                  value={form.general.menuName}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      general: { menuName: e.target.value },
-                    })
-                  }
-                  placeholder={storeName ?? DEFAULT_SETTINGS.general.menuName}
-                  className={inputClass}
-                />
-              </Field>
-              <p className="text-[11px] text-text-secondary">
-                El nombre y los tiempos de cocina aplican solo al
-                establecimiento elegido; lo demás es global.
-              </p>
-            </Card>
-
-            <Card icon={ChefHat} title="Cocina (KDS)">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="A tiempo hasta (min)">
                   <input
@@ -323,7 +401,8 @@ export function SettingsView() {
               </div>
               <p className="text-[11px] text-text-secondary">
                 Verde hasta {form.kitchen.okMin} min · amarillo hasta{" "}
-                {form.kitchen.warnMin} min · rojo después.
+                {form.kitchen.warnMin} min · rojo después. Los tiempos y el
+                sonido aplican solo al establecimiento elegido.
               </p>
               <Switch
                 on={form.kitchen.sound}

@@ -48,7 +48,11 @@ export function AdminSidebar() {
 
   return (
     <Sidebar
-      brand={{ title: brand.toUpperCase(), subtitle: "Administración" }}
+      brand={{
+        // el nombre del negocio (Marca) gana; el menuName queda de fallback
+        title: (session?.clientName || brand).toUpperCase(),
+        subtitle: "Administración",
+      }}
       items={items.filter((i) => !i.adminOnly || session?.role === "ADMIN")}
     />
   );
