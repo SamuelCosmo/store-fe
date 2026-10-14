@@ -1,6 +1,7 @@
 "use client";
 
 import { Sidebar } from "@/components/organisms/Sidebar";
+import { useI18n, type TKey } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
 import {
   DEFAULT_SETTINGS,
@@ -8,6 +9,7 @@ import {
   getSettings,
 } from "@/lib/settings";
 import {
+  type LucideIcon,
   ChefHat,
   LayoutDashboard,
   ReceiptText,
@@ -21,20 +23,27 @@ import { useEffect, useState } from "react";
 
 // Módulos del admin según el backend (store-be docs: catálogo, inventario,
 // stores, usuarios + extras del cliente: reportes, reservaciones)
-const items = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/categories", label: "Categorías", icon: Tag },
-  { href: "/products", label: "Productos", icon: Soup },
-  { href: "/stores", label: "Establecimientos", icon: Store },
-  { href: "/kitchen", label: "Cocina", icon: ChefHat },
-  { href: "/orders", label: "Pedidos", icon: ReceiptText },
-  { href: "/users", label: "Usuarios", icon: Users, adminOnly: true },
-  { href: "/settings", label: "Configuración", icon: Settings, adminOnly: true },
+const items: {
+  href: string;
+  key: TKey;
+  icon: LucideIcon;
+  exact?: boolean;
+  adminOnly?: boolean;
+}[] = [
+  { href: "/dashboard", key: "nav.dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/categories", key: "nav.categories", icon: Tag },
+  { href: "/products", key: "nav.products", icon: Soup },
+  { href: "/stores", key: "nav.stores", icon: Store },
+  { href: "/kitchen", key: "nav.kitchen", icon: ChefHat },
+  { href: "/orders", key: "nav.orders", icon: ReceiptText },
+  { href: "/users", key: "nav.users", icon: Users, adminOnly: true },
+  { href: "/settings", key: "nav.settings", icon: Settings, adminOnly: true },
 ];
 
 export function AdminSidebar() {
   const [brand, setBrand] = useState(DEFAULT_SETTINGS.general.menuName);
   const session = useSession();
+  const { t } = useI18n();
 
   useEffect(() => {
     const read = () => setBrand(getSettings().general.menuName);
@@ -51,9 +60,11 @@ export function AdminSidebar() {
       brand={{
         // el nombre del negocio (Marca) gana; el menuName queda de fallback
         title: (session?.clientName || brand).toUpperCase(),
-        subtitle: "Administración",
+        subtitle: t("sidebar.subtitle"),
       }}
-      items={items.filter((i) => !i.adminOnly || session?.role === "ADMIN")}
+      items={items
+        .filter((i) => !i.adminOnly || session?.role === "ADMIN")
+        .map(({ key, ...i }) => ({ ...i, label: t(key) }))}
     />
   );
 }

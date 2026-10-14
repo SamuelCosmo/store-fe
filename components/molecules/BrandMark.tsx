@@ -4,14 +4,19 @@ export function BrandMark({
   title,
   subtitle,
   logoUrl,
+  collapsed,
 }: {
   title: string;
   subtitle: string;
   /** Logo del tenant — cae al logo de plataforma si no hay. */
   logoUrl?: string | null;
+  /** Sidebar colapsado — solo el logo, sin texto. */
+  collapsed?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div
+      className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}
+    >
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -30,12 +35,14 @@ export function BrandMark({
           className="h-[45px] w-[52px] -rotate-180 -scale-x-100"
         />
       )}
-      <div className="flex flex-col gap-0.5 whitespace-nowrap">
-        <p className="text-[15px] font-extrabold text-text-primary">{title}</p>
-        <p className="text-[11px] font-semibold text-text-secondary">
-          {subtitle}
-        </p>
-      </div>
+      {!collapsed && (
+        <div className="flex flex-col gap-0.5 whitespace-nowrap">
+          <p className="text-[15px] font-extrabold text-text-primary">{title}</p>
+          <p className="text-[11px] font-semibold text-text-secondary">
+            {subtitle}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

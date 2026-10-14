@@ -2,6 +2,7 @@
 
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { api } from "@/lib/api";
+import { useI18n, type Lang } from "@/lib/i18n";
 import { ROLE_LABEL, saveSession, useSession, type Role } from "@/lib/session";
 import {
   DEFAULT_SETTINGS,
@@ -18,6 +19,7 @@ import {
   ChevronDown,
   Clock,
   Coins,
+  Languages,
   MonitorSmartphone,
   Palette,
   Printer,
@@ -109,6 +111,7 @@ function Card({
 
 export function SettingsView() {
   const session = useSession();
+  const { lang, setLang, t } = useI18n();
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [storeId, setStoreId] = useState<number | null>(null);
   const [form, setForm] = useState<StoreSettings | null>(null);
@@ -515,6 +518,29 @@ export function SettingsView() {
                 predeterminada del sistema operativo. Para imprimir sin que
                 aparezca el diálogo de Windows, abrir el navegador con el
                 flag --kiosk-printing.
+              </p>
+            </Card>
+
+            <Card icon={Languages} title={t("settings.language")}>
+              <div className="flex gap-2">
+                {(["es", "en"] as Lang[]).map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setLang(l)}
+                    aria-pressed={lang === l}
+                    className={`h-10 flex-1 rounded-lg border text-sm font-semibold transition-colors ${
+                      lang === l
+                        ? "border-primary bg-primary text-white"
+                        : "border-border bg-surface text-text-secondary hover:bg-surface-warm"
+                    }`}
+                  >
+                    {l === "es" ? "Español" : "English"}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-text-secondary">
+                {t("settings.language.hint")}
               </p>
             </Card>
 

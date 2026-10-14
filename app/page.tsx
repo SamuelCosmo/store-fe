@@ -56,6 +56,7 @@ export default function LoginPage() {
   async function login(email: string, password: string, store: number | null) {
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: "POST",
+      credentials: "include", // el JWT llega en cookie httpOnly
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email,
@@ -70,6 +71,7 @@ export default function LoginPage() {
       if (message.startsWith("storeId required")) {
         const storesRes = await fetch(`${API_URL}/api/auth/stores`, {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
         });

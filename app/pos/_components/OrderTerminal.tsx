@@ -9,7 +9,8 @@ import {
   isAutoPrint,
   type StoreSettings,
 } from "@/lib/settings";
-import { clearSession, useSession } from "@/lib/session";
+import { logoutSession } from "@/lib/api";
+import { useSession } from "@/lib/session";
 import type { CategoryDto } from "@/app/(panel)/categories/_components/CategoriesView";
 import type { ProductDto } from "@/app/(panel)/products/_components/ProductsView";
 import {
@@ -886,7 +887,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
             <button
               type="button"
               onClick={() => {
-                clearSession();
+                logoutSession();
                 router.push("/");
               }}
               className="rounded-lg bg-error px-4 py-2.5 text-sm font-bold text-white transition-colors hover:opacity-90"

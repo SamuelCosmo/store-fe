@@ -103,27 +103,31 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [x] **Gráfica "Ventas por hora" del dashboard** — las columnas tenían
       altura auto → el `%` de cada barra resolvía a 0. Columnas ahora
       `h-full justify-end`; sin librería extra.
-- [ ] **Soft delete en todo lo que se elimina** — los `DELETE` físicos
-      rompen el historial (order_items → products, orders → users,
-      categories → products): cambiar a borrado lógico (`deletedAt` o
-      reutilizar `active`) en productos, categorías, usuarios, tiendas,
-      extras y tamaños, y filtrar `deleted` en los `GET`/queries.
-      ~~Caso especial~~ ✅ **hecho**: `DELETE /api/categories/{id}`
-      rechaza con 400 legible ("La categoría tiene N producto(s)
-      enlazado(s)…") cuando hay productos vinculados — no hay cascada
-      ni error de FK; el front muestra el mensaje en la confirmación.
+- [x] **Soft delete en todo lo que se elimina** — `deletedAt` (Instant
+      nullable) en productos, categorías, usuarios, tiendas, extras y
+      tamaños. Los `DELETE` marcan la fila en vez de borrarla → el
+      historial (order_items → products, orders → users) sobrevive.
+      Todas las listas/queries filtran `deletedAt is null`; los lookups
+      por id rechazan borrados (404) salvo los que usa el historial.
+      Extras/tamaños se desvinculan de productos al borrar (el snapshot
+      de la orden conserva nombre+precio). Al borrar un usuario su email
+      se reescribe (`…​.deleted-{id}`) porque `users.email` es UNIQUE —
+      libera el correo para re-registrarlo. La categoría sigue
+      rechazando con 400 si tiene productos **vivos** enlazados.
+      Pendiente: no hay UI de restauración ni purge definitivo (la fila
+      queda solo para historial).
 
 ## Iteración siguiente
 
 - [x] **Dashboard real** — métricas del día via `GET /api/reports/dashboard`
       (KPIs, por hora, canal/tipo/pago, top productos, por empleado).
-- [ ] **Dashboard: pedidos a tiempo vs atrasados** —
-      `GET /api/reports/dashboard` debería incluir cuántos pedidos se
-      entregaron a tiempo y cuántos atrasados. Bloqueado por el backend:
-      `Order` solo tiene `createdAt`; faltan timestamps (`readyAt`/
-      `completedAt`) o comparar contra los umbrales `kitchenOkMin`/
-      `kitchenWarnMin` del store para clasificar. `ReportService.
-      dashboard()` — marcado con TODO.
+- [x] **Dashboard: pedidos a tiempo vs atrasados** — `Order` ganó
+      `preparingAt`/`readyAt`/`completedAt` (los pone
+      `OrderService.updateStatus` en cada transición) y
+      `DashboardResponse` devuelve conteo a tiempo/atrasados vs el
+      umbral `kitchenWarnMin` del store. El dashboard lo muestra en su
+      sección de tiempos. Órdenes viejas sin timestamps quedan fuera
+      del conteo.
 - [ ] **Módulos por usuario** — el sidebar muestra todo; filtrar por
       `user_modules ∩ client_modules` cuando el backend lo exponga.
 - [ ] **Enrutado por rol + módulos tras login** — hoy solo se usa `ROLE_HOME`.
@@ -159,8 +163,20 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       `PATCH /{id}/status` a ADMIN/MANAGER/EMPLOYEE/KITCHEN y `GET
       /api/orders` hace scoping por store de sesión — cancelar restaura
       inventario y marca `refund_status=REFUNDED`.
-- [ ] **Cookie httpOnly para el token** — hoy `localStorage` (MVP); moverlo
-      via Route Handler de Next.
+- [x] **Cookie httpOnly para el token** — el JWT viaja en la cookie
+      `store_token` (httpOnly, Path=/, Max-Age = `JWT_EXPIRATION_MS`);
+      `POST /api/auth/login` y `/superadmin` la setean, `POST
+      /api/auth/logout` la expira (JS no puede borrar httpOnly).
+      `api()` usa `credentials: "include"` y ya no manda `Authorization`;
+      el body del login ya no trae `token` (`@JsonIgnore`). La sesión
+      local guarda `loginAt` para el TTL por rol — el `exp` real lo
+      refuerza el server (401 → cierra sesión; 403 solo es "sin
+      permiso"). Filtro acepta cookie o Bearer (scripts), y en mutaciones
+      con cookie exige `Origin` en la allowlist de CORS (CSRF).
+      Config: `COOKIE_SECURE=true` + `COOKIE_SAMESITE=None` en Railway
+      (fe/be son sitios distintos por public suffix); en local queda
+      `Lax` (localhost es same-site). Sesiones viejas con `token` en
+      localStorage se descartan como expiradas → re-login una vez.
 - [x] **Impresión/reimpresión de tickets** — `OrderTicket` +
       `TicketModal` compartidos (`components/molecules/OrderTicket.tsx`)
       renderizan el ticket desde `OrderResponse` (items, tamaño/extras/
@@ -270,7 +286,14 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       su contraseña (con confirmación), quizá tema preferido. Endpoints
       pendientes en backend (`PATCH /api/users/me` o similar; hoy solo el
       admin edita usuarios vía `/api/users/{id}`).
-- [ ] **i18n** — copy en español hardcodeado; selector pendiente.
+- [x] **i18n (scaffold)** — `lib/i18n.tsx`: `LangProvider` + `useI18n()`
+      (`{ lang, setLang, t }`), diccionarios `es`/`en` planos en el mismo
+      archivo, persistido por equipo en `localStorage` (`store.lang`).
+      Selector "Idioma" en `/settings` (botones Español/English).
+      Migrada solo la superficie compartida: nav del sidebar, subtítulo,
+      toggle colapsar, "Cerrar sesión" y labels de rol en el sidebar.
+      Pendiente: migrar el resto de pantallas conforme se toquen (agregar
+      la key a `es`/`en` y usar `t()`).
 - [x] **`cashReceived`/`changeGiven` en la orden** — `OrderRequest`
       acepta `cashReceived` (solo CASH); el server valida ≥ total y
       persiste `change_given = cash_received - total`. Vuelven en
@@ -285,30 +308,32 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       `GET /api/orders/next-number` se eliminó. La tabla `tickets` de
       `06-database.md` queda como opción futura (si hace falta audit de
       impresiones — `printed_at`).
-- [ ] **Colapsar el sidebar del admin a iconos** — toggle en
-      `components/organisms/Sidebar.tsx` para alternar entre menú
-      expandido (icono + label) y minimizado (puros iconos, tooltip con
-      el nombre). El componente es compartido — el toggle puede aplicar
-      también a otras superficies que lo usen. Persistir la preferencia
-      en `localStorage` (estilo `store.theme`).
+- [x] **Colapsar el sidebar del admin a iconos** — rail de iconos que se
+      expande al hover (`onMouseEnter`/`onMouseLeave`, 76px ↔ 248px con
+      `transition-[width]`); sin botón ni preferencia persistida — es
+      comportamiento fijo. Colapsado: `NavItem` solo icono con
+      `title`/`aria-label`, `BrandMark` solo logo, `UserCard` solo avatar
+      (menú centrado). `collapsed` es prop opcional en los componentes —
+      otras superficies que reutilicen `Sidebar` la heredan gratis.
 
 ## Producción (antes de Railway)
 
-- [ ] **`DataSeeder` sin perfil** — `CommandLineRunner` sin `@Profile`:
-      en una DB vacía de producción crea `admin@test.com`/`admin_test`
-      con rol ADMIN completo. Poner `@Profile("dev")` o gate por env.
-- [ ] **Endpoints de alta abiertos** — `POST /api/clients` y
-      `POST /api/auth/register` son públicos (onboarding de desarrollo);
-      cerrarlos a `SUPERADMIN` o a un flujo de invitación antes de
-      exponer la API.
-- [ ] **Config por env** — `JWT_SECRET` trae un default dev embebido y
-      CORS está hardcodeado a `localhost:3000` en `SecurityConfig`;
-      ambos deben venir de env y `application.yml` no debe cargar
-      secrets de prod.
-- [ ] **Bucket de producción** — política de lectura pública en el
-      bucket S3 real (`PUBLIC_URL` apuntando al dominio público) y
-      decidir el borrado de objetos viejos al reemplazar/borrar
-      imágenes (hoy quedan huérfanas).
+- [x] **`DataSeeder` sin perfil** — resuelto por env: `SEED_DEV_DATA`
+      gatea el seed (`app.seed.dev-data`, default `true` local;
+      `false` en Railway).
+- [x] **Endpoints de alta abiertos** — cerrados: `POST /api/clients` y
+      `POST /api/auth/register` ahora requieren `SUPERADMIN`
+      (`@PreAuthorize`); en `SecurityConfig` solo quedan públicos
+      `login`, `superadmin`, `stores` (login) y `/api/media/**`.
+- [x] **Config por env** — `JWT_SECRET` y `CORS_ORIGINS` ya vienen de
+      env (Railway los tiene); los defaults que quedan en
+      `application.yml` son solo para dev local.
+- [x] **Limpieza de imágenes huérfanas** — `StorageService.deleteByUrl`
+      borra del bucket el objeto viejo al reemplazar/quitar imagen de
+      producto o logo de marca (best-effort: un fallo de storage no
+      invalida el update). Solo borra objetos del bucket propio — URLs
+      externas se ignoran. En soft-delete la fila conserva su imagen
+      (queda para historial/restore).
 
 ## Hechos recientes (referencia)
 

@@ -71,6 +71,8 @@ type DashboardData = {
   hourly: { hour: number; total: number }[];
   topProducts: { productId: number; name: string; quantity: number; revenue: number }[];
   employees: { userId: number; name: string; orders: number; total: number }[];
+  onTimeOrders: number;
+  lateOrders: number;
 };
 
 function range(rangeId: (typeof RANGES)[number]["id"]): { from: string; to: string } {
@@ -156,10 +158,16 @@ export function DashboardView() {
         </p>
       ) : data && (
         <>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-5 gap-4">
             <StatCard label="Ventas" value={MXN.format(data.totalSales)} hint={RANGES.find((r) => r.id === rangeId)!.label} />
             <StatCard label="Órdenes" value={String(data.orders)} hint={`Ticket promedio ${MXN.format(data.avgTicket)}`} />
             <StatCard label="Comer aquí" value={`${dineIn}%`} />
+            <StatCard
+              label="A tiempo"
+              value={String(data.onTimeOrders)}
+              hint={`${data.lateOrders} atrasados`}
+              danger={data.lateOrders > 0}
+            />
             <StatCard
               label="Cancelaciones"
               value={String(data.cancelledOrders)}

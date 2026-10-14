@@ -2,7 +2,7 @@
 
 import { Modal } from "@/components/molecules/Modal";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
-import { api } from "@/lib/api";
+import { api, logoutSession } from "@/lib/api";
 import {
   clearSession,
   saveSession,
@@ -85,6 +85,7 @@ function SuperadminLogin() {
     try {
       const res = await fetch(`${API_URL}/api/auth/superadmin`, {
         method: "POST",
+        credentials: "include", // el JWT llega en cookie httpOnly
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: String(data.get("email") ?? "")
@@ -340,7 +341,7 @@ export function SuperadminView() {
           <button
             type="button"
             onClick={() => {
-              clearSession();
+              logoutSession();
               router.refresh();
             }}
             aria-label="Cerrar sesión"

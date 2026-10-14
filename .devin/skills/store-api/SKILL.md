@@ -25,8 +25,11 @@ NEXT_PUBLIC_API_URL=http://localhost:8080   # .env.local
 ## Autenticación
 
 ```text
-POST /api/auth/register     # solo crea el PRIMER usuario (ADMIN) del tenant
-POST /api/auth/login        # { email, password, storeId } → { token, role, ... }
+POST /api/auth/register     # SUPERADMIN — primer ADMIN de un tenant sin admin
+POST /api/auth/superadmin   # login de plataforma — solo cuentas SUPERADMIN
+POST /api/auth/login        # { email, password, storeId } → AuthResponse SIN
+                            # token — llega en cookie httpOnly `store_token`
+POST /api/auth/logout       # expira la cookie (httpOnly — JS no la borra)
 POST /api/auth/stores       # { email, password } → [{id,name}] — pedirla cuando
                             # login responde "storeId required" (roles
                             # operativos con varias tiendas asignadas) →
@@ -34,13 +37,17 @@ POST /api/auth/stores       # { email, password } → [{id,name}] — pedirla cu
                             # elige: entra client-wide y filtra por página
 ```
 
-- JWT con claims `clientId`, `storeId`, `role` — enviar como
-  `Authorization: Bearer <token>`.
+- JWT con claims `clientId`, `storeId`, `role` — viaja en cookie httpOnly;
+  `api()` manda `credentials: "include"` (los fetch crudos del login también).
+  `Authorization: Bearer` sigue aceptado para clientes no-browser.
+- CSRF: mutaciones autenticadas por cookie exigen `Origin` en la allowlist
+  de CORS del back (los fetch del navegador siempre lo mandan).
 - Roles: `ADMIN`, `MANAGER`, `EMPLOYEE`, `CUSTOMER` (cuenta genérica de kiosko),
   `KITCHEN` (KDS; puede actualizar estatus de órdenes) y `SUPERADMIN`
   (cuenta de plataforma — `clientId`/`storeId` null en JWT y AuthResponse;
   su home es `/superadmin`).
-- MVP: token en `localStorage`. Futuro: cookie httpOnly via Route Handler.
+- La sesión local guarda solo metadata (userId, role, storeId, `loginAt`
+  para el TTL por rol) — el token no es legible desde JS.
 - Un usuario puede operar varios stores (`user_stores`); el `storeId` activo
   se elige en el login y viaja en el JWT.
 - **`storeId` NUNCA va en el body** de requests — el backend lo deriva del
