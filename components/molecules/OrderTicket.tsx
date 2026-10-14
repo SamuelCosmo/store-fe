@@ -2,6 +2,7 @@
 
 import { getSettings } from "@/lib/settings";
 import { Printer } from "lucide-react";
+import { createPortal } from "react-dom";
 import { Modal } from "./Modal";
 
 /** Campos de OrderResponse que necesita el ticket. */
@@ -44,9 +45,12 @@ export type TicketOrder = {
 export function OrderTicket({
   order,
   storeName,
+  print = false,
 }: {
   order: TicketOrder;
   storeName?: string;
+  // solo la copia destinada al papel lleva el id (uno por página)
+  print?: boolean;
 }) {
   const fmt = new Intl.NumberFormat("es-MX", {
     style: "currency",
@@ -58,7 +62,7 @@ export function OrderTicket({
   });
   return (
     <div
-      id="print-ticket"
+      id={print ? "print-ticket" : undefined}
       className="mx-auto w-full max-w-70 rounded-lg border border-dashed border-border bg-background px-5 py-4 font-mono text-[13px] leading-snug text-text-primary"
     >
       {order.logoUrl && (
@@ -174,6 +178,15 @@ export function TicketModal({
       {order && (
         <div className="flex flex-col gap-4">
           <OrderTicket order={order} storeName={storeName} />
+          {/* copia de impresión: fuera del <dialog> (portaleada al body) —
+              dentro del modal quedaría anclada/recortada al imprimir */}
+          {typeof document !== "undefined" &&
+            createPortal(
+              <div aria-hidden className="invisible h-0 overflow-hidden">
+                <OrderTicket order={order} storeName={storeName} print />
+              </div>,
+              document.body,
+            )}
           <button
             type="button"
             onClick={() => window.print()}

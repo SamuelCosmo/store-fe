@@ -49,8 +49,8 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       cierre
       de sesión por rol sigue siendo client-side (`iat` del JWT) — el `exp`
       sigue fijo hasta que el backend tenga TTL por rol. Pendiente ampliar
-      parámetros (impresión, idle del kiosco) y usar `currency`/`taxRate`
-      al cobrar.
+      parámetros (idle del kiosco) y usar `currency`/`taxRate`
+      al cobrar. (Impresión quedó resuelta por equipo — ver ticket.)
 - [x] **Cerrar sesión en caja** — botón de logout en el header de
       `OrderTerminal` solo cuando `channel === "POS"` (limpia
       `store.session` y vuelve a `/`); el kiosco no lo tiene.
@@ -173,11 +173,25 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       `storeName`/`storeAddress` para el encabezado; scoping por store de
       sesión, abierto a CUSTOMER para el kiosco). POS/KDS imprimen con la
       orden que ya tienen en memoria.
+      **Hardware del cliente**: Rongta ACE H1-UE — térmica 80mm ESC/POS,
+      USB+Serial+Ethernet (sin WiFi/BT), autocortadora y soporte de cajón.
       **Decisión de hardware**: impresora por equipo = impresora
       predeterminada del SO en cada caja/kiosco (nivel 1, sin agente ni
       cola de impresión). Para impresión silenciosa lanzar Chrome con
       `--kiosk-printing`. Si se necesita ESC/POS (corte, cajón, impresora
       de cocina aparte) → agente local tipo QZ Tray.
+      **Auto-impresión al cobrar**: flag por equipo `store.print.auto`
+      en localStorage (`isAutoPrint`/`setAutoPrint` en `lib/settings.ts`)
+      con switch "Imprimir ticket al cobrar" en `/settings` → sección
+      Impresión (solo afecta la terminal donde se activa — la impresora
+      es hardware del equipo, no config del tenant). Al confirmar el cobro,
+      `OrderTerminal` imprime una copia oculta del ticket (una vez por
+      orden, `printedOrderId`); el botón "Imprimir ticket" sigue para
+      reimpresión manual. Setup del equipo: instalar driver Rongta USB,
+      dejarla como impresora predeterminada, activar el switch y lanzar
+      Chrome con `--kiosk-printing`. Pendiente: prueba física real (el
+      corte lo da el driver; cajón de dinero se configura en el driver o
+      requerirá ESC/POS/agente).
 - [x] **Corregir formato de impresión del ticket** — `globals.css` ahora
       imprime térmico: `@page { size: 80mm auto; margin: 0 }` (rollo
       continuo sin alto fijo), `#print-ticket` a `width: 80mm` con
@@ -190,12 +204,31 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       limpia el pedido y un toque lo descarta; caja NO limpia — la
       pantalla ofrece "Continuar con el pedido" o "Comenzar pedido nuevo"
       (este último sí resetea).
-- [ ] **Terminal Bancomer para pago con tarjeta** — hoy `paymentMethod:
-      CARD` se registra sin procesar nada. Integrar la terminal bancaria
-      (Bancomer/BBVA): cobro en el dispositivo físico y confirmación en el
-      POS antes de crear la orden — definir si va por SDK de la terminal,
-      app del banco o link de pago. Backend guardaría referencia/autorización
-      del cobro en `orders`.
+- [ ] **Pago con tarjeta en terminal física** — hoy `paymentMethod: CARD`
+      se registra sin procesar nada. Investigación hecha (doc completo en
+      `store-be/docs/14-card-terminals.md`): el proveedor/terminal es
+      **por restaurante** (cada tenant trae su cuenta y sus terminales —
+      la plataforma no toca dinero). Opciones analizadas:
+      - **BBVA Total POS** — terminal bancaria integrada por TCP/IP en
+        red local; requiere contrato con ejecutivo + spec de protocolo
+        (no público) + agente local por equipo + certificación BBVA.
+        Depósito directo a la cuenta BBVA del restaurante.
+      - **Billpocket Ultra** (BBVA, cloud push, beta) — push-notifications
+        a la terminal por serial + webhook; dev env sin dinero real.
+      - **Mercado Pago Point** — cloud push a sus devices, sandbox
+        inmediato; dinero cae a wallet MP y se transfiere a CLABE.
+      - **NetPay Smart** — REST push a terminal PAX, deposita a cualquier
+        banco vía SPEI; pide terminal de pruebas + certificación.
+      - **Standalone/manual** — funciona hoy: cajero cobra en su terminal
+        y confirma en el POS (fallback permanente).
+      Diseño acordado: `Client.paymentProvider` + credenciales por
+      tenant (solo servidor), `Device` ↔ serial de terminal, entidad
+      `Payment` por intento (idempotencia/reconciliación), webhook o
+      polling de estatus, y la orden CARD entra a KDS solo con pago
+      aprobado. El front solo inicia/consulta estatus al back — nunca
+      llama al proveedor. Bloqueado por: decisión del cliente + cuenta/
+      credenciales del proveedor elegido (PDF entregado al cliente:
+      `docs/terminales-pago-cliente.pdf`).
 - [ ] **Fichas (venta y canje)** — pantalla o sección por definir (idea no
       cerrada): vender fichas en caja (`POST /api/tokens/purchase` —
       `{quantity, paymentMethod}`) y canjearlas por productos con

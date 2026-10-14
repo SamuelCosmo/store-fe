@@ -69,9 +69,11 @@ button:not(:disabled),
 }
 
 /* reimpresión de tickets: solo #print-ticket sale en papel.
-   Térmica 80mm — `size: 80mm auto` = rollo continuo sin alto fijo. */
+   Térmica 80mm — Chrome no acepta `size: 80mm auto` (descarta la regla
+   y usa Letter), así que la página es 80×297mm; un ticket más largo
+   pagina y el driver de la impresora corta al final del documento. */
 @page {
-  size: 80mm auto;
+  size: 80mm 297mm;
   margin: 0;
 }
 
@@ -82,9 +84,17 @@ button:not(:disabled),
   dialog::backdrop {
     display: none;
   }
+  /* el ticket imprime igual que en pantalla, pero siempre tinta negra:
+     el papel térmico no reproduce grises y el tema oscuro saldría
+     ilegible sobre blanco */
   #print-ticket,
   #print-ticket * {
     visibility: visible;
+    color: #000;
+    border-color: #000;
+    background: none;
+    box-shadow: none;
+    text-shadow: none;
   }
   #print-ticket {
     position: absolute;
@@ -93,14 +103,5 @@ button:not(:disabled),
     width: 80mm;
     max-width: 80mm;
     margin: 0;
-    padding: 4mm 3mm;
-    border: none;
-    border-radius: 0;
-    font-size: 11px;
-    line-height: 1.35;
-  }
-  /* el logo imprime en grises — limita su alto para no quemar tinta */
-  #print-ticket img {
-    max-height: 14mm;
   }
 }

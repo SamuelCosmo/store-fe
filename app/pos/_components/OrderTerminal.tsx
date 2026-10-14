@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import {
   SETTINGS_CHANGED_EVENT,
   getSettings,
+  isAutoPrint,
   type StoreSettings,
 } from "@/lib/settings";
 import { clearSession, useSession } from "@/lib/session";
@@ -31,6 +32,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  OrderTicket,
   TicketModal,
   type TicketOrder,
 } from "@/components/molecules/OrderTicket";
@@ -164,9 +166,15 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   const [now, setNow] = useState<Date | null>(null);
   // null hasta que el cache del backend esté listo → fallbacks por campo
   const [settings, setSettings] = useState<StoreSettings | null>(null);
+  // flag por equipo (impresora térmica conectada a esta terminal)
+  const [autoPrint, setAutoPrint] = useState(false);
+  const printedOrderId = useRef<number | null>(null);
 
   useEffect(() => {
-    const read = () => setSettings(getSettings());
+    const read = () => {
+      setSettings(getSettings());
+      setAutoPrint(isAutoPrint());
+    };
     const id = setTimeout(read, 0);
     window.addEventListener(SETTINGS_CHANGED_EVENT, read);
     return () => {
@@ -399,6 +407,17 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     setCategoryId(0);
     setMenu(null);
   }, []);
+
+  // Auto-imprime el ticket al cobrar — imprime la copia oculta de abajo
+  // (@media print solo muestra #print-ticket). Una vez por orden.
+  useEffect(() => {
+    if (!receipt || !autoPrint || printedOrderId.current === receipt.id) {
+      return;
+    }
+    printedOrderId.current = receipt.id;
+    const t = setTimeout(() => window.print(), 250);
+    return () => clearTimeout(t);
+  }, [receipt, autoPrint]);
 
   useEffect(() => {
     if (!receipt) return;
@@ -929,6 +948,15 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           </div>
         )}
       </Modal>
+
+      {/* copia oculta para la auto-impresión: solo sale en papel
+          (h-0 la colapsa en pantalla; en print #print-ticket es absolute y
+          escapa el overflow:hidden del padre estático) */}
+      {receipt && autoPrint && !ticket && (
+        <div aria-hidden className="invisible h-0 overflow-hidden">
+          <OrderTicket order={receipt} storeName={storeName} print />
+        </div>
+      )}
 
       <TicketModal
         order={ticket}

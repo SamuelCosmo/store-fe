@@ -134,3 +134,20 @@ export async function refreshSettings(
   saveSettings(settings);
   return settings;
 }
+
+// Auto-impresión del ticket al cobrar — flag por EQUIPO, separado de
+// `store.settings`: la impresora es hardware de la terminal, no config del
+// tenant, y refreshSettings reemplaza ese objeto completo.
+const AUTO_PRINT_KEY = "store.print.auto";
+
+export function isAutoPrint(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    localStorage.getItem(AUTO_PRINT_KEY) === "1"
+  );
+}
+
+export function setAutoPrint(on: boolean) {
+  localStorage.setItem(AUTO_PRINT_KEY, on ? "1" : "0");
+  window.dispatchEvent(new Event(SETTINGS_CHANGED_EVENT));
+}

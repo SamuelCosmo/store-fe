@@ -5,7 +5,9 @@ import { api } from "@/lib/api";
 import { ROLE_LABEL, saveSession, useSession, type Role } from "@/lib/session";
 import {
   DEFAULT_SETTINGS,
+  isAutoPrint,
   refreshSettings,
+  setAutoPrint,
   type ClientSettingsDto,
   type StoreSettings,
   type StoreSettingsDto,
@@ -18,6 +20,7 @@ import {
   Coins,
   MonitorSmartphone,
   Palette,
+  Printer,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -117,6 +120,13 @@ export function SettingsView() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // flag por equipo — no viaja al backend ni al botón Guardar
+  const [printAuto, setPrintAuto] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setPrintAuto(isAutoPrint()), 0);
+    return () => clearTimeout(t);
+  }, []);
 
   // Deps primitivos: saveSession crea un objeto session nuevo al guardar
   // marca — depender del objeto re-dispararía este fetch y resetearía el
@@ -486,6 +496,25 @@ export function SettingsView() {
               <p className="text-[11px] text-text-secondary">
                 Tiempo que el modal de «Pedido enviado» espera antes de
                 reiniciar para el siguiente cliente.
+              </p>
+            </Card>
+
+            <Card icon={Printer} title="Impresión">
+              <Switch
+                on={printAuto}
+                onToggle={() => {
+                  const next = !printAuto;
+                  setAutoPrint(next);
+                  setPrintAuto(next);
+                }}
+                label="Imprimir ticket al cobrar"
+                hint="Manda el ticket a la impresora apenas se confirma el pago"
+              />
+              <p className="text-[11px] text-text-secondary">
+                Aplica solo a este equipo — imprime en la impresora
+                predeterminada del sistema operativo. Para imprimir sin que
+                aparezca el diálogo de Windows, abrir el navegador con el
+                flag --kiosk-printing.
               </p>
             </Card>
 

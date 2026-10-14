@@ -11,6 +11,9 @@ documentos solo cubren cómo el frontend la consume.
 2. [Arquitectura y convenciones](02-architecture.md) — estructura del repo,
    sesión, API client, patrones de UI.
 3. [TODOs](03-todos.md) — trabajo pendiente, en orden sugerido.
+4. [Impresora térmica](04-impresora-termica.md) — setup de la Rongta 80mm:
+   driver, impresión silenciosa (`--kiosk-printing`) y auto-impresión al
+   cobrar.
 
 ## Setup rápido
 
