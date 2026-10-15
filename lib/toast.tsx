@@ -10,6 +10,7 @@ import {
 } from "react";
 import { AlertCircle, CheckCircle2, X } from "lucide-react";
 import { useI18n } from "./i18n";
+import { breadcrumb } from "./log";
 
 type Toast = { id: number; kind: "success" | "error"; message: string };
 
@@ -39,6 +40,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const push = useCallback(
     (kind: Toast["kind"], message: string) => {
+      if (kind === "error") breadcrumb("toast.error", message);
       const id = Date.now() + Math.random();
       setToasts((prev) => [...prev, { id, kind, message }]);
       setTimeout(() => dismiss(id), DURATION_MS);

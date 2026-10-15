@@ -8,6 +8,7 @@ import {
   readStoredSession,
 } from "@/lib/store";
 import { LangProvider } from "@/lib/i18n";
+import { report } from "@/lib/log";
 import { ToastProvider } from "@/lib/toast";
 import { SESSION_EXPIRED_EVENT, isSessionExpired } from "@/lib/session";
 import { refreshSettings } from "@/lib/settings";
@@ -33,6 +34,7 @@ export function Providers({ children }: { children: ReactNode }) {
         refreshSettings(stored.clientId, stored.storeId).catch(() => {});
       }
     } else if (stored) {
+      report("info", "session.expired", "expired on page load");
       store.dispatch(clearSession());
       if (pathname !== "/") router.replace("/?expired=1");
     }
@@ -46,6 +48,7 @@ export function Providers({ children }: { children: ReactNode }) {
       const session = store.getState().session.value;
       if (!session) return;
       if (isSessionExpired(session)) {
+        report("info", "session.expired", "role TTL reached");
         store.dispatch(clearSession());
         window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
         return;

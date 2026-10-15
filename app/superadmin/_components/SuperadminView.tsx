@@ -12,6 +12,7 @@ import {
   type AuthResponse,
 } from "@/lib/session";
 import { PASSWORD_RULES } from "@/lib/password";
+import { LogsPanel } from "./LogsPanel";
 import {
   Building2,
   Check,
@@ -196,6 +197,7 @@ export function SuperadminView() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminSaving, setAdminSaving] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"clients" | "logs">("clients");
 
   const isSuper = session?.role === "SUPERADMIN";
 
@@ -356,20 +358,44 @@ export function SuperadminView() {
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-8">
+      <div
+        className={`mx-auto flex w-full flex-1 flex-col gap-6 p-8 ${tab === "logs" ? "max-w-7xl" : "max-w-4xl"}`}
+      >
         <div className="flex items-center justify-between">
-          <h1 className="text-[26px] font-extrabold text-text-primary">
-            {t("sa.clients")}
-          </h1>
-          <button
-            type="button"
-            onClick={() => openModal("new")}
-            className="flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover"
-          >
-            {t("sa.new")}
-            <Plus size={15} aria-hidden />
-          </button>
+          <div role="tablist" className="flex gap-1 rounded-xl border border-border bg-background p-1">
+            {(["clients", "logs"] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                onClick={() => setTab(key)}
+                className={`rounded-lg px-4 py-2 text-[15px] font-extrabold transition-colors ${
+                  tab === key
+                    ? "bg-primary text-white"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {key === "clients" ? t("sa.clients") : t("sa.logs")}
+              </button>
+            ))}
+          </div>
+          {tab === "clients" && (
+            <button
+              type="button"
+              onClick={() => openModal("new")}
+              className="flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover"
+            >
+              {t("sa.new")}
+              <Plus size={15} aria-hidden />
+            </button>
+          )}
         </div>
+
+        {tab === "logs" ? (
+          <LogsPanel clients={clients} />
+        ) : (
+          <>
 
         {error && (
           <p
@@ -446,6 +472,8 @@ export function SuperadminView() {
             ))
           )}
         </div>
+          </>
+        )}
       </div>
 
       <Modal

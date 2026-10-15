@@ -292,6 +292,31 @@ Todos los errores llegan como `ErrorResponse`:
 
 Mapear `fieldErrors` a los campos del formulario; `message` es texto legible.
 
+## Logs y diagnóstico
+
+- `api()` manda `X-Request-Id` en cada request; el back lo pone en el MDC
+  (`requestId`, `userId`, `clientId`, `storeId`, `role`) y lo devuelve.
+  Errores 5xx/de red muestran `· ref <id>` en el toast → buscar ese id en
+  los logs de Railway.
+- Back (`RequestLogFilter`): una línea por request — mutaciones INFO, 4xx
+  WARN, 5xx ERROR con el body JSON (claves *password/token/secret* → `***`);
+  GET exitosos en DEBUG (`LOG_LEVEL_REQUESTS=DEBUG`). Login ok/fallido en
+  `AuthService`.
+- `POST /api/logs` (público) recibe eventos del front (`lib/log.ts`
+  `report()`): `api.error`, `api.network` (con body del form enmascarado),
+  `js.error`, `js.unhandledrejection`, `react.crash` (`app/global-error.tsx`),
+  `session.login/logout/expired`. warn/error adjuntan los últimos 40
+  breadcrumbs (nav, clicks, llamadas API, toasts de error) —
+  `instrumentation-client.ts`.
+- Railway: `LOGGING_STRUCTURED_FORMAT_CONSOLE=logstash` → JSON con atributos
+  filtrables.
+- Persistencia: `DbLogAppender` guarda en `app_logs` todo WARN/ERROR (con
+  stack) + INFO de auditoría (requests que mutan, eventos `client`, logins),
+  en conexión propia (sobrevive al rollback). Retención
+  `LOG_RETENTION_DAYS` (30). `GET /api/logs?level=&q=&requestId=&userId=
+  &clientId=&from=&to=&page=&size=` (SUPERADMIN, Page, más nuevo primero) →
+  pestaña "Logs" en `/superadmin` (`LogsPanel.tsx`).
+
 ## Cambios al backend — actualiza los tests
 
 Al tocar `store-be` (firmas de DTOs/records, constructores, comportamiento de

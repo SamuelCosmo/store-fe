@@ -1,6 +1,7 @@
 "use client";
 
 import { useSelector } from "react-redux";
+import { report } from "./log";
 import { getSettings } from "./settings";
 import { clearSession as clearSessionAction, getStore, setSession } from "./store";
 
@@ -49,7 +50,9 @@ export const ROLE_LABEL: Record<Role, string> = {
 export function saveSession(
   session: Omit<AuthResponse, "loginAt"> & { loginAt?: number },
 ) {
+  const isLogin = !getSession();
   getStore().dispatch(setSession({ ...session, loginAt: session.loginAt ?? Date.now() }));
+  if (isLogin) report("info", "session.login", `${session.role} login`);
 }
 
 export function clearSession() {
