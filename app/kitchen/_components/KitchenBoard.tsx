@@ -3,6 +3,7 @@
 import { BrandMark } from "@/components/molecules/BrandMark";
 import { Modal } from "@/components/molecules/Modal";
 import { api } from "@/lib/api";
+import { useI18n, type TKey } from "@/lib/i18n";
 import { SETTINGS_CHANGED_EVENT, getSettings } from "@/lib/settings";
 import {
   TicketModal,
@@ -29,16 +30,16 @@ const ACTIVE: OrderStatus[] = ["PENDING", "CONFIRMED", "PREPARING", "READY"];
 
 // cadena del backend: PENDING→PREPARING→READY→COMPLETED (CONFIRMED queda
 // opcional; el KDS pasa directo a PREPARING)
-const NEXT: Partial<Record<OrderStatus, { label: string; to: OrderStatus }>> = {
-  PENDING: { label: "Preparando", to: "PREPARING" },
-  CONFIRMED: { label: "Preparando", to: "PREPARING" },
-  PREPARING: { label: "Lista", to: "READY" },
-  READY: { label: "Entregar", to: "COMPLETED" },
+const NEXT: Partial<Record<OrderStatus, { key: TKey; to: OrderStatus }>> = {
+  PENDING: { key: "status.PREPARING", to: "PREPARING" },
+  CONFIRMED: { key: "status.PREPARING", to: "PREPARING" },
+  PREPARING: { key: "status.READY", to: "READY" },
+  READY: { key: "kitchen.deliver", to: "COMPLETED" },
 };
 
-const STATUS_CHIP: Partial<Record<OrderStatus, string>> = {
-  PREPARING: "Preparando",
-  READY: "Lista",
+const STATUS_CHIP: Partial<Record<OrderStatus, TKey>> = {
+  PREPARING: "status.PREPARING",
+  READY: "status.READY",
 };
 
 function elapsedMin(createdAt: string, now: Date) {
@@ -58,6 +59,8 @@ function ageCls(min: number, okMin: number, warnMin: number) {
 export function KitchenBoard() {
   const session = useSession();
   const router = useRouter();
+  const { t, lang } = useI18n();
+  const locale = lang === "en" ? "en-US" : "es-MX";
   const [orders, setOrders] = useState<OrderDto[]>([]);
   const [storeName, setStoreName] = useState("Store");
   const [loading, setLoading] = useState(true);
@@ -169,9 +172,7 @@ export function KitchenBoard() {
         .catch((e: unknown) => {
           if (!cancelled)
             setError(
-              e instanceof Error
-                ? e.message
-                : "No se pudieron cargar las órdenes",
+              e instanceof Error ? e.message : t("kitchen.loadError"),
             );
         })
         .finally(() => {
@@ -186,6 +187,7 @@ export function KitchenBoard() {
       clearTimeout(first);
       clearInterval(poll);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t es estable
   }, [session, load]);
 
   const sorted = useMemo(
@@ -205,7 +207,7 @@ export function KitchenBoard() {
       });
       await load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "No se pudo actualizar la orden");
+      setError(e instanceof Error ? e.message : t("kitchen.updateError"));
     } finally {
       setBusy(null);
     }
@@ -223,7 +225,7 @@ export function KitchenBoard() {
       await load();
     } catch (e: unknown) {
       setConfirmCancel(null);
-      setError(e instanceof Error ? e.message : "No se pudo cancelar la orden");
+      setError(e instanceof Error ? e.message : t("kitchen.cancelError"));
     } finally {
       setBusy(null);
     }
@@ -234,13 +236,13 @@ export function KitchenBoard() {
       <header className="flex h-[88px] shrink-0 items-center justify-between border-b border-border bg-background px-8">
         <BrandMark
           title={(session?.clientName || storeName).toUpperCase()}
-          subtitle="Cocina"
+          subtitle={t("kitchen.title")}
           logoUrl={session?.clientLogoUrl}
         />
         <div className="flex items-center gap-4">
           <p className="text-lg font-bold text-text-secondary tabular-nums">
             {now
-              ? now.toLocaleTimeString("es-MX", {
+              ? now.toLocaleTimeString(locale, {
                   hour: "2-digit",
                   minute: "2-digit",
                 })
@@ -254,7 +256,7 @@ export function KitchenBoard() {
               className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-bold text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <ArrowLeft size={14} aria-hidden />
-              Volver
+              {t("common.back")}
             </Link>
           )}
         </div>
@@ -272,15 +274,15 @@ export function KitchenBoard() {
 
         {!session ? (
           <p className="py-16 text-center text-sm text-text-muted">
-            Inicia sesión para ver las órdenes.
+            {t("kitchen.loginRequired")}
           </p>
         ) : loading ? (
           <p className="py-16 text-center text-sm text-text-muted">
-            Cargando órdenes…
+            {t("kitchen.loading")}
           </p>
         ) : sorted.length === 0 ? (
           <p className="py-16 text-center text-sm text-text-muted">
-            Sin órdenes activas
+            {t("kitchen.empty")}
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -301,7 +303,7 @@ export function KitchenBoard() {
                     <div className="flex items-center gap-2">
                       {chip && (
                         <span className="rounded-full bg-background/70 px-2.5 py-1 text-[11px] font-bold text-text-secondary">
-                          {chip}
+                          {t(chip)}
                         </span>
                       )}
                       <span className="text-sm font-extrabold text-text-primary tabular-nums">
@@ -311,9 +313,11 @@ export function KitchenBoard() {
                   </div>
 
                   <p className="text-xs font-semibold text-text-secondary">
-                    {o.orderType === "DINE_IN" ? "En mesa" : "Para llevar"}
+                    {o.orderType === "DINE_IN"
+                      ? t("ticket.dineIn")
+                      : t("ticket.takeaway")}
                     {" · "}
-                    {o.channel === "KIOSK" ? "Kiosko" : "Caja"}
+                    {o.channel === "KIOSK" ? t("ticket.kiosk") : t("ticket.pos")}
                   </p>
 
                   <ul className="flex flex-col gap-1 border-t border-text-primary/10 pt-3">
@@ -353,8 +357,8 @@ export function KitchenBoard() {
                     <button
                       type="button"
                       onClick={() => setTicket(o)}
-                      title="Reimprimir ticket"
-                      aria-label={`Reimprimir ticket del pedido ${o.id}`}
+                      title={t("orders.reprint")}
+                      aria-label={t("orders.reprintAria", { n: o.id })}
                       className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-text-primary/20 bg-background/60 text-text-secondary transition-colors hover:text-primary"
                     >
                       <Printer size={16} aria-hidden />
@@ -366,7 +370,7 @@ export function KitchenBoard() {
                         disabled={busy === o.id}
                         className="h-10 flex-1 rounded-xl bg-primary text-[13px] font-bold text-white transition-colors hover:bg-primary-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                       >
-                        {next.label}
+                        {t(next.key)}
                       </button>
                     )}
                     {o.status !== "READY" && (
@@ -376,7 +380,7 @@ export function KitchenBoard() {
                         disabled={busy === o.id}
                         className="h-10 rounded-xl border border-text-primary/20 bg-background/60 px-3 text-[13px] font-semibold text-text-secondary transition-colors hover:border-error/50 hover:text-error disabled:opacity-50"
                       >
-                        Cancelar
+                        {t("common.cancel")}
                       </button>
                     )}
                   </div>
@@ -390,7 +394,7 @@ export function KitchenBoard() {
       <Modal
         open={confirmCancel !== null}
         onClose={() => setConfirmCancel(null)}
-        title={`Cancelar pedido #${confirmCancel?.id ?? ""}`}
+        title={t("kitchen.cancelTitle", { n: confirmCancel?.id ?? "" })}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-start gap-3">
@@ -400,9 +404,7 @@ export function KitchenBoard() {
               aria-hidden
             />
             <p className="text-sm leading-relaxed text-text-secondary">
-              El pedido se cancelará y se marcará como reembolso pendiente.
-              El inventario configurado se repone. Esta acción no se puede
-              deshacer.
+              {t("kitchen.cancelText")}
             </p>
           </div>
           <div className="flex justify-end gap-2.5">
@@ -411,7 +413,7 @@ export function KitchenBoard() {
               onClick={() => setConfirmCancel(null)}
               className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface"
             >
-              Volver
+              {t("common.back")}
             </button>
             <button
               type="button"
@@ -419,7 +421,7 @@ export function KitchenBoard() {
               disabled={busy === confirmCancel?.id}
               className="rounded-lg bg-error px-4 py-2.5 text-sm font-bold text-white transition-colors hover:opacity-90 disabled:opacity-60"
             >
-              Cancelar pedido
+              {t("kitchen.cancelOrder")}
             </button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
 import { X } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 
@@ -17,6 +18,7 @@ export function Modal({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     const el = ref.current;
@@ -39,7 +41,7 @@ export function Modal({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Cerrar"
+          aria-label={t("common.close")}
           className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface hover:text-text-primary"
         >
           <X size={18} aria-hidden />

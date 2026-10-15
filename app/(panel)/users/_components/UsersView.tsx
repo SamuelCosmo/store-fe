@@ -2,7 +2,8 @@
 
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { api } from "@/lib/api";
-import { ROLE_LABEL, useSession, type Role } from "@/lib/session";
+import { useI18n, type TKey } from "@/lib/i18n";
+import { useSession, type Role } from "@/lib/session";
 import {
   Eye,
   EyeOff,
@@ -21,6 +22,7 @@ import {
   usePagination,
   type PageDto,
 } from "../../_components/usePagination";
+import { DeletedList } from "../../_components/DeletedList";
 import { ConfirmPasswordModal } from "./ConfirmPasswordModal";
 import { UserModal, type UserFormData } from "./UserModal";
 
@@ -52,6 +54,7 @@ type Confirm =
 
 export function UsersView() {
   const session = useSession();
+  const { t } = useI18n();
   const [users, setUsers] = useState<UserDto[]>([]);
   const [stores, setStores] = useState<StoreDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +91,7 @@ export function UsersView() {
   // la página de usuarios la sirve el backend: page/size/sort/search en la query
   useEffect(() => {
     if (!session) return;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       api<PageDto<UserDto>>(
         `/api/users?page=${page}&size=${size}&sort=${sortParam}&search=${encodeURIComponent(query)}`,
       )
@@ -101,11 +104,12 @@ export function UsersView() {
           setMeta({ total: r.totalElements, pages: Math.max(1, r.totalPages) });
         })
         .catch((e: unknown) =>
-          setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+          setError(e instanceof Error ? e.message : t("common.loadError")),
         )
         .finally(() => setLoading(false));
     }, query ? 250 : 0);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t es estable
   }, [session, page, size, sortParam, query, reload, setPage]);
 
   const storeName = (id: number) => stores.find((s) => s.id === id)?.name;
@@ -164,10 +168,7 @@ export function UsersView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Usuarios"
-        subtitle="El equipo que opera tu negocio"
-      />
+      <PageHeader title={t("users.title")} subtitle={t("users.subtitle")} />
 
       <div className="flex items-center justify-between gap-4">
         <label className="flex h-[42px] w-full max-w-[320px] items-center gap-2.5 rounded-xl border border-border bg-background px-3.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25">
@@ -179,7 +180,7 @@ export function UsersView() {
               setQuery(e.target.value);
               setPage(0);
             }}
-            placeholder="Buscar usuario…"
+            placeholder={t("users.search")}
             className="w-full bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
         </label>
@@ -190,7 +191,7 @@ export function UsersView() {
           }}
           className="flex h-[42px] shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
-          Nuevo usuario
+          {t("users.new")}
           <Plus size={15} aria-hidden />
         </button>
       </div>
@@ -208,25 +209,23 @@ export function UsersView() {
         <div
           className={`grid ${GRID} items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase`}
         >
-          {th("name", "Usuario")}
-          {th("role", "Rol")}
-          <span>Establecimientos</span>
-          <span>Acción</span>
+          {th("name", t("users.colUser"))}
+          {th("role", t("users.colRole"))}
+          <span>{t("common.stores")}</span>
+          <span>{t("common.actions")}</span>
         </div>
 
         {!session ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-            Inicia sesión para ver los usuarios.
+            {t("users.loginRequired")}
           </p>
         ) : loading ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-            Cargando…
+            {t("common.loading")}
           </p>
         ) : sorted.length === 0 ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-            {query
-              ? `Sin resultados para “${query}”`
-              : "Aún no hay usuarios. Crea el primero."}
+            {query ? t("common.noResults", { q: query }) : t("users.empty")}
           </p>
         ) : (
           sorted.map((user) => (
@@ -251,11 +250,11 @@ export function UsersView() {
                 <span
                   className={`inline-flex items-center rounded-full px-2.5 py-1.5 text-[11px] font-bold ${ROLE_STYLE[user.role]}`}
                 >
-                  {ROLE_LABEL[user.role]}
+                  {t(`role.${user.role}` as TKey)}
                 </span>
                 {!user.active && (
                   <span className="inline-flex items-center rounded-full bg-error/10 px-2.5 py-1.5 text-[11px] font-bold text-error">
-                    Inactivo
+                    {t("common.inactive")}
                   </span>
                 )}
               </div>
@@ -268,7 +267,7 @@ export function UsersView() {
               >
                 {user.role === "ADMIN" || user.storeIds.length === 0
                   ? user.role === "ADMIN"
-                    ? "Todos"
+                    ? t("common.all")
                     : "—"
                   : user.storeIds
                       .map((id) => storeName(id) ?? `#${id}`)
@@ -276,7 +275,7 @@ export function UsersView() {
               </p>
               <div className="relative flex items-center gap-2">
                 <button
-                  aria-label={`Editar ${user.name}`}
+                  aria-label={t("common.editAria", { name: user.name })}
                   onClick={() => {
                     setEditing(user);
                     setModalOpen(true);
@@ -286,7 +285,7 @@ export function UsersView() {
                   <Pencil size={17} aria-hidden />
                 </button>
                 <button
-                  aria-label={`Más acciones para ${user.name}`}
+                  aria-label={t("common.moreAria", { name: user.name })}
                   aria-expanded={menuId === user.id}
                   aria-haspopup="menu"
                   onClick={() => setMenuId(menuId === user.id ? null : user.id)}
@@ -316,7 +315,9 @@ export function UsersView() {
                         ) : (
                           <Eye size={15} aria-hidden />
                         )}
-                        {user.active ? "Desactivar" : "Activar"}
+                        {user.active
+                          ? t("common.deactivate")
+                          : t("common.activate")}
                       </button>
                       <button
                         onClick={() => {
@@ -326,7 +327,7 @@ export function UsersView() {
                         className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-error transition-colors hover:bg-surface"
                       >
                         <Trash2 size={15} aria-hidden />
-                        Eliminar
+                        {t("common.delete")}
                       </button>
                     </div>
                   </>
@@ -345,6 +346,12 @@ export function UsersView() {
         />
       </div>
 
+      <DeletedList
+        endpoint="/api/users"
+        title={t("users.deletedTitle")}
+        onRestored={() => setReload((r) => r + 1)}
+      />
+
       <UserModal
         open={modalOpen}
         user={editing}
@@ -357,28 +364,33 @@ export function UsersView() {
         open={confirm !== null}
         title={
           confirm?.kind === "save"
-            ? "Confirma tu identidad"
+            ? t("users.confirmIdentity")
             : confirm?.kind === "delete"
-              ? `Eliminar a ${confirm.user.name}`
+              ? t("users.deleteTitle", { name: confirm.user.name })
               : confirm?.user.active
-                ? `Desactivar a ${confirm.user.name}`
-                : `Activar a ${confirm?.user.name}`
+                ? t("users.deactivateTitle", { name: confirm.user.name })
+                : t("users.activateTitle", { name: confirm?.user.name ?? "" })
         }
         description={
           confirm?.kind === "save"
-            ? `Ingresa tu contraseña para ${editing ? "guardar los cambios" : "crear el usuario"}.`
+            ? t(
+                editing
+                  ? "users.confirmSaveEdit"
+                  : "users.confirmSaveNew",
+                { name: confirm.data.name },
+              )
             : confirm?.kind === "delete"
-              ? "Esta acción no se puede deshacer. Ingresa tu contraseña para confirmar."
-              : "Ingresa tu contraseña para confirmar."
+              ? t("users.confirmDeleteDesc")
+              : t("users.confirmDesc")
         }
         confirmLabel={
           confirm?.kind === "save"
-            ? "Confirmar"
+            ? t("common.confirm")
             : confirm?.kind === "delete"
-              ? "Eliminar"
+              ? t("common.delete")
               : confirm?.user.active
-                ? "Desactivar"
-                : "Activar"
+                ? t("common.deactivate")
+                : t("common.activate")
         }
         onClose={() => setConfirm(null)}
         onConfirm={runConfirm}

@@ -1,6 +1,7 @@
 "use client";
 
 import { Modal } from "@/components/molecules/Modal";
+import { useI18n } from "@/lib/i18n";
 import { useState, type FormEvent } from "react";
 
 export function ConfirmPasswordModal({
@@ -51,6 +52,7 @@ function ConfirmForm({
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -61,12 +63,10 @@ function ConfirmForm({
     } catch (err) {
       if (err instanceof Error && err.message === "Invalid credentials") {
         // wrong admin password — stay open and let them retry
-        setError("Contraseña incorrecta, vuelve a intentarlo");
+        setError(t("users.pwdWrong"));
       } else {
         onClose();
-        onError(
-          err instanceof Error ? err.message : "No se pudo completar la acción",
-        );
+        onError(err instanceof Error ? err.message : t("common.error"));
       }
     } finally {
       setBusy(false);
@@ -81,7 +81,7 @@ function ConfirmForm({
           htmlFor="confirm-password"
           className="text-sm font-medium text-text-primary"
         >
-          Tu contraseña
+          {t("users.yourPassword")}
         </label>
         <input
           id="confirm-password"

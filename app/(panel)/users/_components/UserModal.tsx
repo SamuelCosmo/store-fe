@@ -1,8 +1,9 @@
 "use client";
 
 import { Modal } from "@/components/molecules/Modal";
+import { useI18n, type TKey } from "@/lib/i18n";
 import { PASSWORD_RULES } from "@/lib/password";
-import { ROLE_LABEL, type Role } from "@/lib/session";
+import { type Role } from "@/lib/session";
 import { Check, ChevronDown, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { StoreDto } from "../../stores/_components/StoresView";
@@ -31,11 +32,12 @@ export function UserModal({
   onClose: () => void;
   onSubmit: (data: UserFormData) => void;
 }) {
+  const { t } = useI18n();
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={user ? "Editar usuario" : "Nuevo usuario"}
+      title={t(user ? "users.modalEdit" : "users.modalNew")}
     >
       {open && (
         <UserForm
@@ -65,6 +67,7 @@ function UserForm({
   const [role, setRole] = useState<Role>(user?.role ?? "EMPLOYEE");
   const [storeIds, setStoreIds] = useState<number[]>(user?.storeIds ?? []);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   const roleOptions =
     user?.role === "ADMIN" ? (["ADMIN", ...ROLES] as Role[]) : ROLES;
@@ -78,16 +81,16 @@ function UserForm({
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!user && storeIds.length === 0) {
-      setError("Selecciona al menos un establecimiento");
+      setError(t("users.storeRequired"));
       return;
     }
     if (password || password2 || !user) {
       if (password !== password2) {
-        setError("Las contraseñas no coinciden");
+        setError(t("users.pwdMismatch"));
         return;
       }
       if (!PASSWORD_RULES.every((r) => r.test(password))) {
-        setError("La contraseña no cumple los requisitos");
+        setError(t("users.pwdWeak"));
         return;
       }
     }
@@ -107,7 +110,7 @@ function UserForm({
           htmlFor="user-name"
           className="text-sm font-medium text-text-primary"
         >
-          Nombre
+          {t("common.name")}
         </label>
         <input
           id="user-name"
@@ -115,7 +118,7 @@ function UserForm({
           onChange={(e) => setName(e.target.value)}
           required
           autoFocus
-          placeholder="Ej. María López"
+          placeholder={t("users.namePh")}
           className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
         />
       </div>
@@ -125,7 +128,7 @@ function UserForm({
           htmlFor="user-role"
           className="text-sm font-medium text-text-primary"
         >
-          Rol
+          {t("users.colRole")}
         </label>
         <div className="relative">
           <select
@@ -136,7 +139,7 @@ function UserForm({
           >
             {roleOptions.map((r) => (
               <option key={r} value={r}>
-                {ROLE_LABEL[r]}
+                {t(`role.${r}` as TKey)}
               </option>
             ))}
           </select>
@@ -152,7 +155,7 @@ function UserForm({
           htmlFor="user-email"
           className="text-sm font-medium text-text-primary"
         >
-          Correo
+          {t("login.email")}
         </label>
         <input
           id="user-email"
@@ -160,7 +163,7 @@ function UserForm({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          placeholder="maria@kofi.com"
+          placeholder={t("users.emailPh")}
           className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
         />
       </div>
@@ -170,7 +173,8 @@ function UserForm({
           htmlFor="user-password"
           className="text-sm font-medium text-text-primary"
         >
-          Contraseña{user ? " (opcional)" : ""}
+          {t("login.password")}
+          {user ? ` (${t("common.optional")})` : ""}
         </label>
         <input
           id="user-password"
@@ -178,7 +182,7 @@ function UserForm({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required={!user}
-          placeholder={user ? "Vacío = sin cambios" : "8+ caracteres"}
+          placeholder={t(user ? "users.pwdKeepPh" : "users.pwdPh")}
           className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
         />
       </div>
@@ -189,7 +193,7 @@ function UserForm({
             const ok = rule.test(password);
             return (
               <li
-                key={rule.label}
+                key={rule.key}
                 className={`flex items-center gap-1.5 text-xs ${ok ? "text-success" : "text-error"}`}
               >
                 {ok ? (
@@ -197,7 +201,7 @@ function UserForm({
                 ) : (
                   <X size={13} aria-hidden />
                 )}
-                {rule.label}
+                {t(rule.key)}
               </li>
             );
           })}
@@ -210,7 +214,7 @@ function UserForm({
             htmlFor="user-password2"
             className="text-sm font-medium text-text-primary"
           >
-            Repetir contraseña
+            {t("users.pwdRepeat")}
           </label>
           <input
             id="user-password2"
@@ -218,7 +222,7 @@ function UserForm({
             value={password2}
             onChange={(e) => setPassword2(e.target.value)}
             required={!user || !!password}
-            placeholder="Escríbela de nuevo"
+            placeholder={t("users.pwdRepeatPh")}
             className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
           />
           {password2 !== "" && (
@@ -233,8 +237,8 @@ function UserForm({
                 <X size={13} aria-hidden />
               )}
               {password === password2
-                ? "Las contraseñas coinciden"
-                : "Las contraseñas no coinciden"}
+                ? t("users.pwdMatch")
+                : t("users.pwdMismatch")}
             </p>
           )}
         </div>
@@ -243,7 +247,7 @@ function UserForm({
       {stores.length > 0 && (
         <fieldset className="flex flex-col gap-1.5">
           <legend className="text-sm font-medium text-text-primary">
-            Establecimientos que opera
+            {t("users.storesLegend")}
           </legend>
           <div className="flex max-h-44 flex-col gap-1 overflow-y-auto">
             {stores.map((store) => (
@@ -275,7 +279,7 @@ function UserForm({
           type="submit"
           className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
         >
-          {user ? "Guardar cambios" : "Crear usuario"}
+          {user ? t("common.saveChanges") : t("users.create")}
         </button>
       </div>
     </form>

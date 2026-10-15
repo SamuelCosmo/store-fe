@@ -3,6 +3,7 @@
 import { BrandMark } from "@/components/molecules/BrandMark";
 import { Modal } from "@/components/molecules/Modal";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import {
   SETTINGS_CHANGED_EVENT,
   getSettings,
@@ -19,6 +20,7 @@ import {
   ChefHat,
   CircleCheck,
   CircleSlash,
+  Coins,
   CopyPlus,
   CreditCard,
   LogOut,
@@ -132,6 +134,8 @@ function SeaWaves() {
 export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   const router = useRouter();
   const session = useSession();
+  const { t, lang } = useI18n();
+  const locale = lang === "en" ? "en-US" : "es-MX";
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [storeName, setStoreName] = useState("Store");
@@ -157,9 +161,14 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   } | null>(null);
   const [payOpen, setPayOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [payment, setPayment] = useState<"CASH" | "CARD">(
+  const [payment, setPayment] = useState<"CASH" | "CARD" | "TOKEN">(
     channel === "KIOSK" ? "CARD" : "CASH",
   );
+  const [tokenSale, setTokenSale] = useState<{
+    quantity: string;
+    method: "CASH" | "CARD";
+    busy: boolean;
+  } | null>(null);
   const [paying, setPaying] = useState(false);
   const [cashReceived, setCashReceived] = useState("");
   const [idle, setIdle] = useState(false);
@@ -188,8 +197,8 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   const taxRate = settings?.taxRate ?? 0;
   const fmt = useMemo(
     () =>
-      new Intl.NumberFormat("es-MX", { style: "currency", currency }),
-    [currency],
+      new Intl.NumberFormat(locale, { style: "currency", currency }),
+    [locale, currency],
   );
 
   useEffect(() => {
@@ -233,7 +242,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
         .catch((e: unknown) => {
           if (!cancelled) {
             setError(
-              e instanceof Error ? e.message : "No se pudo cargar el menú",
+              e instanceof Error ? e.message : t("pos.loadError"),
             );
           }
         })
@@ -253,6 +262,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       clearInterval(poll);
       document.removeEventListener("visibilitychange", onVisible);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t es estable
   }, [session, load]);
 
   const resetTerminal = useCallback(() => {
@@ -301,6 +311,10 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   // El impuesto se agrega sobre el subtotal — los precios no lo incluyen
   const taxAmount = Math.round(subtotal * taxRate) / 100;
   const total = subtotal + taxAmount;
+  // fichas: solo si TODO el pedido es canjeable (tokenCost > 0 por producto)
+  const tokensDue = cart.reduce((sum, i) => sum + i.product.tokenCost, 0);
+  const cartAllTokenable =
+    cart.length > 0 && cart.every((i) => i.product.tokenCost > 0);
 
   function addToCart(
     product: ProductDto,
@@ -338,7 +352,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       );
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "No se pudo actualizar el producto",
+        e instanceof Error ? e.message : t("pos.updateError"),
       );
     }
   }
@@ -396,9 +410,30 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       });
     } catch (e) {
       setPayOpen(false);
-      setError(e instanceof Error ? e.message : "No se pudo cobrar");
+      setError(e instanceof Error ? e.message : t("pos.payError"));
     } finally {
       setPaying(false);
+    }
+  }
+
+  async function sellTokens() {
+    if (!tokenSale) return;
+    setTokenSale({ ...tokenSale, busy: true });
+    setError(null);
+    try {
+      await api("/api/tokens", {
+        method: "POST",
+        body: JSON.stringify({
+          quantity: Math.floor(Number(tokenSale.quantity)),
+          paymentMethod: tokenSale.method,
+        }),
+      });
+      setTokenSale(null);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : t("pos.tokenSaleError"),
+      );
+      setTokenSale(null);
     }
   }
 
@@ -444,25 +479,39 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
             (session?.clientName || settings?.general.menuName || storeName
             ).toUpperCase()
           }
-          subtitle={channel === "POS" ? "Punto de venta" : "Kiosko"}
+          subtitle={channel === "POS" ? t("pos.subtitle") : t("ticket.kiosk")}
           logoUrl={session?.clientLogoUrl}
         />
         <div className="flex items-center gap-4">
           <p className="text-lg font-bold text-text-secondary tabular-nums">
             {now
-              ? now.toLocaleTimeString("es-MX", {
+              ? now.toLocaleTimeString(locale, {
                   hour: "2-digit",
                   minute: "2-digit",
                 })
               : "--:--"}
           </p>
           <ThemeToggle />
+          {/* venta de fichas — solo caja y solo si el tenant fijó precio */}
+          {channel === "POS" && (settings?.tokenPrice ?? 0) > 0 && (
+            <button
+              onClick={() =>
+                setTokenSale({ quantity: "", method: "CASH", busy: false })
+              }
+              aria-label={t("pos.sellTokens")}
+              title={t("pos.sellTokens")}
+              className="flex h-10 items-center gap-2 rounded-full border border-border px-3.5 text-xs font-semibold text-text-secondary transition-colors hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <Coins size={15} aria-hidden />
+              {t("pos.sellTokens")}
+            </button>
+          )}
           {/* acceso al tablero de pedidos desde la caja */}
           {channel === "POS" && (
             <Link
               href="/kitchen"
-              aria-label="Tablero de pedidos"
-              title="Tablero de pedidos"
+              aria-label={t("pos.kitchenBoard")}
+              title={t("pos.kitchenBoard")}
               className="flex size-10 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <ChefHat size={17} aria-hidden />
@@ -472,7 +521,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           {channel === "POS" && (
             <button
               onClick={() => setConfirmLogout(true)}
-              aria-label="Cerrar sesión"
+              aria-label={t("user.logout")}
               className="flex size-10 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-error/50 hover:text-error focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <LogOut size={17} aria-hidden />
@@ -484,7 +533,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       <div className="flex min-h-0 flex-1 gap-6 p-6">
         <section className="flex min-w-0 flex-1 flex-col gap-5">
           <div className="flex gap-2.5 overflow-x-auto pb-1">
-            {[{ id: 0, name: "Todo" }, ...categories].map((c) => (
+            {[{ id: 0, name: t("common.all") }, ...categories].map((c) => (
               <button
                 key={c.id}
                 onClick={() => setCategoryId(c.id)}
@@ -510,15 +559,15 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
 
           {!session ? (
             <p className="py-16 text-center text-sm text-text-muted">
-              Inicia sesión para operar la terminal.
+              {t("pos.loginRequired")}
             </p>
           ) : loading ? (
             <p className="py-16 text-center text-sm text-text-muted">
-              Cargando menú…
+              {t("pos.loadingMenu")}
             </p>
           ) : visible.length === 0 ? (
             <p className="py-16 text-center text-sm text-text-muted">
-              No hay productos disponibles en esta categoría.
+              {t("pos.emptyCategory")}
             </p>
           ) : (
             <div className="grid min-h-0 flex-1 auto-rows-[268px] grid-cols-2 gap-4 overflow-y-auto pb-1 lg:grid-cols-3 xl:grid-cols-4">
@@ -528,7 +577,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                     type="button"
                     onClick={() => pick(p)}
                     disabled={p.soldOut}
-                    aria-label={`Añadir ${p.name} al pedido`}
+                    aria-label={t("pos.addToOrder", { name: p.name })}
                     className={`flex size-full flex-col overflow-hidden rounded-2xl bg-background text-left shadow-[0_10px_28px_rgba(68,38,25,0.08)] transition-shadow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                       p.soldOut
                         ? "opacity-60"
@@ -549,8 +598,8 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                         </div>
                       )}
                       {p.soldOut && (
-                        <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-sm font-extrabold tracking-widest text-white">
-                          AGOTADO
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-sm font-extrabold tracking-widest text-white uppercase">
+                          {t("products.soldOut")}
                         </span>
                       )}
                     </div>
@@ -575,10 +624,14 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                       aria-pressed={p.soldOut}
                       aria-label={
                         p.soldOut
-                          ? `Marcar ${p.name} como disponible`
-                          : `Marcar ${p.name} como agotado`
+                          ? t("pos.markAvailableAria", { name: p.name })
+                          : t("pos.markSoldOutAria", { name: p.name })
                       }
-                      title={p.soldOut ? "Marcar disponible" : "Marcar agotado"}
+                      title={
+                        p.soldOut
+                          ? t("pos.markAvailable")
+                          : t("pos.markSoldOut")
+                      }
                       className={`absolute top-2 right-2 z-10 flex size-8 items-center justify-center rounded-full shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                         p.soldOut
                           ? "bg-error text-white"
@@ -596,7 +649,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
 
         <aside className="flex w-[380px] shrink-0 flex-col gap-5 overflow-hidden rounded-2xl bg-surface p-6 shadow-[0_10px_28px_rgba(68,38,25,0.08)] xl:w-[432px]">
           <p className="text-2xl font-extrabold text-text-primary">
-            Nuevo pedido
+            {t("pos.newOrder")}
           </p>
 
           <div className="relative flex rounded-full bg-border p-1">
@@ -608,8 +661,8 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
             />
             {(
               [
-                ["DINE_IN", "En mesa"],
-                ["TAKEAWAY", "Para llevar"],
+                ["DINE_IN", t("ticket.dineIn")],
+                ["TAKEAWAY", t("ticket.takeaway")],
               ] as const
             ).map(([value, label]) => (
               <button
@@ -633,7 +686,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           >
             {cart.length === 0 ? (
               <p className="py-10 text-center text-sm text-text-muted">
-                Toca un producto para agregarlo al pedido.
+                {t("pos.emptyCart")}
               </p>
             ) : (
               cart.map((item) => (
@@ -650,7 +703,9 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                     {fmt.format(lineUnit(item))}
                   </p>
                   <button
-                    aria-label={`Opciones de ${item.product.name}`}
+                    aria-label={t("pos.lineOptions", {
+                      name: item.product.name,
+                    })}
                     aria-expanded={menu?.item.id === item.id}
                     aria-haspopup="menu"
                     onClick={(e) => {
@@ -681,19 +736,19 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           {/* desglose estimado del carrito — el cobrado llega persistido en la orden */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between text-[13px] font-semibold">
-              <p className="text-text-secondary">Subtotal</p>
+              <p className="text-text-secondary">{t("ticket.subtotal")}</p>
               <p className="text-text-primary">{fmt.format(subtotal)}</p>
             </div>
             {taxRate > 0 && (
               <div className="flex items-center justify-between text-[13px] font-semibold">
                 <p className="text-text-secondary">
-                  Impuesto ({taxRate}%)
+                  {t("ticket.tax", { rate: taxRate })}
                 </p>
                 <p className="text-text-primary">{fmt.format(taxAmount)}</p>
               </div>
             )}
             <div className="flex items-center justify-between font-extrabold text-text-primary">
-              <p className="text-base">Total</p>
+              <p className="text-base">{t("ticket.total")}</p>
               <p className="text-xl">{fmt.format(total)}</p>
             </div>
           </div>
@@ -706,7 +761,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
             disabled={cart.length === 0}
             className="flex h-14 w-full items-center justify-end gap-2 rounded-2xl bg-primary px-5 text-[15px] font-extrabold text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
           >
-            PAGAR
+            {t("pos.pay")}
             <ArrowRight size={17} aria-hidden />
           </button>
         </aside>
@@ -736,7 +791,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                 className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-text-primary transition-colors hover:bg-surface"
               >
                 <Pencil size={15} aria-hidden />
-                Editar
+                {t("common.edit")}
               </button>
             )}
             <button
@@ -748,7 +803,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-text-primary transition-colors hover:bg-surface"
             >
               <CopyPlus size={15} aria-hidden />
-              Duplicar
+              {t("pos.duplicate")}
             </button>
             <button
               role="menuitem"
@@ -759,7 +814,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-error transition-colors hover:bg-surface"
             >
               <Trash2 size={15} aria-hidden />
-              Eliminar
+              {t("common.delete")}
             </button>
           </div>
         </>
@@ -777,11 +832,11 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       <Modal
         open={payOpen}
         onClose={() => setPayOpen(false)}
-        title="Cobrar pedido"
+        title={t("pos.charge")}
       >
         <div className="flex flex-col gap-5">
           <div
-            className={`grid gap-3 ${channel === "POS" ? "grid-cols-2" : "grid-cols-1"}`}
+            className={`grid gap-3 ${channel === "POS" ? "grid-cols-3" : "grid-cols-1"}`}
           >
             {channel === "POS" && (
               <button
@@ -794,7 +849,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                 }`}
               >
                 <Banknote size={20} aria-hidden />
-                Efectivo
+                {t("ticket.cash")}
               </button>
             )}
             <button
@@ -807,9 +862,40 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               }`}
             >
               <CreditCard size={20} aria-hidden />
-              Tarjeta
+              {t("ticket.card")}
             </button>
+            {channel === "POS" && (
+              <button
+                onClick={() => setPayment("TOKEN")}
+                disabled={!cartAllTokenable}
+                aria-pressed={payment === "TOKEN"}
+                title={
+                  cartAllTokenable
+                    ? t("pos.payTokens")
+                    : t("pos.notTokenable")
+                }
+                className={`flex flex-col items-center gap-2 rounded-xl border-2 py-4 text-sm font-bold transition-colors disabled:opacity-40 ${
+                  payment === "TOKEN"
+                    ? "border-primary bg-primary-light text-primary"
+                    : "border-border text-text-secondary hover:border-primary/40"
+                }`}
+              >
+                <Coins size={20} aria-hidden />
+                {t("ticket.token")}
+              </button>
+            )}
           </div>
+
+          {channel === "POS" && payment === "TOKEN" && (
+            <p className="rounded-lg border border-primary/30 bg-primary-light px-3.5 py-2.5 text-sm font-semibold text-primary">
+              {t("pos.tokenChargeInfo", {
+                n: tokensDue,
+                unit: t(
+                  tokensDue === 1 ? "pos.tokenUnit" : "pos.tokenUnits",
+                ),
+              })}
+            </p>
+          )}
 
           {channel === "POS" && payment === "CASH" && (
             <div className="flex flex-col gap-2">
@@ -817,7 +903,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                 htmlFor="cash-received"
                 className="text-xs font-bold text-text-secondary"
               >
-                Efectivo recibido
+                {t("pos.cashReceived")}
               </label>
               <input
                 id="cash-received"
@@ -833,11 +919,15 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               {cashReceived !== "" &&
                 (Number(cashReceived) >= total ? (
                   <p className="rounded-lg border border-success/40 bg-success/5 px-3.5 py-2.5 text-sm font-semibold text-success">
-                    Cambio a devolver: {fmt.format(Number(cashReceived) - total)}
+                    {t("pos.changeBack", {
+                      v: fmt.format(Number(cashReceived) - total),
+                    })}
                   </p>
                 ) : (
                   <p className="rounded-lg border border-error/40 bg-error/5 px-3.5 py-2.5 text-sm font-semibold text-error">
-                    Faltan {fmt.format(total - Number(cashReceived))}
+                    {t("pos.missing", {
+                      v: fmt.format(total - Number(cashReceived)),
+                    })}
                   </p>
                 ))}
             </div>
@@ -853,15 +943,100 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
             }
             className="w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
           >
-            {paying ? "Cobrando…" : `Cobrar ${fmt.format(total)}`}
+            {paying
+              ? t("pos.charging")
+              : payment === "TOKEN"
+                ? t("pos.chargeTokens", {
+                    n: tokensDue,
+                    unit: t(
+                      tokensDue === 1 ? "pos.tokenUnit" : "pos.tokenUnits",
+                    ),
+                  })
+                : t("pos.chargeTotal", { v: fmt.format(total) })}
           </button>
         </div>
+      </Modal>
+
+      {/* Venta de fichas físicas — el canje es una orden con pago TOKEN. */}
+      <Modal
+        open={tokenSale !== null}
+        onClose={() => setTokenSale(null)}
+        title={t("pos.sellTokens")}
+      >
+        {tokenSale && (
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="token-qty"
+                className="text-xs font-bold text-text-secondary"
+              >
+                {t("pos.tokenQty")}
+              </label>
+              <input
+                id="token-qty"
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                value={tokenSale.quantity}
+                onChange={(e) =>
+                  setTokenSale({ ...tokenSale, quantity: e.target.value })
+                }
+                className="h-11 rounded-xl border border-border bg-background px-3.5 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(
+                [
+                  ["CASH", t("ticket.cash"), Banknote],
+                  ["CARD", t("ticket.card"), CreditCard],
+                ] as const
+              ).map(([value, label, Icon]) => (
+                <button
+                  key={value}
+                  onClick={() =>
+                    setTokenSale({ ...tokenSale, method: value })
+                  }
+                  aria-pressed={tokenSale.method === value}
+                  className={`flex items-center justify-center gap-2 rounded-xl border-2 py-3 text-sm font-bold transition-colors ${
+                    tokenSale.method === value
+                      ? "border-primary bg-primary-light text-primary"
+                      : "border-border text-text-secondary hover:border-primary/40"
+                  }`}
+                >
+                  <Icon size={17} aria-hidden />
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={sellTokens}
+              disabled={
+                tokenSale.busy ||
+                Number(tokenSale.quantity) < 1 ||
+                !Number.isInteger(Number(tokenSale.quantity))
+              }
+              className="w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
+            >
+              {tokenSale.busy
+                ? t("pos.charging")
+                : t("pos.chargeTotal", {
+                    v: fmt.format(
+                      Math.max(
+                        0,
+                        Math.floor(Number(tokenSale.quantity) || 0),
+                      ) * (settings?.tokenPrice ?? 0),
+                    ),
+                  })}
+            </button>
+          </div>
+        )}
       </Modal>
 
       <Modal
         open={confirmLogout}
         onClose={() => setConfirmLogout(false)}
-        title="Cerrar sesión"
+        title={t("user.logout")}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-start gap-3">
@@ -871,9 +1046,8 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               aria-hidden
             />
             <p className="text-sm leading-relaxed text-text-secondary">
-              ¿Estás seguro que quieres cerrar sesión?
-              {cart.length > 0 &&
-                " El pedido en curso se descartará."}
+              {t("common.confirmLogout")}
+              {cart.length > 0 && t("common.confirmLogoutCart")}
             </p>
           </div>
           <div className="flex justify-end gap-2.5">
@@ -882,7 +1056,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               onClick={() => setConfirmLogout(false)}
               className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface"
             >
-              Volver
+              {t("common.back")}
             </button>
             <button
               type="button"
@@ -892,7 +1066,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               }}
               className="rounded-lg bg-error px-4 py-2.5 text-sm font-bold text-white transition-colors hover:opacity-90"
             >
-              Cerrar sesión
+              {t("user.logout")}
             </button>
           </div>
         </div>
@@ -901,34 +1075,44 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       <Modal
         open={receipt !== null}
         onClose={closeReceipt}
-        title="Pedido enviado"
+        title={t("pos.orderSent")}
       >
         {receipt && (
           <div className="flex flex-col items-center gap-4 text-center">
             <CircleCheck size={52} aria-hidden className="text-success" />
             <div className="flex flex-col gap-1">
               <p className="text-lg font-extrabold text-text-primary">
-                Pedido #{receipt.number ?? receipt.id}
+                {t("ticket.order", { n: receipt.number ?? receipt.id })}
               </p>
               <p className="text-sm text-text-secondary">
-                {fmt.format(receipt.total)} ·{" "}
-                {receipt.paymentMethod === "CASH" ? "Efectivo" : "Tarjeta"} ·{" "}
-                {receipt.orderType === "DINE_IN" ? "En mesa" : "Para llevar"}
+                {receipt.paymentMethod === "TOKEN"
+                  ? t("pos.tokenCount", { n: receipt.tokenAmount ?? 0 })
+                  : fmt.format(receipt.total)}{" "}
+                ·{" "}
+                {receipt.paymentMethod === "CASH"
+                  ? t("ticket.cash")
+                  : receipt.paymentMethod === "TOKEN"
+                    ? t("ticket.token")
+                    : t("ticket.card")}{" "}
+                ·{" "}
+                {receipt.orderType === "DINE_IN"
+                  ? t("ticket.dineIn")
+                  : t("ticket.takeaway")}
               </p>
               {/* el desglose real viene persistido en la orden */}
               {receipt.taxAmount > 0 && (
                 <p className="text-xs text-text-muted">
-                  Impuesto ({receipt.taxRate}%):{" "}
+                  {t("ticket.tax", { rate: receipt.taxRate })}:{" "}
                   {fmt.format(receipt.taxAmount)}
                 </p>
               )}
               {receipt.change !== null && receipt.change > 0 && (
                 <p className="mt-1 rounded-lg border border-success/40 bg-success/5 px-3.5 py-2 text-sm font-bold text-success">
-                  Cambio a devolver: {fmt.format(receipt.change)}
+                  {t("pos.changeBack", { v: fmt.format(receipt.change) })}
                 </p>
               )}
               <p className="mt-1 text-xs text-text-muted">
-                La orden ya está en cocina.
+                {t("pos.inKitchen")}
               </p>
             </div>
             <button
@@ -936,7 +1120,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               autoFocus
               className="w-full rounded-xl bg-primary py-3 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
-              Nuevo pedido ({countdown}s)
+              {t("pos.newOrderIn", { n: countdown })}
             </button>
             <button
               type="button"
@@ -944,7 +1128,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-bold text-text-secondary transition-colors hover:bg-surface"
             >
               <Printer size={16} aria-hidden />
-              Imprimir ticket
+              {t("ticket.printTicket")}
             </button>
           </div>
         )}
@@ -976,7 +1160,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               {(settings?.general.menuName || storeName).toUpperCase()}
             </span>
             <span className="text-base font-medium opacity-90">
-              Toca para comenzar tu pedido
+              {t("pos.idleKiosk")}
             </span>
           </span>
         </button>
@@ -990,14 +1174,14 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               {(settings?.general.menuName || storeName).toUpperCase()}
             </p>
             <p className="text-base font-medium opacity-90">
-              La caja quedó en espera
+              {t("pos.idlePos")}
             </p>
             <div className="mt-2 flex gap-3">
               <button
                 onClick={() => setIdle(false)}
                 className="rounded-xl border border-white/50 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-white/10"
               >
-                Continuar con el pedido
+                {t("pos.continue")}
               </button>
               <button
                 onClick={() => {
@@ -1006,7 +1190,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                 }}
                 className="rounded-xl bg-white px-6 py-3 text-sm font-extrabold text-primary transition-colors hover:opacity-90"
               >
-                Comenzar pedido nuevo
+                {t("pos.newSale")}
               </button>
             </div>
           </div>

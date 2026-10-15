@@ -7,63 +7,38 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import es from "./i18n/es.json";
+import en from "./i18n/en.json";
 
 export type Lang = "es" | "en";
 
 const LANG_KEY = "store.lang";
 
-/** Superficie compartida migrada — pantallas enteras migran conforme toquen.
- *  Agregar la key a `es` primero; `en` debe llevar las mismas keys. */
-const dict = {
-  es: {
-    "nav.dashboard": "Dashboard",
-    "nav.categories": "Categorías",
-    "nav.products": "Productos",
-    "nav.stores": "Establecimientos",
-    "nav.kitchen": "Cocina",
-    "nav.orders": "Pedidos",
-    "nav.users": "Usuarios",
-    "nav.settings": "Configuración",
-    "sidebar.subtitle": "Administración",
-    "user.logout": "Cerrar sesión",
-    "settings.language": "Idioma",
-    "settings.language.hint": "Aplica solo a este equipo.",
-    "role.ADMIN": "Administrador",
-    "role.MANAGER": "Gerente",
-    "role.EMPLOYEE": "Empleado",
-    "role.CUSTOMER": "Cliente",
-    "role.KITCHEN": "Cocina",
-    "role.SUPERADMIN": "Plataforma",
-  },
-  en: {
-    "nav.dashboard": "Dashboard",
-    "nav.categories": "Categories",
-    "nav.products": "Products",
-    "nav.stores": "Stores",
-    "nav.kitchen": "Kitchen",
-    "nav.orders": "Orders",
-    "nav.users": "Users",
-    "nav.settings": "Settings",
-    "sidebar.subtitle": "Administration",
-    "user.logout": "Sign out",
-    "settings.language": "Language",
-    "settings.language.hint": "Applies to this device only.",
-    "role.ADMIN": "Administrator",
-    "role.MANAGER": "Manager",
-    "role.EMPLOYEE": "Employee",
-    "role.CUSTOMER": "Customer",
-    "role.KITCHEN": "Kitchen",
-    "role.SUPERADMIN": "Platform",
-  },
-} as const;
+const dict = { es, en } as const;
 
-export type TKey = keyof (typeof dict)["es"];
+export type TKey = keyof typeof es;
+export type TParams = Record<string, string | number>;
 
 const LangContext = createContext<{
   lang: Lang;
   setLang: (lang: Lang) => void;
-  t: (key: TKey) => string;
-}>({ lang: "es", setLang: () => {}, t: (key) => dict.es[key] });
+  t: (key: TKey, params?: TParams) => string;
+}>({ lang: "es", setLang: () => {}, t: (key) => es[key] });
+
+function translate(lang: Lang, key: TKey, params?: TParams): string {
+  const raw = dict[lang][key] ?? dict.es[key] ?? key;
+  if (!params) return raw;
+  return raw.replace(/\{(\w+)\}/g, (_, name: string) =>
+    params[name] != null ? String(params[name]) : `{${name}}`,
+  );
+}
+
+// Para código fuera de React (lib/api): lee el idioma guardado directo
+export function translateNow(key: TKey, params?: TParams): string {
+  const stored =
+    typeof window !== "undefined" ? localStorage.getItem(LANG_KEY) : null;
+  return translate(stored === "en" ? "en" : "es", key, params);
+}
 
 export function LangProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("es");
@@ -79,11 +54,12 @@ export function LangProvider({ children }: { children: ReactNode }) {
   function setLang(lang: Lang) {
     localStorage.setItem(LANG_KEY, lang);
     setLangState(lang);
+    document.documentElement.lang = lang;
   }
 
   return (
     <LangContext.Provider
-      value={{ lang, setLang, t: (key) => dict[lang][key] }}
+      value={{ lang, setLang, t: (key, params) => translate(lang, key, params) }}
     >
       {children}
     </LangContext.Provider>

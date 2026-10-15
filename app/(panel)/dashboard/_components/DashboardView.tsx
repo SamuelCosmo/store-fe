@@ -2,21 +2,19 @@
 
 import { StatCard } from "@/components/molecules/StatCard";
 import { api } from "@/lib/api";
+import { useI18n, type TKey } from "@/lib/i18n";
+import { getSettings } from "@/lib/settings";
 import { useSession } from "@/lib/session";
 import { useEffect, useState } from "react";
 import { DashboardHeader } from "./DashboardHeader";
 
-const MXN = new Intl.NumberFormat("es-MX", {
-  style: "currency",
-  currency: "MXN",
-});
-
-const MXN_AXIS = new Intl.NumberFormat("es-MX", {
-  style: "currency",
-  currency: "MXN",
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
+function moneyFmt(lang: "es" | "en", axis = false) {
+  return new Intl.NumberFormat(lang === "en" ? "en-US" : "es-MX", {
+    style: "currency",
+    currency: getSettings().currency || "MXN",
+    ...(axis ? { notation: "compact", maximumFractionDigits: 1 } : {}),
+  });
+}
 
 /** Nice Y ticks: step from {1,2,2.5,5}×10ⁿ so ~4 lines cover `max`. */
 function yAxisTicks(max: number) {
@@ -42,19 +40,20 @@ function hourLabel(hour: number) {
 }
 
 const RANGES = [
-  { id: "hoy", label: "Hoy", days: 0 },
-  { id: "7d", label: "7 días", days: 6 },
-  { id: "30d", label: "30 días", days: 29 },
-  { id: "mes", label: "Este mes", days: -1 }, // month-to-date
+  { id: "hoy", key: "dash.rangeToday", days: 0 },
+  { id: "7d", key: "dash.range7d", days: 6 },
+  { id: "30d", key: "dash.range30d", days: 29 },
+  { id: "mes", key: "dash.rangeMonth", days: -1 }, // month-to-date
 ] as const;
 
-const LABELS: Record<string, string> = {
-  POS: "Caja (POS)",
-  KIOSK: "Kiosko",
-  DINE_IN: "Comer aquí",
-  TAKEAWAY: "Para llevar",
-  CARD: "Tarjeta",
-  CASH: "Efectivo",
+const LABEL_KEYS: Record<string, TKey> = {
+  POS: "dash.pos",
+  KIOSK: "dash.kiosk",
+  DINE_IN: "dash.dineInLabel",
+  TAKEAWAY: "dash.takeaway",
+  CARD: "dash.card",
+  CASH: "dash.cash",
+  TOKEN: "dash.token",
 };
 
 type Slice = { key: string; orders: number; total: number };
@@ -89,6 +88,9 @@ function range(rangeId: (typeof RANGES)[number]["id"]): { from: string; to: stri
 
 export function DashboardView() {
   const session = useSession();
+  const { t, lang } = useI18n();
+  const MXN = moneyFmt(lang);
+  const MXN_AXIS = moneyFmt(lang, true);
   const [rangeId, setRangeId] = useState<(typeof RANGES)[number]["id"]>("hoy");
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -100,9 +102,10 @@ export function DashboardView() {
     api<DashboardData>(`/api/reports/dashboard?from=${from}&to=${to}`)
       .then(setData)
       .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+        setError(e instanceof Error ? e.message : t("common.loadError")),
       )
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t es estable
   }, [session, rangeId]);
 
   const dineIn =
@@ -113,6 +116,9 @@ export function DashboardView() {
             100,
         )
       : 0;
+
+  const labelFor = (key: string) =>
+    LABEL_KEYS[key] ? t(LABEL_KEYS[key]) : key;
 
   const maxHourly = Math.max(1, ...(data?.hourly.map((h) => h.total) ?? []));
   const yAxis = yAxisTicks(maxHourly);
@@ -137,7 +143,7 @@ export function DashboardView() {
                   : "text-text-secondary hover:bg-surface"
               }`}
             >
-              {r.label}
+              {t(r.key)}
             </button>
           ))}
         </div>
@@ -154,24 +160,24 @@ export function DashboardView() {
 
       {!session || loading ? (
         <p className="py-10 text-center text-sm text-text-muted">
-          {session ? "Cargando…" : "Inicia sesión para ver el resumen."}
+          {session ? t("common.loading") : t("dash.loginRequired")}
         </p>
       ) : data && (
         <>
           <div className="grid grid-cols-5 gap-4">
-            <StatCard label="Ventas" value={MXN.format(data.totalSales)} hint={RANGES.find((r) => r.id === rangeId)!.label} />
-            <StatCard label="Órdenes" value={String(data.orders)} hint={`Ticket promedio ${MXN.format(data.avgTicket)}`} />
-            <StatCard label="Comer aquí" value={`${dineIn}%`} />
+            <StatCard label={t("dash.sales")} value={MXN.format(data.totalSales)} hint={t(RANGES.find((r) => r.id === rangeId)!.key)} />
+            <StatCard label={t("dash.orders")} value={String(data.orders)} hint={t("dash.avgTicket", { v: MXN.format(data.avgTicket) })} />
+            <StatCard label={t("dash.dineInLabel")} value={`${dineIn}%`} />
             <StatCard
-              label="A tiempo"
+              label={t("dash.onTime")}
               value={String(data.onTimeOrders)}
-              hint={`${data.lateOrders} atrasados`}
+              hint={t("dash.lateHint", { n: data.lateOrders })}
               danger={data.lateOrders > 0}
             />
             <StatCard
-              label="Cancelaciones"
+              label={t("dash.cancelled")}
               value={String(data.cancelledOrders)}
-              hint={`${MXN.format(data.refundedTotal)} reembolsados`}
+              hint={t("dash.refundedHint", { v: MXN.format(data.refundedTotal) })}
               danger={data.cancelledOrders > 0}
             />
           </div>
@@ -179,11 +185,11 @@ export function DashboardView() {
           <div className="grid grid-cols-[1fr_380px] gap-4">
             <section className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-5">
               <h2 className="text-sm font-semibold text-text-primary">
-                Ventas por hora
+                {t("dash.salesByHour")}
               </h2>
               {data.hourly.length === 0 ? (
                 <p className="py-10 text-center text-sm text-text-muted">
-                  Sin ventas en el rango.
+                  {t("dash.noSales")}
                 </p>
               ) : (
                 <div className="flex flex-col">
@@ -242,27 +248,27 @@ export function DashboardView() {
                     ))}
                   </div>
                   <p className="pt-1.5 pl-12 text-center text-[10px] tracking-wide text-text-muted uppercase">
-                    Hora del día
+                    {t("dash.hourAxis")}
                   </p>
                 </div>
               )}
             </section>
 
             <section className="flex flex-col gap-5 rounded-2xl border border-border bg-background p-5">
-              <ShareGroup title="Canal" slices={data.channels} total={data.orders} />
-              <ShareGroup title="Tipo de orden" slices={data.orderTypes} total={data.orders} />
-              <ShareGroup title="Pago" slices={data.payments} total={data.orders} />
+              <ShareGroup title={t("dash.channel")} slices={data.channels} total={data.orders} label={labelFor} />
+              <ShareGroup title={t("dash.orderType")} slices={data.orderTypes} total={data.orders} label={labelFor} />
+              <ShareGroup title={t("dash.payment")} slices={data.payments} total={data.orders} label={labelFor} />
             </section>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <section className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-5">
               <h2 className="text-sm font-semibold text-text-primary">
-                Productos más vendidos
+                {t("dash.topProducts")}
               </h2>
               {data.topProducts.length === 0 ? (
                 <p className="py-10 text-center text-sm text-text-muted">
-                  Sin ventas en el rango.
+                  {t("dash.noSales")}
                 </p>
               ) : (
                 <div className="flex flex-col gap-3">
@@ -276,7 +282,8 @@ export function DashboardView() {
                           {p.name}
                         </p>
                         <p className="shrink-0 text-xs text-text-secondary">
-                          {p.quantity} uds · {MXN.format(p.revenue)}
+                          {t("dash.units", { n: p.quantity })} ·{" "}
+                          {MXN.format(p.revenue)}
                         </p>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-surface">
@@ -293,11 +300,11 @@ export function DashboardView() {
 
             <section className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-5">
               <h2 className="text-sm font-semibold text-text-primary">
-                Ventas por empleado
+                {t("dash.byEmployee")}
               </h2>
               {data.employees.length === 0 ? (
                 <p className="py-10 text-center text-sm text-text-muted">
-                  Sin ventas en el rango.
+                  {t("dash.noSales")}
                 </p>
               ) : (
                 <div className="flex flex-col gap-3">
@@ -308,7 +315,8 @@ export function DashboardView() {
                           {e.name}
                         </p>
                         <p className="shrink-0 text-xs text-text-secondary">
-                          {e.orders} órdenes · {MXN.format(e.total)}
+                          {t("dash.ordersCount", { n: e.orders })} ·{" "}
+                          {MXN.format(e.total)}
                         </p>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-surface">
@@ -333,25 +341,29 @@ function ShareGroup({
   title,
   slices,
   total,
+  label,
 }: {
   title: string;
   slices: Slice[];
   total: number;
+  label: (key: string) => string;
 }) {
+  const { t, lang } = useI18n();
+  const MXN = moneyFmt(lang);
   return (
     <div className="flex flex-col gap-2">
       <p className="text-[10px] font-bold tracking-wide text-text-muted uppercase">
         {title}
       </p>
       {slices.length === 0 ? (
-        <p className="text-xs text-text-muted">Sin datos.</p>
+        <p className="text-xs text-text-muted">{t("common.noData")}</p>
       ) : (
         <>
           <div className="flex h-3 overflow-hidden rounded-full">
             {slices.map((s, i) => (
               <div
                 key={s.key}
-                title={`${LABELS[s.key] ?? s.key} ${s.orders} órdenes`}
+                title={`${label(s.key)} ${t("dash.ordersCount", { n: s.orders })}`}
                 className={i % 2 === 0 ? "bg-primary" : "bg-primary-light"}
                 style={{ width: `${(s.orders / total) * 100}%` }}
               />
@@ -364,9 +376,7 @@ function ShareGroup({
                   aria-hidden
                   className={`size-2 rounded-full ${i % 2 === 0 ? "bg-primary" : "bg-primary-light"}`}
                 />
-                <span className="text-text-secondary">
-                  {LABELS[s.key] ?? s.key}
-                </span>
+                <span className="text-text-secondary">{label(s.key)}</span>
                 <span className="ml-auto font-semibold text-text-primary">
                   {total > 0 ? Math.round((s.orders / total) * 100) : 0}%
                 </span>

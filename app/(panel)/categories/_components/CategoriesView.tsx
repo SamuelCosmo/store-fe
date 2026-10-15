@@ -2,6 +2,7 @@
 
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
 import {
   Coffee,
@@ -25,6 +26,7 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTableSort } from "../../_components/useTableSort";
+import { DeletedList } from "../../_components/DeletedList";
 import {
   PaginationBar,
   usePagination,
@@ -85,6 +87,7 @@ const GRID = "grid-cols-[1fr_200px_100px_110px_60px]";
 
 export function CategoriesView() {
   const session = useSession();
+  const { t } = useI18n();
   const [categories, setCategories] = useState<Category[]>([]);
   const [stores, setStores] = useState<StoreDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +124,7 @@ export function CategoriesView() {
   // (el conteo de productos ya viene en CategoryResponse.products)
   useEffect(() => {
     if (!session) return;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       api<PageDto<CategoryDto>>(
         `/api/categories?page=${page}&size=${size}&sort=${sortParam}&search=${encodeURIComponent(query)}`,
       )
@@ -135,11 +138,12 @@ export function CategoriesView() {
           setMeta({ total: r.totalElements, pages: Math.max(1, r.totalPages) });
         })
         .catch((e: unknown) =>
-          setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+          setError(e instanceof Error ? e.message : t("common.loadError")),
         )
         .finally(() => setLoading(false));
     }, query ? 250 : 0);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t es estable
   }, [session, page, size, sortParam, query, reload, setPage]);
 
   const storeName = (id: number) =>
@@ -175,7 +179,7 @@ export function CategoriesView() {
         setReload((r) => r + 1);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar");
+      setError(e instanceof Error ? e.message : t("common.saveError"));
     }
   }
 
@@ -195,7 +199,7 @@ export function CategoriesView() {
         prev.map((c) => (c.id === saved.id ? toCategory(saved) : c)),
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo actualizar");
+      setError(e instanceof Error ? e.message : t("common.updateError"));
     }
   }
 
@@ -204,7 +208,7 @@ export function CategoriesView() {
       await api(`/api/categories/${cat.id}`, { method: "DELETE" });
       setReload((r) => r + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo eliminar");
+      setError(e instanceof Error ? e.message : t("common.deleteError"));
     }
   }
 
@@ -212,10 +216,7 @@ export function CategoriesView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Categorías"
-        subtitle="Organiza el menú para que sea fácil de explorar"
-      />
+      <PageHeader title={t("cats.title")} subtitle={t("cats.subtitle")} />
 
       <div className="flex items-center justify-between gap-4">
         <label className="flex h-[42px] w-full max-w-[320px] items-center gap-2.5 rounded-xl border border-border bg-background px-3.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25">
@@ -227,7 +228,7 @@ export function CategoriesView() {
               setQuery(e.target.value);
               setPage(0);
             }}
-            placeholder="Buscar categoría…"
+            placeholder={t("cats.search")}
             className="w-full bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
         </label>
@@ -239,7 +240,7 @@ export function CategoriesView() {
             }}
             className="flex h-[42px] shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            Nueva categoría
+            {t("cats.new")}
             <Plus size={15} aria-hidden />
           </button>
         )}
@@ -258,38 +259,34 @@ export function CategoriesView() {
         <div
           className={`grid ${GRID} items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase`}
         >
-          {th("name", "Categoría")}
-          <span>Descripción</span>
-          {th("products", "Productos")}
-          <span>Estado</span>
-          <span>Acción</span>
+          {th("name", t("cats.colName"))}
+          <span>{t("common.description")}</span>
+          {th("products", t("cats.colProducts"))}
+          <span>{t("common.status")}</span>
+          <span>{t("common.actions")}</span>
         </div>
 
         {!session ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-            Inicia sesión para ver las categorías.
+            {t("cats.loginRequired")}
           </p>
         ) : loading ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-            Cargando…
+            {t("common.loading")}
           </p>
         ) : noStores ? (
           <div className="flex flex-col items-center gap-3 px-3.5 py-10">
-            <p className="text-sm text-text-secondary">
-              Primero necesitas un establecimiento para tener categorías.
-            </p>
+            <p className="text-sm text-text-secondary">{t("cats.needStore")}</p>
             <Link
               href="/stores"
               className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
             >
-              Ir a Establecimientos
+              {t("cats.goStores")}
             </Link>
           </div>
         ) : sorted.length === 0 ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-            {query
-              ? `Sin resultados para “${query}”`
-              : "Aún no hay categorías. Crea la primera."}
+            {query ? t("common.noResults", { q: query }) : t("cats.empty")}
           </p>
         ) : (
           sorted.map((cat) => {
@@ -328,12 +325,12 @@ export function CategoriesView() {
                       aria-hidden
                       className={`size-1.5 rounded-full ${cat.active ? "bg-success" : "bg-text-muted"}`}
                     />
-                    {cat.active ? "Activa" : "Oculta"}
+                    {cat.active ? t("common.active") : t("common.hidden")}
                   </span>
                 </div>
                 <div className="relative flex items-center gap-2">
                   <button
-                    aria-label={`Editar ${cat.name}`}
+                    aria-label={t("common.editAria", { name: cat.name })}
                     onClick={() => {
                       setEditing(cat);
                       setModalOpen(true);
@@ -343,7 +340,7 @@ export function CategoriesView() {
                     <Pencil size={17} aria-hidden />
                   </button>
                   <button
-                    aria-label={`Más acciones para ${cat.name}`}
+                    aria-label={t("common.moreAria", { name: cat.name })}
                     aria-expanded={menuId === cat.id}
                     aria-haspopup="menu"
                     onClick={() => setMenuId(menuId === cat.id ? null : cat.id)}
@@ -373,7 +370,7 @@ export function CategoriesView() {
                           ) : (
                             <Eye size={15} aria-hidden />
                           )}
-                          {cat.active ? "Ocultar" : "Mostrar"}
+                          {cat.active ? t("common.hide") : t("common.show")}
                         </button>
                         <button
                           onClick={() => {
@@ -383,7 +380,7 @@ export function CategoriesView() {
                           className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-error transition-colors hover:bg-surface"
                         >
                           <Trash2 size={15} aria-hidden />
-                          Eliminar
+                          {t("common.delete")}
                         </button>
                       </div>
                     </>
@@ -402,6 +399,12 @@ export function CategoriesView() {
           onSize={setSize}
         />
       </div>
+
+      <DeletedList
+        endpoint="/api/categories"
+        title={t("cats.deletedTitle")}
+        onRestored={() => setReload((r) => r + 1)}
+      />
 
       <CategoryModal
         open={modalOpen}

@@ -1,6 +1,7 @@
 "use client";
 
 import { Modal } from "@/components/molecules/Modal";
+import { useI18n, type TKey } from "@/lib/i18n";
 import { useState, type FormEvent } from "react";
 import {
   BUSINESS_TYPES,
@@ -30,11 +31,12 @@ export function StoreModal({
   onClose: () => void;
   onSave: (data: FormData) => void;
 }) {
+  const { t } = useI18n();
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={store ? "Editar establecimiento" : "Nuevo establecimiento"}
+      title={t(store ? "stores.modalEdit" : "stores.modalNew")}
     >
       {open && (
         <StoreForm
@@ -64,6 +66,7 @@ function StoreForm({
     store?.businessType ?? "RESTAURANT",
   );
   const [active, setActive] = useState(store?.active ?? true);
+  const { t } = useI18n();
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -83,7 +86,7 @@ function StoreForm({
           htmlFor="store-name"
           className="text-sm font-medium text-text-primary"
         >
-          Nombre
+          {t("common.name")}
         </label>
         <input
           id="store-name"
@@ -91,7 +94,7 @@ function StoreForm({
           onChange={(e) => setName(e.target.value)}
           required
           autoFocus
-          placeholder="Ej. Cosmo Centro"
+          placeholder={t("stores.namePh")}
           className={inputClass}
         />
       </div>
@@ -101,13 +104,13 @@ function StoreForm({
           htmlFor="store-address"
           className="text-sm font-medium text-text-primary"
         >
-          Dirección
+          {t("stores.colAddress")}
         </label>
         <input
           id="store-address"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          placeholder="Ej. Av. Reforma 123, CDMX"
+          placeholder={t("stores.addressPh")}
           className={inputClass}
         />
       </div>
@@ -117,24 +120,24 @@ function StoreForm({
           htmlFor="store-description"
           className="text-sm font-medium text-text-primary"
         >
-          Descripción
+          {t("common.description")}
         </label>
         <input
           id="store-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Opcional"
+          placeholder={t("common.optional")}
           className={inputClass}
         />
       </div>
 
       <fieldset className="flex flex-col gap-1.5">
         <legend className="text-sm font-medium text-text-primary">
-          Tipo de negocio
+          {t("stores.businessType")}
         </legend>
         <div className="grid grid-cols-4 gap-1.5">
-          {(Object.entries(BUSINESS_TYPES) as [BusinessType, { label: string; icon: React.ElementType }][]).map(
-            ([key, { label, icon: Icon }]) => (
+          {(Object.entries(BUSINESS_TYPES) as [BusinessType, { key: TKey; icon: React.ElementType }][]).map(
+            ([key, { key: labelKey, icon: Icon }]) => (
               <button
                 key={key}
                 type="button"
@@ -147,7 +150,7 @@ function StoreForm({
                 }`}
               >
                 <Icon size={16} aria-hidden />
-                {label}
+                {t(labelKey)}
               </button>
             ),
           )}
@@ -161,7 +164,7 @@ function StoreForm({
           onChange={(e) => setActive(e.target.checked)}
           className="size-4 accent-primary"
         />
-        Establecimiento activo
+        {t("stores.activeFlag")}
       </label>
 
       <div className="mt-1 flex justify-end gap-2.5">
@@ -170,13 +173,13 @@ function StoreForm({
           onClick={onClose}
           className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface"
         >
-          Cancelar
+          {t("common.cancel")}
         </button>
         <button
           type="submit"
           className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
         >
-          {store ? "Guardar cambios" : "Crear establecimiento"}
+          {store ? t("common.saveChanges") : t("stores.create")}
         </button>
       </div>
     </form>

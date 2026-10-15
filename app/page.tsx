@@ -2,6 +2,7 @@
 
 import { Modal } from "@/components/molecules/Modal";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
+import { useI18n } from "@/lib/i18n";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -33,6 +34,7 @@ export default function LoginPage() {
     password: string;
   } | null>(null);
   const session = useSession();
+  const { t, lang } = useI18n();
 
   useEffect(() => {
     if (session?.role) router.replace(ROLE_HOME[session.role] ?? "/");
@@ -66,7 +68,7 @@ export default function LoginPage() {
     });
     const body = await res.json().catch(() => null);
     if (!res.ok) {
-      const message = String(body?.message ?? "No se pudo iniciar sesión");
+      const message = String(body?.message ?? t("login.failed"));
       // la cuenta opera varias tiendas → traer las elegibles y elegir
       if (message.startsWith("storeId required")) {
         const storesRes = await fetch(`${API_URL}/api/auth/stores`, {
@@ -86,9 +88,7 @@ export default function LoginPage() {
         }
       }
       setError(
-        message === "Invalid credentials"
-          ? "Correo o contraseña incorrectos."
-          : message,
+        message === "Invalid credentials" ? t("login.badCredentials") : message,
       );
       return;
     }
@@ -109,9 +109,7 @@ export default function LoginPage() {
     try {
       await login(pending.email, pending.password, storeId);
     } catch {
-      setError(
-        "Sin conexión con el servidor — verifica que el backend esté corriendo",
-      );
+      setError(t("login.offline"));
     } finally {
       setLoading(false);
       closeStorePicker();
@@ -132,9 +130,7 @@ export default function LoginPage() {
         null,
       );
     } catch {
-      setError(
-        "Sin conexión con el servidor — verifica que el backend esté corriendo",
-      );
+      setError(t("login.offline"));
     } finally {
       setLoading(false);
     }
@@ -162,29 +158,25 @@ export default function LoginPage() {
           />
           <div className="flex flex-col gap-3">
             <h1 className="text-[32px] leading-[1.1] font-extrabold">
-              Bienvenido
+              {t("login.welcome")}
             </h1>
-            <p className="text-sm leading-[1.5]">
-              Inicia sesión para acceder al punto de venta, administración y
-              seguimiento de tu negocio.
-            </p>
+            <p className="text-sm leading-[1.5]">{t("login.tagline")}</p>
           </div>
 
           <div className="flex flex-col gap-2 rounded-xl border border-white/15 bg-white/8 p-4">
-            <p className="text-[10px] font-bold tracking-[0.2px]">SOPORTE</p>
-            <p className="text-[13px] leading-[1.4]">
-              Si no puedes iniciar sesión, pide tus credenciales al
-              administrador de tu negocio.
+            <p className="text-[10px] font-bold tracking-[0.2px]">
+              {t("login.support")}
             </p>
+            <p className="text-[13px] leading-[1.4]">{t("login.supportText")}</p>
           </div>
 
           <div className="mt-auto flex items-baseline justify-between">
             <p className="text-[10px] font-bold tracking-[0.2px]">
-              HORA ACTUAL
+              {t("login.time")}
             </p>
             <p className="text-lg font-extrabold tabular-nums">
               {now
-                ? now.toLocaleTimeString("es-MX", {
+                ? now.toLocaleTimeString(lang === "en" ? "en-US" : "es-MX", {
                     hour: "2-digit",
                     minute: "2-digit",
                   })
@@ -206,10 +198,10 @@ export default function LoginPage() {
           />
           <div className="flex flex-col gap-1.5">
             <h2 className="text-[32px] leading-none font-extrabold text-text-primary">
-              Acceder
+              {t("login.access")}
             </h2>
             <p className="text-sm leading-[1.5] text-text-secondary">
-              Ingresa tu correo y contraseña para continuar.
+              {t("login.instructions")}
             </p>
           </div>
 
@@ -219,7 +211,7 @@ export default function LoginPage() {
           >
             {expired && (
               <p className="rounded-lg border border-primary/30 bg-primary-light px-3.5 py-2.5 text-sm text-primary">
-                Tu sesión expiró. Inicia sesión de nuevo.
+                {t("login.expired")}
               </p>
             )}
             {error && (
@@ -236,7 +228,7 @@ export default function LoginPage() {
                 htmlFor="email"
                 className="text-[13px] font-semibold text-text-primary"
               >
-                Correo
+                {t("login.email")}
               </label>
               <input
                 id="email"
@@ -255,7 +247,7 @@ export default function LoginPage() {
                 htmlFor="password"
                 className="text-[13px] font-semibold text-text-primary"
               >
-                Contraseña
+                {t("login.password")}
               </label>
               <input
                 id="password"
@@ -276,7 +268,7 @@ export default function LoginPage() {
                   defaultChecked
                   className="size-4 rounded accent-primary"
                 />
-                Recordar sesión
+                {t("login.remember")}
               </label>
             </div>
 
@@ -285,13 +277,12 @@ export default function LoginPage() {
               disabled={loading}
               className="flex h-14 w-full items-center justify-end gap-2 rounded-2xl bg-primary px-5 text-[15px] font-extrabold text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60"
             >
-              {loading ? "ENTRANDO…" : "ACCEDER"}
+              {loading ? t("login.submitting") : t("login.submit")}
               <span aria-hidden>→</span>
             </button>
 
             <p className="text-center text-xs text-text-muted">
-              Al iniciar sesión aceptas las políticas de acceso y uso del
-              sistema.
+              {t("login.legal")}
             </p>
           </form>
         </main>
@@ -300,17 +291,17 @@ export default function LoginPage() {
       <Modal
         open={stores !== null}
         onClose={closeStorePicker}
-        title="Elige el establecimiento"
+        title={t("login.pickStore")}
       >
         <div className="flex flex-col gap-4">
           <p className="text-sm text-text-secondary">
-            Tu cuenta opera en varias tiendas — elige dónde trabajas hoy.
+            {t("login.pickStoreText")}
           </p>
           <label
             htmlFor="store"
             className="flex flex-col gap-2 text-[13px] font-semibold text-text-primary"
           >
-            Establecimiento
+            {t("login.store")}
             <select
               id="store"
               value={storeId ?? ""}
@@ -330,7 +321,7 @@ export default function LoginPage() {
               onClick={closeStorePicker}
               className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface"
             >
-              Cancelar
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -338,7 +329,7 @@ export default function LoginPage() {
               disabled={loading}
               className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
             >
-              Aceptar
+              {t("login.accept")}
             </button>
           </div>
         </div>

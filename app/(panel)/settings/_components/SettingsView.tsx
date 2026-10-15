@@ -2,8 +2,8 @@
 
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { api } from "@/lib/api";
-import { useI18n, type Lang } from "@/lib/i18n";
-import { ROLE_LABEL, saveSession, useSession, type Role } from "@/lib/session";
+import { useI18n, type Lang, type TKey } from "@/lib/i18n";
+import { saveSession, useSession, type Role } from "@/lib/session";
 import {
   DEFAULT_SETTINGS,
   isAutoPrint,
@@ -155,6 +155,7 @@ export function SettingsView() {
           kitchen: { ...DEFAULT_SETTINGS.kitchen },
           currency: client.currency,
           taxRate: Number(client.taxRate),
+          tokenPrice: Number(client.tokenPrice ?? 0),
           kiosk: { receiptSeconds: client.kioskReceiptSeconds },
           session: {
             hours: {
@@ -165,13 +166,14 @@ export function SettingsView() {
         });
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Error al cargar");
+          setError(e instanceof Error ? e.message : t("common.loadError"));
         }
       }
     })();
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t es estable
   }, [clientId, sessionStoreId]);
 
   // Los campos por establecimiento se recargan al cambiar la selección
@@ -218,7 +220,7 @@ export function SettingsView() {
       });
       setBrand({ ...brand, logoUrl: res.url });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo subir el logo");
+      setError(e instanceof Error ? e.message : t("settings.logoError"));
     } finally {
       setUploading(false);
     }
@@ -243,6 +245,7 @@ export function SettingsView() {
             : {}),
           currency: form.currency,
           taxRate: form.taxRate,
+          tokenPrice: form.tokenPrice,
           kioskReceiptSeconds: form.kiosk.receiptSeconds,
           sessionHours: form.session.hours,
         }),
@@ -274,7 +277,7 @@ export function SettingsView() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al guardar");
+      setError(e instanceof Error ? e.message : t("common.saveError"));
     } finally {
       setSaving(false);
     }
@@ -283,8 +286,8 @@ export function SettingsView() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Configuración"
-        subtitle="Define cómo operan las pantallas y terminales del negocio"
+        title={t("settings.title")}
+        subtitle={t("settings.subtitle")}
       />
 
       {error && (
@@ -294,13 +297,15 @@ export function SettingsView() {
       )}
 
       {!form ? (
-        <p className="py-10 text-center text-sm text-text-muted">Cargando…</p>
+        <p className="py-10 text-center text-sm text-text-muted">
+          {t("common.loading")}
+        </p>
       ) : (
         <div className="flex flex-col items-start gap-5 lg:flex-row">
           <div className="flex w-full min-w-0 flex-1 flex-col gap-5">
             {brand && (
-              <Card icon={Palette} title="Marca">
-                <Field label="Nombre del negocio">
+              <Card icon={Palette} title={t("settings.brand")}>
+                <Field label={t("settings.brandName")}>
                   <input
                     type="text"
                     value={brand.name}
@@ -310,7 +315,7 @@ export function SettingsView() {
                     className={inputClass}
                   />
                 </Field>
-                <Field label="Logotipo">
+                <Field label={t("settings.logo")}>
                   <input
                     id="brand-logo-upload"
                     type="file"
@@ -327,7 +332,7 @@ export function SettingsView() {
                     className="flex h-24 cursor-pointer items-center justify-center rounded-lg border border-dashed border-border bg-surface text-[12px] text-text-secondary transition-colors hover:border-primary"
                   >
                     {uploading ? (
-                      <span>Subiendo…</span>
+                      <span>{t("common.uploading")}</span>
                     ) : brand.logoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -336,7 +341,7 @@ export function SettingsView() {
                         className="max-h-20 w-auto object-contain p-2"
                       />
                     ) : (
-                      <span>Clic para subir logo (máx. 5 MB)</span>
+                      <span>{t("settings.logoUpload")}</span>
                     )}
                   </label>
                   {brand.logoUrl && !uploading && (
@@ -345,19 +350,18 @@ export function SettingsView() {
                       onClick={() => setBrand({ ...brand, logoUrl: null })}
                       className="self-start text-[11px] text-error hover:underline"
                     >
-                      Quitar logo
+                      {t("settings.logoRemove")}
                     </button>
                   )}
                 </Field>
                 <p className="text-[11px] text-text-secondary">
-                  El nombre y el logo se muestran en el panel, las terminales
-                  y el ticket impreso.
+                  {t("settings.brandHint")}
                 </p>
               </Card>
             )}
 
-            <Card icon={ChefHat} title="Cocina (KDS)">
-              <Field label="Establecimiento">
+            <Card icon={ChefHat} title={t("settings.kitchen")}>
+              <Field label={t("login.store")}>
                 <div className="relative">
                   <select
                     value={storeId ?? ""}
@@ -377,7 +381,7 @@ export function SettingsView() {
                 </div>
               </Field>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="A tiempo hasta (min)">
+                <Field label={t("settings.okMin")}>
                   <input
                     type="number"
                     min={1}
@@ -394,7 +398,7 @@ export function SettingsView() {
                     className={inputClass}
                   />
                 </Field>
-                <Field label="Atrasado a partir de (min)">
+                <Field label={t("settings.warnMin")}>
                   <input
                     type="number"
                     min={1}
@@ -413,9 +417,10 @@ export function SettingsView() {
                 </Field>
               </div>
               <p className="text-[11px] text-text-secondary">
-                Verde hasta {form.kitchen.okMin} min · amarillo hasta{" "}
-                {form.kitchen.warnMin} min · rojo después. Los tiempos y el
-                sonido aplican solo al establecimiento elegido.
+                {t("settings.kitchenHint", {
+                  ok: form.kitchen.okMin,
+                  warn: form.kitchen.warnMin,
+                })}
               </p>
               <Switch
                 on={form.kitchen.sound}
@@ -425,14 +430,14 @@ export function SettingsView() {
                     kitchen: { ...form.kitchen, sound: !form.kitchen.sound },
                   })
                 }
-                label="Alerta sonora"
-                hint="Suena un ding cuando llega un pedido nuevo"
+                label={t("settings.soundLabel")}
+                hint={t("settings.soundHint")}
               />
             </Card>
 
-            <Card icon={Coins} title="Moneda e impuestos">
+            <Card icon={Coins} title={t("settings.money")}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Tipo de moneda">
+                <Field label={t("settings.currency")}>
                   <div className="relative">
                     <select
                       value={form.currency}
@@ -453,7 +458,7 @@ export function SettingsView() {
                     />
                   </div>
                 </Field>
-                <Field label="Impuesto (%)">
+                <Field label={t("settings.tax")}>
                   <input
                     type="number"
                     min={0}
@@ -472,11 +477,29 @@ export function SettingsView() {
                     className={inputClass}
                   />
                 </Field>
+                <Field label={t("settings.tokenPrice")}>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={form.tokenPrice}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        tokenPrice: Math.max(0, Number(e.target.value)),
+                      })
+                    }
+                    className={inputClass}
+                  />
+                  <p className="mt-1 text-[11px] text-text-secondary">
+                    {t("settings.tokenPrice.hint")}
+                  </p>
+                </Field>
               </div>
             </Card>
 
-            <Card icon={MonitorSmartphone} title="Terminales">
-              <Field label="Segundos en la confirmación del kiosco">
+            <Card icon={MonitorSmartphone} title={t("settings.terminals")}>
+              <Field label={t("settings.kioskSeconds")}>
                 <input
                   type="number"
                   min={3}
@@ -497,12 +520,11 @@ export function SettingsView() {
                 />
               </Field>
               <p className="text-[11px] text-text-secondary">
-                Tiempo que el modal de «Pedido enviado» espera antes de
-                reiniciar para el siguiente cliente.
+                {t("settings.kioskSeconds.hint")}
               </p>
             </Card>
 
-            <Card icon={Printer} title="Impresión">
+            <Card icon={Printer} title={t("settings.print")}>
               <Switch
                 on={printAuto}
                 onToggle={() => {
@@ -510,14 +532,11 @@ export function SettingsView() {
                   setAutoPrint(next);
                   setPrintAuto(next);
                 }}
-                label="Imprimir ticket al cobrar"
-                hint="Manda el ticket a la impresora apenas se confirma el pago"
+                label={t("settings.printAuto")}
+                hint={t("settings.printAuto.hint")}
               />
               <p className="text-[11px] text-text-secondary">
-                Aplica solo a este equipo — imprime en la impresora
-                predeterminada del sistema operativo. Para imprimir sin que
-                aparezca el diálogo de Windows, abrir el navegador con el
-                flag --kiosk-printing.
+                {t("settings.printHint")}
               </p>
             </Card>
 
@@ -544,14 +563,14 @@ export function SettingsView() {
               </p>
             </Card>
 
-            <Card icon={Clock} title="Sesiones">
+            <Card icon={Clock} title={t("settings.sessions")}>
               {SESSION_ROLES.map((role) => (
                 <div
                   key={role}
                   className="flex items-center justify-between gap-4 border-b border-border py-2.5 last:border-b-0 last:pb-0"
                 >
                   <p className="text-xs text-text-primary">
-                    {ROLE_LABEL[role]}
+                    {t(`role.${role}` as TKey)}
                   </p>
                   <div className="flex items-center gap-2">
                     <input
@@ -580,8 +599,7 @@ export function SettingsView() {
                 </div>
               ))}
               <p className="text-[11px] text-text-secondary">
-                Horas desde el inicio de sesión antes de cerrarla. 0 = no
-                cerrar nunca.
+                {t("settings.sessions.hint")}
               </p>
             </Card>
           </div>
@@ -589,7 +607,7 @@ export function SettingsView() {
           <div className="flex w-full shrink-0 flex-col gap-5 lg:w-[340px]">
             <section className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-5">
               <h2 className="text-[15px] font-extrabold text-text-primary">
-                Estado
+                {t("settings.status")}
               </h2>
               <div className="flex items-center gap-3 rounded-xl bg-success/10 p-3.5">
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success">
@@ -597,11 +615,9 @@ export function SettingsView() {
                 </div>
                 <div className="flex flex-col gap-[3px] text-success">
                   <p className="text-xs font-extrabold">
-                    Guardado en la base de datos
+                    {t("settings.statusSaved")}
                   </p>
-                  <p className="text-[10px]">
-                    Los cambios aplican a todas las terminales
-                  </p>
+                  <p className="text-[10px]">{t("settings.statusHint")}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -611,7 +627,11 @@ export function SettingsView() {
                   disabled={saving}
                   className="flex-1 rounded-xl border border-primary bg-primary px-4 py-3 text-[13px] text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60"
                 >
-                  {saving ? "Guardando…" : saved ? "Guardado ✓" : "Guardar"}
+                  {saving
+                    ? t("settings.saving")
+                    : saved
+                      ? `${t("settings.saved")} ✓`
+                      : t("common.save")}
                 </button>
               </div>
             </section>

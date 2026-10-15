@@ -3,13 +3,10 @@
 import type { ExtraDto } from "@/app/(panel)/products/_components/ExtrasSection";
 import type { ProductDto } from "@/app/(panel)/products/_components/ProductsView";
 import type { SizeDto } from "@/app/(panel)/products/_components/SizesSection";
+import { useI18n } from "@/lib/i18n";
+import { getSettings } from "@/lib/settings";
 import { Minus, Plus } from "lucide-react";
 import { useState } from "react";
-
-const MXN = new Intl.NumberFormat("es-MX", {
-  style: "currency",
-  currency: "MXN",
-});
 
 export type ItemSelection = {
   size: SizeDto | null;
@@ -40,6 +37,12 @@ export function ExtrasModal({
   onClose: () => void;
   onAdd: (product: ProductDto, selection: ItemSelection) => void;
 }) {
+  const { t, lang } = useI18n();
+  const MXN = new Intl.NumberFormat(lang === "en" ? "en-US" : "es-MX", {
+    style: "currency",
+    currency: getSettings().currency || "MXN",
+  });
+
   const sizes = product.sizes.filter((s) => s.active);
   const extras = product.extras.filter((e) => e.active);
 
@@ -72,7 +75,7 @@ export function ExtrasModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`Extras para ${product.name}`}
+      aria-label={t("pos.extrasFor", { name: product.name })}
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]"
     >
@@ -93,7 +96,9 @@ export function ExtrasModal({
             )}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-0.5">
-            <p className="text-[11px] font-semibold text-text-muted">Desde</p>
+            <p className="text-[11px] font-semibold text-text-muted">
+              {t("pos.fromPrice")}
+            </p>
             <p className="text-[22px] font-extrabold text-primary">
               {MXN.format(product.price)}
             </p>
@@ -105,13 +110,13 @@ export function ExtrasModal({
           <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 pt-5 pb-6">
             {sizes.length === 0 && extras.length === 0 && (
               <p className="py-4 text-sm text-text-muted">
-                Este producto no tiene opciones.
+                {t("pos.noOptions")}
               </p>
             )}
 
             {sizes.length > 0 && (
               <section>
-                <SectionLabel>Tamaños</SectionLabel>
+                <SectionLabel>{t("products.tabSizes")}</SectionLabel>
                 {sizes.map((s) => (
                   <button
                     key={s.id}
@@ -143,7 +148,7 @@ export function ExtrasModal({
 
             {extras.length > 0 && (
               <section className={sizes.length > 0 ? "pt-5" : ""}>
-                <SectionLabel>Extras</SectionLabel>
+                <SectionLabel>{t("products.tabExtras")}</SectionLabel>
                 {extras.map((extra) => (
                   <div
                     key={extra.id}
@@ -160,7 +165,9 @@ export function ExtrasModal({
                     <div className="flex shrink-0 items-center overflow-hidden rounded-[10px] border border-border bg-surface">
                       <button
                         type="button"
-                        aria-label={`Quitar ${extra.name}`}
+                        aria-label={t("pos.removeExtra", {
+                          name: extra.name,
+                        })}
                         onClick={() => bump(extra.id, -1)}
                         disabled={(qty[extra.id] ?? 0) === 0}
                         className="flex size-9 items-center justify-center text-text-secondary transition-colors hover:text-primary disabled:opacity-30"
@@ -172,7 +179,7 @@ export function ExtrasModal({
                       </span>
                       <button
                         type="button"
-                        aria-label={`Agregar ${extra.name}`}
+                        aria-label={t("pos.addExtra", { name: extra.name })}
                         onClick={() => bump(extra.id, 1)}
                         className="flex size-9 items-center justify-center text-primary transition-colors hover:bg-primary/5"
                       >
@@ -190,7 +197,7 @@ export function ExtrasModal({
           {/* panel de resumen */}
           <div className="flex w-[340px] shrink-0 flex-col bg-surface">
             <div className="flex flex-col gap-4 border-b border-border px-7 pt-6 pb-5">
-              <SectionLabel>Resumen</SectionLabel>
+              <SectionLabel>{t("pos.summary")}</SectionLabel>
               <div className="flex flex-col gap-1.5 rounded-[10px] border border-border bg-background p-4">
                 <div className="flex items-start justify-between gap-3 text-sm font-bold text-text-primary">
                   <p className="min-w-0 flex-1">{product.name}</p>
@@ -202,7 +209,9 @@ export function ExtrasModal({
                   <ul className="flex flex-col gap-1 border-t border-border/60 pt-2 text-xs text-text-secondary">
                     {size && (
                       <li className="flex items-center justify-between gap-3">
-                        <span>Tamaño: {size.name}</span>
+                        <span>
+                          {t("pos.sizeLabel")}: {size.name}
+                        </span>
                         {size.price > 0 && (
                           <span className="tabular-nums">
                             +{MXN.format(size.price)}
@@ -231,11 +240,11 @@ export function ExtrasModal({
             </div>
 
             <div className="flex flex-col gap-2 border-b border-border px-7 py-5">
-              <SectionLabel>Notas</SectionLabel>
+              <SectionLabel>{t("pos.notes")}</SectionLabel>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Instrucciones especiales..."
+                placeholder={t("pos.notesPh")}
                 rows={3}
                 maxLength={500}
                 className="h-20 w-full resize-none rounded-[10px] border border-border bg-background px-3.5 py-3 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/25"
@@ -247,7 +256,7 @@ export function ExtrasModal({
             <div className="flex flex-col gap-3 border-t border-border bg-background px-7 pt-4 pb-6">
               <div className="flex items-center justify-between">
                 <p className="text-[13px] font-semibold text-text-secondary">
-                  Total estimado
+                  {t("pos.estTotal")}
                 </p>
                 <p className="text-xl font-extrabold text-text-primary tabular-nums">
                   {MXN.format(unitPrice)}
@@ -259,7 +268,7 @@ export function ExtrasModal({
                   onClick={onClose}
                   className="w-[104px] shrink-0 rounded-xl border border-border py-3.5 text-[13px] font-semibold text-text-primary transition-colors hover:bg-surface"
                 >
-                  Cancelar
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
@@ -268,7 +277,7 @@ export function ExtrasModal({
                   }
                   className="flex-1 rounded-xl bg-primary py-3.5 text-[13px] font-extrabold text-white transition-colors hover:bg-primary-hover"
                 >
-                  Añadir al pedido
+                  {t("pos.addToCart")}
                 </button>
               </div>
             </div>

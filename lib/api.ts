@@ -1,3 +1,4 @@
+import { translateNow, type TKey } from "./i18n";
 import {
   SESSION_EXPIRED_EVENT,
   clearSession,
@@ -7,12 +8,12 @@ import {
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 // Fallback cuando el server no manda `message` — nadie entiende "Error 403"
-const STATUS_MESSAGES: Record<number, string> = {
-  400: "Solicitud inválida",
-  401: "Tu sesión expiró — inicia sesión de nuevo",
-  403: "No tienes permiso para esta acción",
-  404: "No encontrado",
-  500: "Error del servidor — intenta de nuevo",
+const STATUS_KEYS: Record<number, TKey> = {
+  400: "api.badRequest",
+  401: "api.expired",
+  403: "api.forbidden",
+  404: "api.notFound",
+  500: "api.server",
 };
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -27,7 +28,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   if (!res.ok) {
-    let message = STATUS_MESSAGES[res.status] ?? `Error ${res.status}`;
+    let message = STATUS_KEYS[res.status]
+      ? translateNow(STATUS_KEYS[res.status])
+      : `Error ${res.status}`;
     try {
       const body = await res.json();
       if (body?.message) message = body.message;

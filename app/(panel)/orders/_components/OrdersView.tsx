@@ -6,6 +6,7 @@ import {
 } from "@/components/molecules/OrderTicket";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { api } from "@/lib/api";
+import { useI18n, type TKey } from "@/lib/i18n";
 import { getSettings } from "@/lib/settings";
 import { useSession } from "@/lib/session";
 import { ChevronDown, Printer } from "lucide-react";
@@ -21,13 +22,13 @@ type OrderDto = TicketOrder;
 const GRID =
   "grid-cols-[70px_150px_90px_110px_120px_80px_100px_50px]";
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Pendiente",
-  CONFIRMED: "Confirmada",
-  PREPARING: "Preparando",
-  READY: "Lista",
-  COMPLETED: "Completada",
-  CANCELLED: "Cancelada",
+const STATUS_KEYS: Record<string, TKey> = {
+  PENDING: "status.PENDING",
+  CONFIRMED: "status.CONFIRMED",
+  PREPARING: "status.PREPARING",
+  READY: "status.READY",
+  COMPLETED: "status.COMPLETED",
+  CANCELLED: "status.CANCELLED",
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -41,6 +42,8 @@ const STATUS_STYLE: Record<string, string> = {
 
 export function OrdersView() {
   const session = useSession();
+  const { t, lang } = useI18n();
+  const locale = lang === "en" ? "en-US" : "es-MX";
   const [orders, setOrders] = useState<OrderDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,12 +67,13 @@ export function OrdersView() {
         setMeta({ total: r.totalElements, pages: Math.max(1, r.totalPages) });
       })
       .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+        setError(e instanceof Error ? e.message : t("common.loadError")),
       )
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t es estable
   }, [session, page, size, status, setPage]);
 
-  const fmt = new Intl.NumberFormat("es-MX", {
+  const fmt = new Intl.NumberFormat(locale, {
     style: "currency",
     currency: getSettings().currency,
   });
@@ -86,8 +90,8 @@ export function OrdersView() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Pedidos"
-        subtitle="Historial de órdenes — reimprime tickets cuando haga falta"
+        title={t("orders.title")}
+        subtitle={t("orders.subtitle")}
       />
 
       <div className="flex items-center justify-between gap-4">
@@ -100,10 +104,10 @@ export function OrdersView() {
             }}
             className="h-full w-full appearance-none rounded-xl border border-border bg-background pr-9 pl-3.5 text-sm font-semibold text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
           >
-            <option value="">Todos los estatus</option>
-            {Object.entries(STATUS_LABEL).map(([value, label]) => (
+            <option value="">{t("orders.allStatuses")}</option>
+            {Object.entries(STATUS_KEYS).map(([value, key]) => (
               <option key={value} value={value}>
-                {label}
+                {t(key)}
               </option>
             ))}
           </select>
@@ -128,29 +132,31 @@ export function OrdersView() {
         <div
           className={`grid ${GRID} items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase`}
         >
-          <span>Folio</span>
-          <span>Fecha</span>
-          <span>Canal</span>
-          <span>Tipo</span>
-          <span>Estatus</span>
-          <span>Artículos</span>
-          <span className="text-right">Total</span>
+          <span>{t("orders.colFolio")}</span>
+          <span>{t("orders.colDate")}</span>
+          <span>{t("orders.colChannel")}</span>
+          <span>{t("orders.colType")}</span>
+          <span>{t("orders.colStatus")}</span>
+          <span>{t("orders.colItems")}</span>
+          <span className="text-right">{t("orders.colTotal")}</span>
           <span />
         </div>
 
         {!session ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-            Inicia sesión para ver los pedidos.
+            {t("orders.loginRequired")}
           </p>
         ) : loading ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-            Cargando…
+            {t("common.loading")}
           </p>
         ) : orders.length === 0 ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
             {status
-              ? `Sin pedidos con estatus “${STATUS_LABEL[status]}”.`
-              : "Aún no hay pedidos."}
+              ? t("orders.emptyFiltered", {
+                  s: STATUS_KEYS[status] ? t(STATUS_KEYS[status]) : status,
+                })
+              : t("orders.empty")}
           </p>
         ) : (
           orders.map((o) => (
@@ -162,22 +168,24 @@ export function OrdersView() {
                 #{o.ticketNumber ?? o.id}
               </span>
               <span className="text-text-secondary tabular-nums">
-                {new Date(o.createdAt).toLocaleString("es-MX", {
+                {new Date(o.createdAt).toLocaleString(locale, {
                   dateStyle: "short",
                   timeStyle: "short",
                 })}
               </span>
               <span className="text-text-secondary">
-                {o.channel === "KIOSK" ? "Kiosco" : "Caja"}
+                {o.channel === "KIOSK" ? t("ticket.kiosk") : t("ticket.pos")}
               </span>
               <span className="text-text-secondary">
-                {o.orderType === "DINE_IN" ? "En mesa" : "Para llevar"}
+                {o.orderType === "DINE_IN"
+                  ? t("ticket.dineIn")
+                  : t("ticket.takeaway")}
               </span>
               <span>
                 <span
                   className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${STATUS_STYLE[o.status] ?? "bg-surface text-text-secondary"}`}
                 >
-                  {STATUS_LABEL[o.status] ?? o.status}
+                  {STATUS_KEYS[o.status] ? t(STATUS_KEYS[o.status]) : o.status}
                 </span>
               </span>
               <span className="text-text-secondary tabular-nums">
@@ -189,8 +197,8 @@ export function OrdersView() {
               <button
                 type="button"
                 onClick={() => openTicket(o)}
-                title="Reimprimir ticket"
-                aria-label={`Reimprimir ticket del pedido ${o.id}`}
+                title={t("orders.reprint")}
+                aria-label={t("orders.reprintAria", { n: o.id })}
                 className="flex size-9 items-center justify-center justify-self-end rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary"
               >
                 <Printer size={16} aria-hidden />

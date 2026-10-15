@@ -1,22 +1,19 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
-
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Buenos días";
-  if (h < 19) return "Buenas tardes";
-  return "Buenas noches";
-}
 
 export function DashboardHeader() {
   const session = useSession();
+  const { t, lang } = useI18n();
   const name = session?.name.split(" ")[0];
-  const date = new Date().toLocaleDateString("es-MX", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  const h = new Date().getHours();
+  const greeting =
+    h < 12 ? t("dash.morning") : h < 19 ? t("dash.afternoon") : t("dash.evening");
+  const date = new Date().toLocaleDateString(
+    lang === "en" ? "en-US" : "es-MX",
+    { weekday: "long", day: "numeric", month: "long" },
+  );
 
   return (
     <header className="flex flex-col gap-1.5">
@@ -24,7 +21,7 @@ export function DashboardHeader() {
         className="text-[28px] font-extrabold text-text-primary"
         suppressHydrationWarning
       >
-        {greeting()}
+        {greeting}
         {name ? `, ${name}` : ""}
       </h1>
       <p className="text-[13px] text-text-secondary capitalize" suppressHydrationWarning>

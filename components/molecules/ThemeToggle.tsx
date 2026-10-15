@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -8,6 +9,7 @@ const KEY = "store.theme";
 // Lee/escribe la clase .dark en <html>; el script inline de layout.tsx
 // aplica el tema guardado antes del primer paint para evitar el flash.
 export function ThemeToggle() {
+  const { t } = useI18n();
   const [dark, setDark] = useState<boolean | null>(null);
 
   // setTimeout: leer el DOM tras hidratar sin bloquear el render inicial
@@ -30,8 +32,8 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      aria-label={dark ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
-      title={dark ? "Tema claro" : "Tema oscuro"}
+      aria-label={dark ? t("theme.toLight") : t("theme.toDark")}
+      title={dark ? t("theme.light") : t("theme.dark")}
       className="flex size-10 items-center justify-center rounded-full border border-border bg-surface text-primary shadow-sm transition-colors hover:border-primary hover:bg-primary-light focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
       {/* null hasta hidratar — el icono correcto aparece en el primer effect */}

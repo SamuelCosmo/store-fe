@@ -3,6 +3,7 @@
 import { Modal } from "@/components/molecules/Modal";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
 import { api, logoutSession } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import {
   clearSession,
   saveSession,
@@ -74,6 +75,7 @@ const inputClass =
   "h-11 w-full rounded-lg border border-border bg-surface px-3.5 text-[13px] text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25";
 
 function SuperadminLogin() {
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -98,19 +100,19 @@ function SuperadminLogin() {
       if (!res.ok) {
         setError(
           body?.message === "Invalid credentials"
-            ? "Correo o contraseña incorrectos."
-            : (body?.message ?? "No se pudo iniciar sesión"),
+            ? t("sa.badCredentials")
+            : (body?.message ?? t("sa.loginError")),
         );
         return;
       }
       const session = body as AuthResponse;
       if (session.role !== "SUPERADMIN") {
-        setError("Esta cuenta no pertenece a la plataforma.");
+        setError(t("sa.notPlatform"));
         return;
       }
       saveSession(session);
     } catch {
-      setError("Sin conexión con el servidor.");
+      setError(t("login.offline"));
     } finally {
       setLoading(false);
     }
@@ -135,11 +137,9 @@ function SuperadminLogin() {
             className="h-12 w-auto self-center"
           />
           <h1 className="pt-2 text-2xl font-extrabold text-text-primary">
-            Plataforma
+            {t("sa.title")}
           </h1>
-          <p className="text-sm text-text-secondary">
-            Acceso de administración de clientes.
-          </p>
+          <p className="text-sm text-text-secondary">{t("sa.loginSub")}</p>
         </div>
         {error && (
           <p
@@ -155,7 +155,7 @@ function SuperadminLogin() {
           required
           autoComplete="email"
           autoFocus
-          placeholder="Correo"
+          placeholder={t("login.email")}
           className={inputClass}
         />
         <input
@@ -163,7 +163,7 @@ function SuperadminLogin() {
           type="password"
           required
           autoComplete="current-password"
-          placeholder="Contraseña"
+          placeholder={t("login.password")}
           className={inputClass}
         />
         <button
@@ -171,7 +171,7 @@ function SuperadminLogin() {
           disabled={loading}
           className="flex h-12 items-center justify-center rounded-xl bg-primary text-sm font-extrabold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
         >
-          {loading ? "ENTRANDO…" : "ACCEDER"}
+          {loading ? t("sa.submitting") : t("sa.submit")}
         </button>
       </form>
     </div>
@@ -181,6 +181,8 @@ function SuperadminLogin() {
 export function SuperadminView() {
   const router = useRouter();
   const session = useSession();
+  const { t, lang } = useI18n();
+  const locale = lang === "en" ? "en-US" : "es-MX";
   const [clients, setClients] = useState<ClientDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -206,9 +208,10 @@ export function SuperadminView() {
     api<ClientDto[]>("/api/clients")
       .then(setClients)
       .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+        setError(e instanceof Error ? e.message : t("common.loadError")),
       )
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t es estable
   }, [isSuper]);
 
   if (!isSuper) return <SuperadminLogin />;
@@ -260,7 +263,7 @@ export function SuperadminView() {
       );
       setModal(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar");
+      setError(e instanceof Error ? e.message : t("common.saveError"));
     } finally {
       setSaving(false);
     }
@@ -277,7 +280,7 @@ export function SuperadminView() {
       )
       .catch((e: unknown) =>
         setAdminError(
-          e instanceof Error ? e.message : "No se pudo cargar el admin",
+          e instanceof Error ? e.message : t("sa.adminLoadError"),
         ),
       )
       .finally(() => setAdminLoading(false));
@@ -288,11 +291,11 @@ export function SuperadminView() {
     setAdminError(null);
     if (adminForm.adminPassword || adminForm.adminPassword2) {
       if (adminForm.adminPassword !== adminForm.adminPassword2) {
-        setAdminError("Las contraseñas no coinciden");
+        setAdminError(t("users.pwdMismatch"));
         return;
       }
       if (!PASSWORD_RULES.every((r) => r.test(adminForm.adminPassword))) {
-        setAdminError("La contraseña no cumple los requisitos");
+        setAdminError(t("users.pwdWeak"));
         return;
       }
     }
@@ -311,11 +314,9 @@ export function SuperadminView() {
       });
       setAdminModal(null);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "No se pudo guardar";
+      const msg = e instanceof Error ? e.message : t("common.saveError");
       setAdminError(
-        msg === "Invalid credentials"
-          ? "Tu contraseña de superadmin es incorrecta"
-          : msg,
+        msg === "Invalid credentials" ? t("sa.superPwdWrong") : msg,
       );
     } finally {
       setAdminSaving(false);
@@ -329,10 +330,10 @@ export function SuperadminView() {
           <Building2 size={20} aria-hidden className="text-primary" />
           <div>
             <p className="text-sm font-extrabold text-text-primary">
-              Plataforma
+              {t("sa.title")}
             </p>
             <p className="text-[11px] text-text-muted">
-              Clientes del SaaS · {session.name}
+              {t("sa.headerSub")} · {session.name}
             </p>
           </div>
         </div>
@@ -344,7 +345,7 @@ export function SuperadminView() {
               logoutSession();
               router.refresh();
             }}
-            aria-label="Cerrar sesión"
+            aria-label={t("user.logout")}
             className="flex size-10 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-error/50 hover:text-error"
           >
             <LogOut size={16} aria-hidden />
@@ -355,14 +356,14 @@ export function SuperadminView() {
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-8">
         <div className="flex items-center justify-between">
           <h1 className="text-[26px] font-extrabold text-text-primary">
-            Clientes
+            {t("sa.clients")}
           </h1>
           <button
             type="button"
             onClick={() => openModal("new")}
             className="flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover"
           >
-            Nuevo cliente
+            {t("sa.new")}
             <Plus size={15} aria-hidden />
           </button>
         </div>
@@ -379,21 +380,21 @@ export function SuperadminView() {
         <div className="rounded-2xl border border-border bg-background p-5">
           <div className="grid grid-cols-[60px_1fr_100px_100px_100px_120px_84px] items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase">
             <span>ID</span>
-            <span>Cliente</span>
-            <span>Tiendas</span>
-            <span>Cajas</span>
-            <span>Kioscos</span>
-            <span>Alta</span>
+            <span>{t("sa.colClient")}</span>
+            <span>{t("sa.colStores")}</span>
+            <span>{t("sa.colPos")}</span>
+            <span>{t("sa.colKiosks")}</span>
+            <span>{t("sa.colSince")}</span>
             <span />
           </div>
 
           {loading ? (
             <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-              Cargando…
+              {t("common.loading")}
             </p>
           ) : clients.length === 0 ? (
             <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-              Aún no hay clientes.
+              {t("sa.empty")}
             </p>
           ) : (
             clients.map((c) => (
@@ -408,23 +409,23 @@ export function SuperadminView() {
                   {c.name}
                 </span>
                 <span className="text-text-secondary tabular-nums">
-                  máx {c.maxStores}
+                  {t("sa.max", { n: c.maxStores })}
                 </span>
                 <span className="text-text-secondary tabular-nums">
-                  máx {c.maxPosPerStore}
+                  {t("sa.max", { n: c.maxPosPerStore })}
                 </span>
                 <span className="text-text-secondary tabular-nums">
-                  máx {c.maxKiosksPerStore}
+                  {t("sa.max", { n: c.maxKiosksPerStore })}
                 </span>
                 <span className="text-text-secondary tabular-nums">
-                  {new Date(c.createdAt).toLocaleDateString("es-MX")}
+                  {new Date(c.createdAt).toLocaleDateString(locale)}
                 </span>
                 <div className="flex items-center justify-end gap-1">
                   <button
                     type="button"
                     onClick={() => openAdminModal(c)}
-                    aria-label={`Editar admin de ${c.name}`}
-                    title="Admin del cliente"
+                    aria-label={t("sa.editAdminAria", { name: c.name })}
+                    title={t("sa.adminTitle")}
                     className="flex size-9 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary"
                   >
                     <KeyRound size={15} aria-hidden />
@@ -432,7 +433,7 @@ export function SuperadminView() {
                   <button
                     type="button"
                     onClick={() => openModal(c)}
-                    aria-label={`Editar ${c.name}`}
+                    aria-label={t("common.editAria", { name: c.name })}
                     className="flex size-9 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary"
                   >
                     <Pencil size={15} aria-hidden />
@@ -447,24 +448,24 @@ export function SuperadminView() {
       <Modal
         open={modal !== null}
         onClose={() => setModal(null)}
-        title={modal === "new" ? "Nuevo cliente" : "Editar cliente"}
+        title={modal === "new" ? t("sa.newTitle") : t("sa.editTitle")}
       >
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-text-primary">
-            Nombre
+            {t("common.name")}
             <input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className={inputClass}
-              placeholder="Taquería El Ejemplo"
+              placeholder={t("sa.namePh")}
             />
           </label>
           <div className="grid grid-cols-3 gap-3">
             {(
               [
-                ["maxStores", "Tiendas"],
-                ["maxPosPerStore", "Cajas/tienda"],
-                ["maxKiosksPerStore", "Kioscos/tienda"],
+                ["maxStores", t("sa.maxStores")],
+                ["maxPosPerStore", t("sa.maxPos")],
+                ["maxKiosksPerStore", t("sa.maxKiosks")],
               ] as const
             ).map(([key, label]) => (
               <label
@@ -485,7 +486,7 @@ export function SuperadminView() {
           {modal === "new" && (
             <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3.5">
               <p className="text-[10px] font-bold tracking-wide text-text-muted uppercase">
-                Administrador del cliente
+                {t("sa.adminSection")}
               </p>
               <input
                 value={form.adminName}
@@ -493,7 +494,7 @@ export function SuperadminView() {
                   setForm({ ...form, adminName: e.target.value })
                 }
                 className={inputClass}
-                placeholder="Nombre del administrador"
+                placeholder={t("sa.adminNamePh")}
               />
               <input
                 type="email"
@@ -502,7 +503,7 @@ export function SuperadminView() {
                   setForm({ ...form, adminEmail: e.target.value })
                 }
                 className={inputClass}
-                placeholder="correo@delnegocio.com"
+                placeholder={t("sa.adminEmailPh")}
               />
               <input
                 type="password"
@@ -511,7 +512,7 @@ export function SuperadminView() {
                   setForm({ ...form, adminPassword: e.target.value })
                 }
                 className={inputClass}
-                placeholder="Contraseña inicial"
+                placeholder={t("sa.adminPwdPh")}
                 autoComplete="new-password"
               />
             </div>
@@ -522,7 +523,7 @@ export function SuperadminView() {
               onClick={() => setModal(null)}
               className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface"
             >
-              Cancelar
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -535,7 +536,7 @@ export function SuperadminView() {
               }
               className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
             >
-              Guardar
+              {t("common.save")}
             </button>
           </div>
         </div>
@@ -544,7 +545,7 @@ export function SuperadminView() {
       <Modal
         open={adminModal !== null}
         onClose={() => setAdminModal(null)}
-        title={`Admin de ${adminModal?.name ?? ""}`}
+        title={t("sa.adminOf", { name: adminModal?.name ?? "" })}
       >
         <div className="flex flex-col gap-4">
           {adminError && (
@@ -557,12 +558,12 @@ export function SuperadminView() {
           )}
           {adminLoading ? (
             <p className="py-6 text-center text-sm text-text-muted">
-              Cargando…
+              {t("common.loading")}
             </p>
           ) : (
             <>
               <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-text-primary">
-                Nombre
+                {t("common.name")}
                 <input
                   value={adminForm.adminName}
                   onChange={(e) =>
@@ -572,7 +573,7 @@ export function SuperadminView() {
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-text-primary">
-                Correo
+                {t("login.email")}
                 <input
                   type="email"
                   value={adminForm.adminEmail}
@@ -583,9 +584,9 @@ export function SuperadminView() {
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-text-primary">
-                Nueva contraseña{" "}
+                {t("sa.newPassword")}{" "}
                 <span className="font-normal text-text-muted">
-                  (vacío = sin cambios)
+                  {t("sa.pwdKeepHint")}
                 </span>
                 <input
                   type="password"
@@ -604,7 +605,7 @@ export function SuperadminView() {
                       const ok = rule.test(adminForm.adminPassword);
                       return (
                         <li
-                          key={rule.label}
+                          key={rule.key}
                           className={`flex items-center gap-1.5 text-xs ${ok ? "text-success" : "text-error"}`}
                         >
                           {ok ? (
@@ -612,13 +613,13 @@ export function SuperadminView() {
                           ) : (
                             <X size={13} aria-hidden />
                           )}
-                          {rule.label}
+                          {t(rule.key)}
                         </li>
                       );
                     })}
                   </ul>
                   <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-text-primary">
-                    Confirmar contraseña
+                    {t("users.pwdRepeat")}
                     <input
                       type="password"
                       value={adminForm.adminPassword2}
@@ -635,7 +636,7 @@ export function SuperadminView() {
                 </>
               )}
               <label className="flex flex-col gap-1.5 rounded-xl border border-border bg-surface p-3.5 text-[13px] font-semibold text-text-primary">
-                Confirma con tu contraseña de superadmin
+                {t("sa.superPwdLabel")}
                 <input
                   type="password"
                   value={adminForm.superadminPassword}
@@ -655,7 +656,7 @@ export function SuperadminView() {
                   onClick={() => setAdminModal(null)}
                   className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface"
                 >
-                  Cancelar
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
@@ -668,7 +669,7 @@ export function SuperadminView() {
                   }
                   className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
                 >
-                  Guardar
+                  {t("common.save")}
                 </button>
               </div>
             </>

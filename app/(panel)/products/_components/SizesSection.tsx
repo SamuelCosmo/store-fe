@@ -1,7 +1,10 @@
 "use client";
 
 import { Modal } from "@/components/molecules/Modal";
+import { DeletedList } from "../../_components/DeletedList";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
+import { getSettings } from "@/lib/settings";
 import {
   Eye,
   EyeOff,
@@ -22,11 +25,6 @@ export type SizeDto = {
   productIds: number[];
 };
 
-const MXN = new Intl.NumberFormat("es-MX", {
-  style: "currency",
-  currency: "MXN",
-});
-
 export function SizesSection({
   sizes,
   products,
@@ -42,6 +40,11 @@ export function SizesSection({
   const [editing, setEditing] = useState<SizeDto | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
   const dragId = useRef<number | null>(null);
+  const { t, lang } = useI18n();
+  const MXN = new Intl.NumberFormat(lang === "en" ? "en-US" : "es-MX", {
+    style: "currency",
+    currency: getSettings().currency || "MXN",
+  });
 
   async function persistOrder() {
     try {
@@ -50,7 +53,7 @@ export function SizesSection({
         body: JSON.stringify(sizes.map((s) => s.id)),
       });
     } catch (e) {
-      onError(e instanceof Error ? e.message : "No se pudo guardar el orden");
+      onError(e instanceof Error ? e.message : t("sizes.orderError"));
     }
   }
 
@@ -68,7 +71,7 @@ export function SizesSection({
         saved,
       );
     } catch (e) {
-      onError(e instanceof Error ? e.message : "No se pudo guardar");
+      onError(e instanceof Error ? e.message : t("common.saveError"));
     }
   }
 
@@ -84,7 +87,7 @@ export function SizesSection({
       });
       onChange(sizes.map((s) => (s.id === saved.id ? saved : s)));
     } catch (e) {
-      onError(e instanceof Error ? e.message : "No se pudo actualizar");
+      onError(e instanceof Error ? e.message : t("common.updateError"));
     }
   }
 
@@ -93,7 +96,7 @@ export function SizesSection({
       await api(`/api/sizes/${size.id}`, { method: "DELETE" });
       onChange(sizes.filter((s) => s.id !== size.id));
     } catch (e) {
-      onError(e instanceof Error ? e.message : "No se pudo eliminar");
+      onError(e instanceof Error ? e.message : t("common.deleteError"));
     }
   }
 
@@ -101,12 +104,10 @@ export function SizesSection({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold text-text-primary">Tamaños</h2>
-          <p className="text-xs text-text-secondary">
-            Presentaciones o porciones que ajustan el precio del producto.
-            Arrastra para ordenar en el menú — el primero es el tamaño por
-            defecto.
-          </p>
+          <h2 className="text-lg font-semibold text-text-primary">
+            {t("products.tabSizes")}
+          </h2>
+          <p className="text-xs text-text-secondary">{t("sizes.subtitle")}</p>
         </div>
         <button
           onClick={() => {
@@ -115,23 +116,23 @@ export function SizesSection({
           }}
           className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-background px-4 text-[13px] font-medium text-text-primary transition-colors hover:bg-surface"
         >
-          Nuevo tamaño
+          {t("sizes.new")}
           <Plus size={15} aria-hidden />
         </button>
       </div>
 
       <div className="rounded-2xl border border-border bg-background p-5">
         <div className="grid grid-cols-[1fr_140px_110px_110px_60px] items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase">
-          <span>Tamaño</span>
-          <span>Productos</span>
-          <span>Precio extra</span>
-          <span>Estado</span>
-          <span>Acción</span>
+          <span>{t("sizes.colSize")}</span>
+          <span>{t("products.tabProducts")}</span>
+          <span>{t("sizes.colPrice")}</span>
+          <span>{t("common.status")}</span>
+          <span>{t("common.actions")}</span>
         </div>
 
         {sizes.length === 0 ? (
           <p className="px-3.5 py-8 text-center text-sm text-text-muted">
-            Aún no hay tamaños. Crea el primero.
+            {t("sizes.empty")}
           </p>
         ) : (
           sizes.map((size) => (
@@ -175,7 +176,7 @@ export function SizesSection({
               >
                 {size.productIds.length === 0
                   ? "—"
-                  : `${size.productIds.length} producto${size.productIds.length === 1 ? "" : "s"}`}
+                  : t("extras.productsCount", { n: size.productIds.length })}
               </p>
               <p className="text-xs font-bold text-text-primary">
                 {size.price > 0 ? `+${MXN.format(size.price)}` : "—"}
@@ -191,12 +192,12 @@ export function SizesSection({
                     aria-hidden
                     className={`size-1.5 rounded-full ${size.active ? "bg-success" : "bg-text-muted"}`}
                   />
-                  {size.active ? "Activo" : "Oculto"}
+                  {size.active ? t("common.active") : t("common.hidden")}
                 </span>
               </div>
               <div className="relative flex items-center gap-2">
                 <button
-                  aria-label={`Editar ${size.name}`}
+                  aria-label={t("common.editAria", { name: size.name })}
                   onClick={() => {
                     setEditing(size);
                     setModalOpen(true);
@@ -206,7 +207,7 @@ export function SizesSection({
                   <Pencil size={17} aria-hidden />
                 </button>
                 <button
-                  aria-label={`Más acciones para ${size.name}`}
+                  aria-label={t("common.moreAria", { name: size.name })}
                   aria-expanded={menuId === size.id}
                   aria-haspopup="menu"
                   onClick={() =>
@@ -238,7 +239,7 @@ export function SizesSection({
                         ) : (
                           <Eye size={15} aria-hidden />
                         )}
-                        {size.active ? "Ocultar" : "Mostrar"}
+                        {size.active ? t("common.hide") : t("common.show")}
                       </button>
                       <button
                         onClick={() => {
@@ -248,7 +249,7 @@ export function SizesSection({
                         className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-error transition-colors hover:bg-surface"
                       >
                         <Trash2 size={15} aria-hidden />
-                        Eliminar
+                        {t("common.delete")}
                       </button>
                     </div>
                   </>
@@ -258,6 +259,14 @@ export function SizesSection({
           ))
         )}
       </div>
+
+      <DeletedList
+        endpoint="/api/sizes"
+        title={t("sizes.deletedTitle")}
+        onRestored={() =>
+          api<SizeDto[]>("/api/sizes").then(onChange).catch(() => {})
+        }
+      />
 
       <SizeModal
         open={modalOpen}
@@ -280,11 +289,12 @@ function SizeModal({
   onClose: () => void;
   onSave: (data: { name: string; price: number; active: boolean }) => void;
 }) {
+  const { t } = useI18n();
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={size ? "Editar tamaño" : "Nuevo tamaño"}
+      title={t(size ? "sizes.modalEdit" : "sizes.modalNew")}
     >
       {open && (
         <SizeForm key={size?.id ?? "new"} size={size} onSave={onSave} />
@@ -303,6 +313,7 @@ function SizeForm({
   const [name, setName] = useState(size?.name ?? "");
   const [price, setPrice] = useState(size?.price.toString() ?? "");
   const [active, setActive] = useState(size?.active ?? true);
+  const { t } = useI18n();
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -317,7 +328,7 @@ function SizeForm({
             htmlFor="size-name"
             className="text-sm font-medium text-text-primary"
           >
-            Nombre
+            {t("common.name")}
           </label>
           <input
             id="size-name"
@@ -325,7 +336,7 @@ function SizeForm({
             onChange={(e) => setName(e.target.value)}
             required
             autoFocus
-            placeholder="Ej. Grande"
+            placeholder={t("sizes.namePh")}
             className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
           />
         </div>
@@ -334,7 +345,7 @@ function SizeForm({
             htmlFor="size-price"
             className="text-sm font-medium text-text-primary"
           >
-            Precio adicional
+            {t("extras.priceLabel")}
           </label>
           <input
             id="size-price"
@@ -347,7 +358,9 @@ function SizeForm({
             placeholder="0.00"
             className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
           />
-          <p className="text-[11px] text-text-muted">0 = mismo precio</p>
+          <p className="text-[11px] text-text-muted">
+            {t("sizes.priceHint")}
+          </p>
         </div>
       </div>
 
@@ -358,7 +371,7 @@ function SizeForm({
           onChange={(e) => setActive(e.target.checked)}
           className="size-4 accent-primary"
         />
-        Disponible
+        {t("common.available")}
       </label>
 
       <div className="mt-1 flex justify-end gap-2.5">
@@ -366,7 +379,7 @@ function SizeForm({
           type="submit"
           className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
         >
-          {size ? "Guardar cambios" : "Crear tamaño"}
+          {size ? t("common.saveChanges") : t("sizes.create")}
         </button>
       </div>
     </form>

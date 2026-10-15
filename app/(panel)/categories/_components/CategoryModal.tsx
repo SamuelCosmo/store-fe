@@ -1,6 +1,7 @@
 "use client";
 
 import { Modal } from "@/components/molecules/Modal";
+import { useI18n } from "@/lib/i18n";
 import { useState, type FormEvent } from "react";
 import {
   CATEGORY_ICONS,
@@ -33,11 +34,12 @@ export function CategoryModal({
   onClose: () => void;
   onSave: (data: FormData) => void;
 }) {
+  const { t } = useI18n();
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={category ? "Editar categoría" : "Nueva categoría"}
+      title={t(category ? "cats.modalEdit" : "cats.modalNew")}
     >
       {open && (
         <CategoryForm
@@ -71,6 +73,7 @@ function CategoryForm({
     category?.storeIds ?? stores.map((s) => s.id),
   );
   const [storeError, setStoreError] = useState(false);
+  const { t } = useI18n();
 
   function toggleStore(id: number) {
     setStoreError(false);
@@ -101,7 +104,7 @@ function CategoryForm({
           htmlFor="cat-name"
           className="text-sm font-medium text-text-primary"
         >
-          Nombre
+          {t("common.name")}
         </label>
         <input
           id="cat-name"
@@ -109,7 +112,7 @@ function CategoryForm({
           onChange={(e) => setName(e.target.value)}
           required
           autoFocus
-          placeholder="Ej. Ramen"
+          placeholder={t("cats.namePh")}
           className={inputClass}
         />
       </div>
@@ -119,26 +122,28 @@ function CategoryForm({
           htmlFor="cat-description"
           className="text-sm font-medium text-text-primary"
         >
-          Descripción
+          {t("common.description")}
         </label>
         <input
           id="cat-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Ej. Platos principales y especialidades"
+          placeholder={t("cats.descPh")}
           className={inputClass}
         />
       </div>
 
       <fieldset className="flex flex-col gap-1.5">
-        <legend className="text-sm font-medium text-text-primary">Icono</legend>
+        <legend className="text-sm font-medium text-text-primary">
+          {t("cats.icon")}
+        </legend>
         <div className="grid grid-cols-9 gap-1.5">
           {Object.entries(CATEGORY_ICONS).map(([key, Icon]) => (
             <button
               key={key}
               type="button"
               onClick={() => setIcon(key as IconKey)}
-              aria-label={`Icono ${key}`}
+              aria-label={`${t("cats.icon")} ${key}`}
               aria-pressed={icon === key}
               className={`flex aspect-square items-center justify-center rounded-lg border transition-colors ${
                 icon === key
@@ -154,7 +159,7 @@ function CategoryForm({
 
       <fieldset className="flex flex-col gap-1.5">
         <legend className="text-sm font-medium text-text-primary">
-          Establecimientos
+          {t("common.stores")}
         </legend>
         <div className="flex flex-col gap-1">
           {stores.map((store) => (
@@ -174,7 +179,7 @@ function CategoryForm({
         </div>
         {storeError && (
           <p role="alert" className="text-xs text-error">
-            Selecciona al menos un establecimiento.
+            {t("cats.storeRequired")}
           </p>
         )}
       </fieldset>
@@ -186,7 +191,7 @@ function CategoryForm({
           onChange={(e) => setActive(e.target.checked)}
           className="size-4 accent-primary"
         />
-        Visible en el menú
+        {t("cats.visible")}
       </label>
 
       <div className="mt-1 flex justify-end gap-2.5">
@@ -195,13 +200,13 @@ function CategoryForm({
           onClick={onClose}
           className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface"
         >
-          Cancelar
+          {t("common.cancel")}
         </button>
         <button
           type="submit"
           className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
         >
-          {category ? "Guardar cambios" : "Crear categoría"}
+          {category ? t("common.saveChanges") : t("cats.create")}
         </button>
       </div>
     </form>

@@ -2,6 +2,8 @@
 
 import { Modal } from "@/components/molecules/Modal";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
+import { getSettings } from "@/lib/settings";
 import { ChevronDown, ImagePlus, Loader2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { CategoryDto } from "../../categories/_components/CategoriesView";
@@ -11,11 +13,6 @@ import type { Product } from "./ProductsView";
 
 const inputClass =
   "h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25";
-
-const MXN = new Intl.NumberFormat("es-MX", {
-  style: "currency",
-  currency: "MXN",
-});
 
 function OptionChecklist({
   items,
@@ -28,6 +25,11 @@ function OptionChecklist({
   onToggle: (id: number) => void;
   emptyHint: string;
 }) {
+  const { lang } = useI18n();
+  const fmt = new Intl.NumberFormat(lang === "en" ? "en-US" : "es-MX", {
+    style: "currency",
+    currency: getSettings().currency || "MXN",
+  });
   if (items.length === 0) {
     return <p className="text-xs text-text-muted">{emptyHint}</p>;
   }
@@ -56,7 +58,7 @@ function OptionChecklist({
             </span>
             {item.price > 0 && (
               <span className="shrink-0 text-xs text-text-secondary">
-                +{MXN.format(item.price)}
+                +{fmt.format(item.price)}
               </span>
             )}
           </label>
@@ -96,11 +98,12 @@ export function ProductModal({
   onClose: () => void;
   onSave: (data: FormData) => void;
 }) {
+  const { t } = useI18n();
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={product ? "Editar producto" : "Nuevo producto"}
+      title={t(product ? "products.modalEdit" : "products.modalNew")}
       wide
     >
       {open && (
@@ -147,6 +150,7 @@ function ProductForm({
   const [active, setActive] = useState(product?.active ?? true);
   const [sizeIds, setSizeIds] = useState<number[]>(product?.sizeIds ?? []);
   const [extraIds, setExtraIds] = useState<number[]>(product?.extraIds ?? []);
+  const { t } = useI18n();
 
   function toggleSize(id: number) {
     setSizeIds((prev) =>
@@ -172,7 +176,7 @@ function ProductForm({
       });
       setImage(res.url);
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : "No se pudo subir");
+      setUploadError(e instanceof Error ? e.message : t("common.uploadError"));
     } finally {
       setUploading(false);
     }
@@ -202,7 +206,7 @@ function ProductForm({
           htmlFor="prod-name"
           className="text-sm font-medium text-text-primary"
         >
-          Nombre
+          {t("common.name")}
         </label>
         <input
           id="prod-name"
@@ -210,7 +214,7 @@ function ProductForm({
           onChange={(e) => setName(e.target.value)}
           required
           autoFocus
-          placeholder="Ej. Ramen de chashu"
+          placeholder={t("products.namePh")}
           className={inputClass}
         />
       </div>
@@ -220,13 +224,13 @@ function ProductForm({
           htmlFor="prod-description"
           className="text-sm font-medium text-text-primary"
         >
-          Descripción
+          {t("common.description")}
         </label>
         <input
           id="prod-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Ej. Caldo tonkotsu, fideos, chashu"
+          placeholder={t("products.descPh")}
           className={inputClass}
         />
       </div>
@@ -237,13 +241,13 @@ function ProductForm({
             htmlFor="prod-sku"
             className="text-sm font-medium text-text-primary"
           >
-            Etiqueta
+            {t("products.sku")}
           </label>
           <input
             id="prod-sku"
             value={sku}
             onChange={(e) => setSku(e.target.value)}
-            placeholder="Ej. KFR-TON"
+            placeholder={t("products.skuPh")}
             className={inputClass}
           />
         </div>
@@ -252,7 +256,7 @@ function ProductForm({
             htmlFor="prod-category"
             className="text-sm font-medium text-text-primary"
           >
-            Categoría
+            {t("products.colCategory")}
           </label>
           <div className="relative">
             <select
@@ -282,7 +286,7 @@ function ProductForm({
             htmlFor="prod-price"
             className="text-sm font-medium text-text-primary"
           >
-            Precio
+            {t("common.price")}
           </label>
           <input
             id="prod-price"
@@ -301,7 +305,7 @@ function ProductForm({
             htmlFor="prod-tokens"
             className="text-sm font-medium text-text-primary"
           >
-            Costo en fichas
+            {t("products.tokenCost")}
           </label>
           <input
             id="prod-tokens"
@@ -312,7 +316,7 @@ function ProductForm({
             className={inputClass}
           />
           <p className="text-[11px] text-text-muted">
-            0 = no se canjea con fichas
+            {t("products.tokenCostHint")}
           </p>
         </div>
       </div>
@@ -324,11 +328,13 @@ function ProductForm({
           onChange={(e) => setActive(e.target.checked)}
           className="size-4 accent-primary"
         />
-        Visible en el menú
+        {t("products.visible")}
       </label>
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-sm font-medium text-text-primary">Imagen</p>
+        <p className="text-sm font-medium text-text-primary">
+          {t("products.image")}
+        </p>
         <input
           id="product-image-upload"
           type="file"
@@ -347,7 +353,7 @@ function ProductForm({
           {uploading ? (
             <>
               <Loader2 size={22} aria-hidden className="animate-spin" />
-              <p className="text-xs">Subiendo…</p>
+              <p className="text-xs">{t("common.uploading")}</p>
             </>
           ) : image ? (
             // eslint-disable-next-line @next/next/no-img-element -- URL del bucket
@@ -359,7 +365,7 @@ function ProductForm({
           ) : (
             <>
               <ImagePlus size={22} aria-hidden />
-              <p className="text-xs">Clic para subir imagen</p>
+              <p className="text-xs">{t("products.uploadHint")}</p>
             </>
           )}
         </label>
@@ -368,7 +374,7 @@ function ProductForm({
             <p className="text-xs text-error">{uploadError}</p>
           ) : (
             <p className="text-[11px] text-text-muted">
-              JPG/PNG/WebP/GIF, máx. 5 MB
+              {t("products.uploadSpec")}
             </p>
           )}
           {image && !uploading && (
@@ -377,7 +383,7 @@ function ProductForm({
               onClick={() => setImage("")}
               className="text-[11px] font-semibold text-text-secondary transition-colors hover:text-error"
             >
-              Quitar
+              {t("common.remove")}
             </button>
           )}
         </div>
@@ -386,31 +392,31 @@ function ProductForm({
 
       <div className="flex flex-col gap-5 border-l border-border pl-5">
         <fieldset className="flex flex-col gap-1.5">
-          <legend className="sr-only">Tamaños disponibles</legend>
+          <legend className="sr-only">{t("products.sizesAvailable")}</legend>
           <p className="text-sm font-medium text-text-primary" aria-hidden>
-            Tamaños
+            {t("products.tabSizes")}
           </p>
           <OptionChecklist
             items={sizes.filter((s) => s.active)}
             selectedIds={sizeIds}
             onToggle={toggleSize}
-            emptyHint="Aún no hay tamaños — créalos abajo en la sección Tamaños."
+            emptyHint={t("products.sizesEmptyHint")}
           />
           <p className="text-[11px] text-text-muted">
-            El orden lo define la sección Tamaños.
+            {t("products.sizesOrderHint")}
           </p>
         </fieldset>
 
         <fieldset className="flex flex-col gap-1.5">
-          <legend className="sr-only">Extras disponibles</legend>
+          <legend className="sr-only">{t("products.extrasAvailable")}</legend>
           <p className="text-sm font-medium text-text-primary" aria-hidden>
-            Extras
+            {t("products.tabExtras")}
           </p>
           <OptionChecklist
             items={extras.filter((e) => e.active)}
             selectedIds={extraIds}
             onToggle={toggleExtra}
-            emptyHint="Aún no hay extras — créalos abajo en la sección Extras."
+            emptyHint={t("products.extrasEmptyHint")}
           />
         </fieldset>
       </div>
@@ -421,13 +427,13 @@ function ProductForm({
           onClick={onClose}
           className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface"
         >
-          Cancelar
+          {t("common.cancel")}
         </button>
         <button
           type="submit"
           className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
         >
-          {product ? "Guardar cambios" : "Crear producto"}
+          {product ? t("common.saveChanges") : t("products.create")}
         </button>
       </div>
     </form>

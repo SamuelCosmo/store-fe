@@ -12,6 +12,8 @@ export type StoreSettings = {
   kitchen: { okMin: number; warnMin: number; sound: boolean };
   currency: string;
   taxRate: number;
+  // precio de venta de una ficha — 0 = el tenant no vende fichas
+  tokenPrice: number;
   kiosk: { receiptSeconds: number };
   session: { hours: Record<Role, number> };
 };
@@ -21,6 +23,7 @@ export type ClientSettingsDto = {
   logoUrl: string | null;
   currency: string;
   taxRate: number;
+  tokenPrice: number;
   kioskReceiptSeconds: number;
   sessionHours: Partial<Record<Role, number>>;
 };
@@ -37,6 +40,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   kitchen: { okMin: 8, warnMin: 15, sound: true },
   currency: "MXN",
   taxRate: 0,
+  tokenPrice: 0,
   kiosk: { receiptSeconds: 10 },
   session: {
     hours: {
@@ -65,6 +69,7 @@ export function getSettings(): StoreSettings {
       kitchen: { ...DEFAULT_SETTINGS.kitchen, ...stored?.kitchen },
       currency: stored?.currency ?? DEFAULT_SETTINGS.currency,
       taxRate: stored?.taxRate ?? DEFAULT_SETTINGS.taxRate,
+      tokenPrice: stored?.tokenPrice ?? DEFAULT_SETTINGS.tokenPrice,
       kiosk: { ...DEFAULT_SETTINGS.kiosk, ...stored?.kiosk },
       session: {
         hours: {
@@ -115,6 +120,7 @@ export async function refreshSettings(
     kitchen: { ...DEFAULT_SETTINGS.kitchen },
     currency: client.currency,
     taxRate: Number(client.taxRate),
+    tokenPrice: Number(client.tokenPrice ?? 0),
     kiosk: { receiptSeconds: client.kioskReceiptSeconds },
     session: {
       hours: { ...DEFAULT_SETTINGS.session.hours, ...client.sessionHours },

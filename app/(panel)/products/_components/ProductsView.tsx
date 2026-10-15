@@ -2,6 +2,8 @@
 
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { api } from "@/lib/api";
+import { useI18n, type TKey } from "@/lib/i18n";
+import { getSettings } from "@/lib/settings";
 import { useSession } from "@/lib/session";
 import {
   ChevronDown,
@@ -22,6 +24,7 @@ import {
   type IconKey,
 } from "../../categories/_components/CategoriesView";
 import { useTableSort } from "../../_components/useTableSort";
+import { DeletedList } from "../../_components/DeletedList";
 import {
   PaginationBar,
   usePagination,
@@ -61,10 +64,12 @@ export type Product = {
   sizeIds: number[];
 };
 
-const MXN = new Intl.NumberFormat("es-MX", {
-  style: "currency",
-  currency: "MXN",
-});
+function moneyFmt(lang: "es" | "en") {
+  return new Intl.NumberFormat(lang === "en" ? "en-US" : "es-MX", {
+    style: "currency",
+    currency: getSettings().currency || "MXN",
+  });
+}
 
 function toProduct(dto: ProductDto): Product {
   return {
@@ -87,14 +92,16 @@ const GRID = "grid-cols-[1fr_140px_110px_140px_60px]";
 
 type Tab = "productos" | "tamanos" | "extras";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "productos", label: "Productos" },
-  { id: "tamanos", label: "Tamaños" },
-  { id: "extras", label: "Extras" },
+const TABS: { id: Tab; key: TKey }[] = [
+  { id: "productos", key: "products.tabProducts" },
+  { id: "tamanos", key: "products.tabSizes" },
+  { id: "extras", key: "products.tabExtras" },
 ];
 
 export function ProductsView() {
   const session = useSession();
+  const { t, lang } = useI18n();
+  const MXN = moneyFmt(lang);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [extras, setExtras] = useState<ExtraDto[]>([]);
@@ -148,15 +155,16 @@ export function ProductsView() {
         setSizes(szs);
       })
       .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+        setError(e instanceof Error ? e.message : t("common.loadError")),
       )
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t es estable
   }, [session]);
 
   // la página de productos la sirve el backend: page/size/sort/search en la query
   useEffect(() => {
     if (!session || tab !== "productos") return;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       api<PageDto<ProductDto>>(
         `/api/products?page=${page}&size=${size}&sort=${sortParam}&search=${encodeURIComponent(query)}`,
       )
@@ -170,10 +178,11 @@ export function ProductsView() {
           setMeta({ total: r.totalElements, pages: Math.max(1, r.totalPages) });
         })
         .catch((e: unknown) =>
-          setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+          setError(e instanceof Error ? e.message : t("common.loadError")),
         );
     }, query ? 250 : 0);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t es estable
   }, [session, page, size, sortParam, query, reload, tab, setPage]);
 
   // las tabs de asignación listan TODOS los productos por tamaño/extra — lazy
@@ -185,8 +194,9 @@ export function ProductsView() {
         setAllLoaded(true);
       })
       .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : "No se pudieron cargar"),
+        setError(e instanceof Error ? e.message : t("common.loadError")),
       );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t es estable
   }, [session, tab, allLoaded]);
 
   async function save(data: {
@@ -222,7 +232,7 @@ export function ProductsView() {
         if (allLoaded) setAllProducts((prev) => [...prev, next]);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar");
+      setError(e instanceof Error ? e.message : t("common.saveError"));
     }
   }
 
@@ -239,7 +249,7 @@ export function ProductsView() {
         prev.map((p) => (p.id === saved.id ? toProduct(saved) : p)),
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo actualizar");
+      setError(e instanceof Error ? e.message : t("common.updateError"));
     }
   }
 
@@ -249,7 +259,7 @@ export function ProductsView() {
       setAllProducts((prev) => prev.filter((p) => p.id !== product.id));
       setReload((r) => r + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo eliminar");
+      setError(e instanceof Error ? e.message : t("common.deleteError"));
     }
   }
 
@@ -258,24 +268,24 @@ export function ProductsView() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Productos"
-        subtitle="Administra los platos, precios y disponibilidad del menú"
+        title={t("products.title")}
+        subtitle={t("products.subtitle")}
       />
 
       <div role="tablist" className="flex gap-1 border-b border-border">
-        {TABS.map((t) => (
+        {TABS.map((tabDef) => (
           <button
-            key={t.id}
+            key={tabDef.id}
             role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
+            aria-selected={tab === tabDef.id}
+            onClick={() => setTab(tabDef.id)}
             className={`-mb-px border-b-2 px-4 py-2.5 text-sm transition-colors ${
-              tab === t.id
+              tab === tabDef.id
                 ? "border-primary font-semibold text-primary"
                 : "border-transparent text-text-secondary hover:text-text-primary"
             }`}
           >
-            {t.label}
+            {t(tabDef.key)}
           </button>
         ))}
       </div>
@@ -301,7 +311,7 @@ export function ProductsView() {
               setQuery(e.target.value);
               setPage(0);
             }}
-            placeholder="Buscar producto…"
+            placeholder={t("products.search")}
             className="w-full bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
         </label>
@@ -313,7 +323,7 @@ export function ProductsView() {
             }}
             className="flex h-[42px] shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4.5 text-[13px] font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            Nuevo producto
+            {t("products.new")}
             <Plus size={15} aria-hidden />
           </button>
         )}
@@ -323,38 +333,36 @@ export function ProductsView() {
         <div
           className={`grid ${GRID} items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase`}
         >
-          {th("name", "Producto")}
-          {th("category", "Categoría")}
-          {th("price", "Precio")}
-          <span>Disponibilidad</span>
-          <span>Acción</span>
+          {th("name", t("products.colProduct"))}
+          {th("category", t("products.colCategory"))}
+          {th("price", t("common.price"))}
+          <span>{t("products.colAvailability")}</span>
+          <span>{t("common.actions")}</span>
         </div>
 
         {!session ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-            Inicia sesión para ver los productos.
+            {t("products.loginRequired")}
           </p>
         ) : loading ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-            Cargando…
+            {t("common.loading")}
           </p>
         ) : noCategories ? (
           <div className="flex flex-col items-center gap-3 px-3.5 py-10">
             <p className="text-sm text-text-secondary">
-              Primero necesitas una categoría para tener productos.
+              {t("products.needCategory")}
             </p>
             <Link
               href="/categories"
               className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
             >
-              Ir a Categorías
+              {t("products.goCategories")}
             </Link>
           </div>
         ) : sorted.length === 0 ? (
           <p className="px-3.5 py-10 text-center text-sm text-text-muted">
-            {query
-              ? `Sin resultados para “${query}”`
-              : "Aún no hay productos. Crea el primero."}
+            {query ? t("common.noResults", { q: query }) : t("products.empty")}
           </p>
         ) : (
           sorted.map((product) => {
@@ -404,7 +412,7 @@ export function ProductsView() {
                     <p className="truncate text-[10px] text-text-muted">
                       {product.sku ? `SKU · ${product.sku}` : "—"}
                       {product.extraIds.length > 0 &&
-                        ` · ${product.extraIds.length} extra${product.extraIds.length === 1 ? "" : "s"}`}
+                        ` · ${t("products.extrasCount", { n: product.extraIds.length })}`}
                     </p>
                   </div>
                 </div>
@@ -426,7 +434,9 @@ export function ProductsView() {
                       aria-hidden
                       className={`size-1.5 rounded-full ${product.active ? "bg-success" : "bg-error"}`}
                     />
-                    {product.active ? "Disponible" : "Agotado"}
+                    {product.active
+                      ? t("products.available")
+                      : t("products.soldOut")}
                   </span>
                 </div>
                 <div
@@ -435,7 +445,7 @@ export function ProductsView() {
                   onKeyDown={(e) => e.stopPropagation()}
                 >
                   <button
-                    aria-label={`Editar ${product.name}`}
+                    aria-label={t("common.editAria", { name: product.name })}
                     onClick={() => {
                       setEditing(product);
                       setModalOpen(true);
@@ -445,7 +455,7 @@ export function ProductsView() {
                     <Pencil size={17} aria-hidden />
                   </button>
                   <button
-                    aria-label={`Más acciones para ${product.name}`}
+                    aria-label={t("common.moreAria", { name: product.name })}
                     aria-expanded={menuId === product.id}
                     aria-haspopup="menu"
                     onClick={() =>
@@ -477,7 +487,7 @@ export function ProductsView() {
                           ) : (
                             <Eye size={15} aria-hidden />
                           )}
-                          {product.active ? "Ocultar" : "Mostrar"}
+                          {product.active ? t("common.hide") : t("common.show")}
                         </button>
                         <button
                           onClick={() => {
@@ -487,7 +497,7 @@ export function ProductsView() {
                           className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-error transition-colors hover:bg-surface"
                         >
                           <Trash2 size={15} aria-hidden />
-                          Eliminar
+                          {t("common.delete")}
                         </button>
                       </div>
                     </>
@@ -505,7 +515,7 @@ export function ProductsView() {
                   {assignedSizes.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[10px] font-bold tracking-wide text-text-muted uppercase">
-                        Tamaños:
+                        {t("products.sizesLabel")}
                       </span>
                       {assignedSizes.map((size) => (
                         <span
@@ -528,16 +538,16 @@ export function ProductsView() {
                   )}
                   {assigned.length === 0 && assignedSizes.length === 0 ? (
                     <p className="text-xs text-text-muted">
-                      Sin tamaños ni extras asignados.
+                      {t("products.noAssignments")}
                     </p>
                   ) : assigned.length === 0 ? (
                     <p className="text-xs text-text-muted">
-                      Sin extras asignados.
+                      {t("products.noExtras")}
                     </p>
                   ) : (
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[10px] font-bold tracking-wide text-text-muted uppercase">
-                        Extras:
+                        {t("products.extrasLabel")}
                       </span>
                       {assigned.map((extra) => (
                         <span
@@ -571,6 +581,12 @@ export function ProductsView() {
           onSize={setSize}
         />
       </div>
+
+      <DeletedList
+        endpoint="/api/products"
+        title={t("products.deletedTitle")}
+        onRestored={() => setReload((r) => r + 1)}
+      />
       </>
       )}
 

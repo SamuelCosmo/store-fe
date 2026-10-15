@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
@@ -42,17 +43,18 @@ export function PaginationBar({
   onPage: (p: number) => void;
   onSize: (n: number) => void;
 }) {
+  const { t } = useI18n();
   if (total === 0) return null;
   const from = page * size + 1;
   const to = Math.min(total, (page + 1) * size);
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-xs text-text-secondary">
       <p className="tabular-nums">
-        {from}–{to} de {total}
+        {t("common.showing", { from, to, total })}
       </p>
       <div className="flex items-center gap-3">
         <label className="relative flex items-center gap-1.5 font-semibold">
-          Filas
+          {t("common.rows")}
           <select
             value={size}
             onChange={(e) => onSize(Number(e.target.value))}
@@ -75,7 +77,7 @@ export function PaginationBar({
             type="button"
             onClick={() => onPage(page - 1)}
             disabled={page === 0}
-            aria-label="Página anterior"
+            aria-label={t("common.prevPage")}
             className="flex size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:text-text-primary disabled:opacity-40"
           >
             <ChevronLeft size={15} aria-hidden />
@@ -87,7 +89,7 @@ export function PaginationBar({
             type="button"
             onClick={() => onPage(page + 1)}
             disabled={page >= pages - 1}
-            aria-label="Página siguiente"
+            aria-label={t("common.nextPage")}
             className="flex size-8 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:text-text-primary disabled:opacity-40"
           >
             <ChevronRight size={15} aria-hidden />

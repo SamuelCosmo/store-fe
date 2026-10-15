@@ -1,6 +1,9 @@
 "use client";
 
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
+import { getSettings } from "@/lib/settings";
+import { DeletedList } from "../../_components/DeletedList";
 import { Modal } from "@/components/molecules/Modal";
 import {
   Eye,
@@ -22,11 +25,6 @@ export type ExtraDto = {
   productIds: number[];
 };
 
-const MXN = new Intl.NumberFormat("es-MX", {
-  style: "currency",
-  currency: "MXN",
-});
-
 export function ExtrasSection({
   extras,
   products,
@@ -41,6 +39,11 @@ export function ExtrasSection({
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ExtraDto | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
+  const { t, lang } = useI18n();
+  const MXN = new Intl.NumberFormat(lang === "en" ? "en-US" : "es-MX", {
+    style: "currency",
+    currency: getSettings().currency || "MXN",
+  });
 
   async function save(data: { name: string; price: number; active: boolean }) {
     try {
@@ -56,7 +59,7 @@ export function ExtrasSection({
         saved,
       );
     } catch (e) {
-      onError(e instanceof Error ? e.message : "No se pudo guardar");
+      onError(e instanceof Error ? e.message : t("common.saveError"));
     }
   }
 
@@ -72,7 +75,7 @@ export function ExtrasSection({
       });
       onChange(extras.map((e) => (e.id === saved.id ? saved : e)));
     } catch (e) {
-      onError(e instanceof Error ? e.message : "No se pudo actualizar");
+      onError(e instanceof Error ? e.message : t("common.updateError"));
     }
   }
 
@@ -81,7 +84,7 @@ export function ExtrasSection({
       await api(`/api/extras/${extra.id}`, { method: "DELETE" });
       onChange(extras.filter((e) => e.id !== extra.id));
     } catch (e) {
-      onError(e instanceof Error ? e.message : "No se pudo eliminar");
+      onError(e instanceof Error ? e.message : t("common.deleteError"));
     }
   }
 
@@ -89,9 +92,11 @@ export function ExtrasSection({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold text-text-primary">Extras</h2>
+          <h2 className="text-lg font-semibold text-text-primary">
+            {t("products.tabExtras")}
+          </h2>
           <p className="text-xs text-text-secondary">
-            Ingredientes adicionales que se ofrecen con los productos
+            {t("extras.subtitle")}
           </p>
         </div>
         <button
@@ -101,23 +106,23 @@ export function ExtrasSection({
           }}
           className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-background px-4 text-[13px] font-medium text-text-primary transition-colors hover:bg-surface"
         >
-          Nuevo extra
+          {t("extras.new")}
           <Plus size={15} aria-hidden />
         </button>
       </div>
 
       <div className="rounded-2xl border border-border bg-background p-5">
         <div className="grid grid-cols-[1fr_140px_110px_110px_60px] items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase">
-          <span>Extra</span>
-          <span>Productos</span>
-          <span>Precio</span>
-          <span>Estado</span>
-          <span>Acción</span>
+          <span>{t("extras.colExtra")}</span>
+          <span>{t("products.tabProducts")}</span>
+          <span>{t("common.price")}</span>
+          <span>{t("common.status")}</span>
+          <span>{t("common.actions")}</span>
         </div>
 
         {extras.length === 0 ? (
           <p className="px-3.5 py-8 text-center text-sm text-text-muted">
-            Aún no hay extras. Crea el primero.
+            {t("extras.empty")}
           </p>
         ) : (
           extras.map((extra) => (
@@ -135,7 +140,7 @@ export function ExtrasSection({
               >
                 {extra.productIds.length === 0
                   ? "—"
-                  : `${extra.productIds.length} producto${extra.productIds.length === 1 ? "" : "s"}`}
+                  : t("extras.productsCount", { n: extra.productIds.length })}
               </p>
               <p className="text-xs font-bold text-text-primary">
                 +{MXN.format(extra.price)}
@@ -152,12 +157,12 @@ export function ExtrasSection({
                     aria-hidden
                     className={`size-1.5 rounded-full ${extra.active ? "bg-success" : "bg-text-muted"}`}
                   />
-                  {extra.active ? "Activo" : "Oculto"}
+                  {extra.active ? t("common.active") : t("common.hidden")}
                 </span>
               </div>
               <div className="relative flex items-center gap-2">
                 <button
-                  aria-label={`Editar ${extra.name}`}
+                  aria-label={t("common.editAria", { name: extra.name })}
                   onClick={() => {
                     setEditing(extra);
                     setModalOpen(true);
@@ -167,7 +172,7 @@ export function ExtrasSection({
                   <Pencil size={17} aria-hidden />
                 </button>
                 <button
-                  aria-label={`Más acciones para ${extra.name}`}
+                  aria-label={t("common.moreAria", { name: extra.name })}
                   aria-expanded={menuId === extra.id}
                   aria-haspopup="menu"
                   onClick={() =>
@@ -199,7 +204,7 @@ export function ExtrasSection({
                         ) : (
                           <Eye size={15} aria-hidden />
                         )}
-                        {extra.active ? "Ocultar" : "Mostrar"}
+                        {extra.active ? t("common.hide") : t("common.show")}
                       </button>
                       <button
                         onClick={() => {
@@ -209,7 +214,7 @@ export function ExtrasSection({
                         className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-error transition-colors hover:bg-surface"
                       >
                         <Trash2 size={15} aria-hidden />
-                        Eliminar
+                        {t("common.delete")}
                       </button>
                     </div>
                   </>
@@ -219,6 +224,14 @@ export function ExtrasSection({
           ))
         )}
       </div>
+
+      <DeletedList
+        endpoint="/api/extras"
+        title={t("extras.deletedTitle")}
+        onRestored={() =>
+          api<ExtraDto[]>("/api/extras").then(onChange).catch(() => {})
+        }
+      />
 
       <ExtraModal
         open={modalOpen}
@@ -241,11 +254,12 @@ function ExtraModal({
   onClose: () => void;
   onSave: (data: { name: string; price: number; active: boolean }) => void;
 }) {
+  const { t } = useI18n();
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={extra ? "Editar extra" : "Nuevo extra"}
+      title={t(extra ? "extras.modalEdit" : "extras.modalNew")}
     >
       {open && (
         <ExtraForm key={extra?.id ?? "new"} extra={extra} onSave={onSave} />
@@ -264,6 +278,7 @@ function ExtraForm({
   const [name, setName] = useState(extra?.name ?? "");
   const [price, setPrice] = useState(extra?.price.toString() ?? "");
   const [active, setActive] = useState(extra?.active ?? true);
+  const { t } = useI18n();
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -278,7 +293,7 @@ function ExtraForm({
             htmlFor="extra-name"
             className="text-sm font-medium text-text-primary"
           >
-            Nombre
+            {t("common.name")}
           </label>
           <input
             id="extra-name"
@@ -286,7 +301,7 @@ function ExtraForm({
             onChange={(e) => setName(e.target.value)}
             required
             autoFocus
-            placeholder="Ej. Chashu extra"
+            placeholder={t("extras.namePh")}
             className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
           />
         </div>
@@ -295,7 +310,7 @@ function ExtraForm({
             htmlFor="extra-price"
             className="text-sm font-medium text-text-primary"
           >
-            Precio adicional
+            {t("extras.priceLabel")}
           </label>
           <input
             id="extra-price"
@@ -318,7 +333,7 @@ function ExtraForm({
           onChange={(e) => setActive(e.target.checked)}
           className="size-4 accent-primary"
         />
-        Disponible
+        {t("common.available")}
       </label>
 
       <div className="mt-1 flex justify-end gap-2.5">
@@ -326,7 +341,7 @@ function ExtraForm({
           type="submit"
           className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover"
         >
-          {extra ? "Guardar cambios" : "Crear extra"}
+          {extra ? t("common.saveChanges") : t("extras.create")}
         </button>
       </div>
     </form>

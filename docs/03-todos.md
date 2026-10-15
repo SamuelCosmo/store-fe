@@ -114,8 +114,13 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       se reescribe (`…​.deleted-{id}`) porque `users.email` es UNIQUE —
       libera el correo para re-registrarlo. La categoría sigue
       rechazando con 400 si tiene productos **vivos** enlazados.
-      Pendiente: no hay UI de restauración ni purge definitivo (la fila
-      queda solo para historial).
+      Restauración: cada listado acepta `?deleted=true` (devuelve solo
+      borrados) y `POST /{id}/restore` reactiva la fila; el front comparte
+      `DeletedList` (`(panel)/_components`) montado bajo cada tabla +
+      toggle "Ver eliminados" en `/stores` (única con lista paginada —
+      usa el mismo endpoint con `deleted=true`). `DELETE /api/stores/{id}`
+      ya existe (ADMIN). Pendiente: purge definitivo (la fila queda para
+      historial).
 
 ## Iteración siguiente
 
@@ -245,12 +250,18 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       llama al proveedor. Bloqueado por: decisión del cliente + cuenta/
       credenciales del proveedor elegido (PDF entregado al cliente:
       `docs/terminales-pago-cliente.pdf`).
-- [ ] **Fichas (venta y canje)** — pantalla o sección por definir (idea no
-      cerrada): vender fichas en caja (`POST /api/tokens/purchase` —
-      `{quantity, paymentMethod}`) y canjearlas por productos con
-      `tokenCost > 0` (`POST /api/tokens/redeem`). Solo en caja, no en
-      kiosco. Físicas/anónimas, sin wallet. Ambos endpoints pendientes en
-      backend (módulo TOKENS).
+- [x] **Fichas (venta y canje)** — físicas/anónimas, sin wallet, solo en
+      caja. Backend: `POST /api/tokens` `{quantity, paymentMethod}` crea
+      un `TokenTransaction` SALE (conteo de ingreso); `paymentMethod:
+      TOKEN` en `POST /api/orders` canjea (descuenta `tokenCost` por
+      producto, `total = 0`, `tokenAmount` en la orden + snapshot
+      `token_cost` por ítem). `clients.tokenPrice` (settings) es el
+      precio de venta. Front: `tokenCost` en `ProductModal`, precio por
+      ficha en `/settings`, botón "Vender fichas" (icono Coins) en el
+      header del POS visible solo si `tokenPrice > 0`, y tercer método
+      "Fichas" en el modal de cobro (habilitado solo si todo el pedido
+      es canjeable). El kiosco no vende ni acepta fichas (guard de
+      canal). El ticket impreso muestra la línea "Fichas" y pago TOKEN.
 - [x] **Marcar agotado desde caja** ("86'd") — `products.soldOut` +
       `PATCH /api/products/{id}/sold-out` (ADMIN/MANAGER/EMPLOYEE). En el
       POS cada tarjeta lleva un toggle (⊘) arriba a la derecha; el
@@ -286,14 +297,19 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       su contraseña (con confirmación), quizá tema preferido. Endpoints
       pendientes en backend (`PATCH /api/users/me` o similar; hoy solo el
       admin edita usuarios vía `/api/users/{id}`).
-- [x] **i18n (scaffold)** — `lib/i18n.tsx`: `LangProvider` + `useI18n()`
-      (`{ lang, setLang, t }`), diccionarios `es`/`en` planos en el mismo
-      archivo, persistido por equipo en `localStorage` (`store.lang`).
-      Selector "Idioma" en `/settings` (botones Español/English).
-      Migrada solo la superficie compartida: nav del sidebar, subtítulo,
-      toggle colapsar, "Cerrar sesión" y labels de rol en el sidebar.
-      Pendiente: migrar el resto de pantallas conforme se toquen (agregar
-      la key a `es`/`en` y usar `t()`).
+- [x] **i18n completo** — `lib/i18n.tsx`: `LangProvider` + `useI18n()`
+      (`{ lang, setLang, t }`), diccionarios planos en
+      `lib/i18n/es.json` + `lib/i18n/en.json` (mismo set de keys, ~450),
+      interpolación `{name}`, `TKey = keyof typeof es` (una key inválida
+      rompe `tsc`), fallback a español, persistido por equipo en
+      `localStorage` (`store.lang`). Selector "Idioma" en `/settings`.
+      `translateNow()` exportado para código fuera de React (fallbacks
+      de error por status en `lib/api.ts`). Migradas TODAS las
+      pantallas: login, panel (dashboard, categorías, productos,
+      extras/tamaños, tiendas, usuarios, pedidos, settings), POS/kiosco
+      (`OrderTerminal` + `ExtrasModal`), KDS, `/superadmin`, ticket,
+      modales compartidos, paginación y lista de eliminados. Los
+      formatos de fecha/moneda siguen el idioma (`es-MX`/`en-US`).
 - [x] **`cashReceived`/`changeGiven` en la orden** — `OrderRequest`
       acepta `cashReceived` (solo CASH); el server valida ≥ total y
       persiste `change_given = cash_received - total`. Vuelven en

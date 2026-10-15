@@ -96,11 +96,19 @@ PUT                           /api/sizes/order       # body: [ids] → orden glo
 GET/PUT                       /api/inventory/{productId}
 ```
 
+**Borrado lógico / restauración:** los `DELETE` son soft delete
+(`deleted_at` — el historial de órdenes conserva snapshots). En
+categories/products/extras/sizes/users/stores:
+`GET …​?deleted=true` lista SOLO borrados y `POST …​/{id}/restore` reactiva
+(`POST /api/stores/{id}/restore` también existe). Restaurar un extra/tamaño
+no lo re-vincula a productos; restaurar un usuario recupera su email
+original (409 si ya se re-usó).
+
 ### Settings (GET para todo el tenant; PUT solo ADMIN)
 
 ```text
 GET/PUT   /api/clients/{id}/settings   # { name, logoUrl, currency, taxRate,
-                                       #   kioskReceiptSeconds,
+                                       #   kioskReceiptSeconds, tokenPrice,
                                        #   sessionHours: { rol: horas } } (0 = no cerrar)
                                        # marca del tenant: name vacío se ignora;
                                        # logoUrl "" quita el logo. El logo se sube
@@ -130,7 +138,8 @@ vive en `(panel)/_components/usePagination.tsx` (`usePagination`,
 el `sort=` — ver `docs/03-todos.md` › paginación.
 
 ```text
-POST/GET/GET{id}/PUT   /api/stores     # ADMIN; ligado a clientId
+POST/GET/GET{id}/PUT/DELETE /api/stores  # ADMIN; DELETE = baja lógica
+POST   /api/stores/{id}/restore          # ADMIN
 POST   /api/clients                    # alta de tenant (plan: maxStores,
                             # adminName/adminEmail/adminPassword opcionales
                             # → crea también el ADMIN del tenant)
@@ -179,7 +188,7 @@ GET    /api/orders/{id}/ticket   # payload autocontenido para imprimir:
 {
   "channel": "POS | KIOSK",
   "orderType": "DINE_IN | TAKEAWAY",
-  "paymentMethod": "CASH | CARD",
+  "paymentMethod": "CASH | CARD | TOKEN",
   "items": [{
     "productId": 1, "quantity": 2,
     "sizeId": 3,                                // opcional — asignado al producto
@@ -198,6 +207,10 @@ GET    /api/orders/{id}/ticket   # payload autocontenido para imprimir:
 
 **Reglas:**
 - `channel=KIOSK` ⇒ solo `CARD`. `CUSTOMER` solo crea órdenes `KIOSK`.
+- `paymentMethod=TOKEN` (canje de fichas): solo `POS`; exige que TODOS los
+  ítems tengan `tokenCost > 0` → `total = 0`, `subtotal = 0`, `taxAmount = 0`
+  y `OrderResponse.tokenAmount` = fichas cobradas (`order_items.token_cost`
+  es el snapshot por ítem). `cashReceived`/`changeGiven` quedan null.
 - Validación backend: productos activos del store de sesión + stock →
   descuenta inventario en la misma transacción. `sizeId`/`extras` deben
   estar asignados al producto (si no → 400); mismo producto con distinta
@@ -220,15 +233,18 @@ GET    /api/orders/{id}/ticket   # payload autocontenido para imprimir:
   ambos vuelven en `OrderResponse`/`TicketResponse` (ticket muestra
   Recibido/Cambio). `null` en CARD.
 
-### Extras del cliente (módulos opcionales — TODOS pendientes en backend)
+### Extras del cliente
 
 ```text
-# Fichas (TOKENS) — físicas/anónimas, sin wallet
-POST   /api/tokens/purchase    # { quantity, paymentMethod } — venta en caja
-POST   /api/tokens/redeem      # { productId, quantity } — canje en barra;
-                               #   solo products con tokenCost > 0
+# Fichas (TOKENS) ✅ — físicas/anónimas, sin wallet, solo caja
+POST   /api/tokens             # { quantity, paymentMethod: CASH|CARD } —
+                               #   venta: cobra quantity × clients.tokenPrice
+                               #   (400 si tokenPrice ≤ 0 → POS oculta el botón)
+GET    /api/tokens             # ?storeId=&from=&to= — ventas del rango (hoy)
+# El canje NO es endpoint propio: es POST /api/orders con
+# paymentMethod=TOKEN (ver reglas arriba). Solo products con tokenCost > 0.
 
-# Barra (BAR)
+# Barra (BAR) — pendiente en backend
 GET    /api/bar/items?status=
 PATCH  /api/bar/items/{id}/status
 
@@ -238,7 +254,7 @@ GET    /api/reports/dashboard?from=&to=&storeId=&top=
 #       channels[], orderTypes[], payments[], hourly[], topProducts[],
 #       employees[] } — CANCELLED no cuentan en ventas
 
-# Mesas y reservaciones (RESERVATIONS)
+# Mesas y reservaciones (RESERVATIONS) — pendiente en backend
 GET    /api/tables?zone=                       # DINING | BAR (6 sillas)
 POST   /api/tables
 GET    /api/reservations/availability?date=&zone=
@@ -247,7 +263,7 @@ POST   /api/reservations                       # { tableId, date, timeSlot,
 GET    /api/reservations?date=&status=
 PATCH  /api/reservations/{id}/status           # CONFIRMED/SEATED/CANCELLED/NO_SHOW
 
-# Módulos
+# Módulos — pendiente en backend
 PUT    /api/clients/{id}/modules   # plataforma: módulos contratados
 PUT    /api/users/{id}/modules     # admin del cliente: subconjunto ⊆ client_modules
 GET    /api/modules/available
