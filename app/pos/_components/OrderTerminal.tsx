@@ -160,6 +160,9 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     left: number;
   } | null>(null);
   const [payOpen, setPayOpen] = useState(false);
+  const [payStep, setPayStep] = useState<"form" | "confirm">("form");
+  // Solo caja: menú alterno que lista lo canjeable con fichas y cobra en TOKEN
+  const [tokenMenu, setTokenMenu] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [payment, setPayment] = useState<"CASH" | "CARD" | "TOKEN">(
     channel === "KIOSK" ? "CARD" : "CASH",
@@ -168,6 +171,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     quantity: string;
     method: "CASH" | "CARD";
     busy: boolean;
+    step: "form" | "confirm" | "done";
   } | null>(null);
   const [paying, setPaying] = useState(false);
   const [cashReceived, setCashReceived] = useState("");
@@ -270,6 +274,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     setMenu(null);
     setCustomizing(null);
     setPayOpen(false);
+    setPayStep("form");
     setConfirmLogout(false);
     setReceipt(null);
   }, []);
@@ -297,14 +302,18 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
 
 
   // el kiosco esconde los agotados; la caja los muestra para poder reactivarlos
+  const tokenMode = channel === "POS" && tokenMenu;
+  const hasTokenable = products.some((p) => p.tokenCost > 0);
+
   const visible = useMemo(
     () =>
       products.filter(
         (p) =>
           (categoryId === 0 || p.categoryId === categoryId) &&
-          (channel === "POS" || !p.soldOut),
+          (channel === "POS" || !p.soldOut) &&
+          (!tokenMode || p.tokenCost > 0),
       ),
-    [products, categoryId, channel],
+    [products, categoryId, channel, tokenMode],
   );
 
   const subtotal = cart.reduce((sum, i) => sum + lineUnit(i), 0);
@@ -428,7 +437,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           paymentMethod: tokenSale.method,
         }),
       });
-      setTokenSale(null);
+      setTokenSale({ ...tokenSale, busy: false, step: "done" });
     } catch (e) {
       setError(
         e instanceof Error ? e.message : t("pos.tokenSaleError"),
@@ -496,7 +505,12 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           {channel === "POS" && (settings?.tokenPrice ?? 0) > 0 && (
             <button
               onClick={() =>
-                setTokenSale({ quantity: "", method: "CASH", busy: false })
+                setTokenSale({
+                  quantity: "",
+                  method: "CASH",
+                  busy: false,
+                  step: "form",
+                })
               }
               aria-label={t("pos.sellTokens")}
               title={t("pos.sellTokens")}
@@ -532,6 +546,35 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
 
       <div className="flex min-h-0 flex-1 gap-6 p-6">
         <section className="flex min-w-0 flex-1 flex-col gap-5">
+          {channel === "POS" && hasTokenable && (
+            <div className="relative flex w-64 rounded-full bg-border p-1">
+              <span
+                aria-hidden
+                className={`absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-primary transition-transform duration-200 ease-out ${
+                  tokenMenu ? "translate-x-full" : "translate-x-0"
+                }`}
+              />
+              {(
+                [
+                  [false, t("pos.menuMain")],
+                  [true, t("pos.menuTokens")],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={label}
+                  onClick={() => setTokenMenu(value)}
+                  aria-pressed={tokenMenu === value}
+                  className={`relative z-10 flex-1 rounded-full py-2 text-xs font-bold transition-colors duration-200 ${
+                    tokenMenu === value
+                      ? "text-white"
+                      : "text-text-muted hover:text-text-primary"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2.5 overflow-x-auto pb-1">
             {[{ id: 0, name: t("common.all") }, ...categories].map((c) => (
               <button
@@ -609,7 +652,9 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                           {p.name}
                         </p>
                         <p className="pt-0.5 text-xs whitespace-nowrap">
-                          {fmt.format(p.price)}
+                          {tokenMode
+                            ? t("pos.tokenCount", { n: p.tokenCost })
+                            : fmt.format(p.price)}
                         </p>
                       </div>
                       <p className="line-clamp-2 text-xs leading-[1.35] font-semibold text-text-secondary">
@@ -700,7 +745,9 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                     </p>
                   </div>
                   <p className="shrink-0 text-right text-sm font-semibold whitespace-nowrap text-text-primary">
-                    {fmt.format(lineUnit(item))}
+                    {tokenMode
+                      ? t("pos.tokenCount", { n: item.product.tokenCost })
+                      : fmt.format(lineUnit(item))}
                   </p>
                   <button
                     aria-label={t("pos.lineOptions", {
@@ -735,30 +782,52 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
 
           {/* desglose estimado del carrito — el cobrado llega persistido en la orden */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between text-[13px] font-semibold">
-              <p className="text-text-secondary">{t("ticket.subtotal")}</p>
-              <p className="text-text-primary">{fmt.format(subtotal)}</p>
-            </div>
-            {taxRate > 0 && (
-              <div className="flex items-center justify-between text-[13px] font-semibold">
-                <p className="text-text-secondary">
-                  {t("ticket.tax", { rate: taxRate })}
+            {tokenMode ? (
+              <div className="flex items-center justify-between font-extrabold text-text-primary">
+                <p className="text-base">{t("ticket.total")}</p>
+                <p className="text-xl">
+                  {t("pos.tokenCount", { n: tokensDue })}
                 </p>
-                <p className="text-text-primary">{fmt.format(taxAmount)}</p>
               </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between text-[13px] font-semibold">
+                  <p className="text-text-secondary">{t("ticket.subtotal")}</p>
+                  <p className="text-text-primary">{fmt.format(subtotal)}</p>
+                </div>
+                {taxRate > 0 && (
+                  <div className="flex items-center justify-between text-[13px] font-semibold">
+                    <p className="text-text-secondary">
+                      {t("ticket.tax", { rate: taxRate })}
+                    </p>
+                    <p className="text-text-primary">{fmt.format(taxAmount)}</p>
+                  </div>
+                )}
+                <div className="flex items-center justify-between font-extrabold text-text-primary">
+                  <p className="text-base">{t("ticket.total")}</p>
+                  <p className="text-xl">{fmt.format(total)}</p>
+                </div>
+              </>
             )}
-            <div className="flex items-center justify-between font-extrabold text-text-primary">
-              <p className="text-base">{t("ticket.total")}</p>
-              <p className="text-xl">{fmt.format(total)}</p>
-            </div>
           </div>
+          {tokenMode && cart.length > 0 && !cartAllTokenable && (
+            <p className="rounded-lg border border-error/40 bg-error/5 px-3.5 py-2.5 text-sm font-semibold text-error">
+              {t("pos.notTokenable")}
+            </p>
+          )}
 
           <button
             onClick={() => {
               setCashReceived("");
+              if (tokenMode) {
+                setPayment("TOKEN");
+                setPayStep("confirm");
+              } else {
+                setPayStep("form");
+              }
               setPayOpen(true);
             }}
-            disabled={cart.length === 0}
+            disabled={cart.length === 0 || (tokenMode && !cartAllTokenable)}
             className="flex h-14 w-full items-center justify-end gap-2 rounded-2xl bg-primary px-5 text-[15px] font-extrabold text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
           >
             {t("pos.pay")}
@@ -831,9 +900,68 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
 
       <Modal
         open={payOpen}
-        onClose={() => setPayOpen(false)}
+        onClose={() => {
+          setPayOpen(false);
+          setPayStep("form");
+        }}
         title={t("pos.charge")}
       >
+        {payStep === "confirm" ? (
+          <div className="flex flex-col gap-5">
+            <p className="text-sm text-text-secondary">
+              {t("pos.confirmCharge")}
+            </p>
+            <div className="flex flex-col gap-1.5 rounded-xl border border-border px-4 py-3.5 text-sm">
+              {payment === "TOKEN" ? (
+                <p className="font-semibold text-text-primary">
+                  {t("pos.tokenCount", { n: tokensDue })}
+                  {" · "}
+                  {t("ticket.token")}
+                </p>
+              ) : (
+                <>
+                  <p className="font-semibold text-text-primary">
+                    {fmt.format(total)}
+                    {" · "}
+                    {payment === "CASH" ? t("ticket.cash") : t("ticket.card")}
+                  </p>
+                  {payment === "CASH" && (
+                    <>
+                      <p className="text-text-secondary">
+                        {t("pos.cashReceived")}:{" "}
+                        {fmt.format(Number(cashReceived))}
+                      </p>
+                      <p className="font-semibold text-success">
+                        {t("pos.changeBack", {
+                          v: fmt.format(Number(cashReceived) - total),
+                        })}
+                      </p>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() =>
+                  tokenMode ? setPayOpen(false) : setPayStep("form")
+                }
+                disabled={paying}
+                className="rounded-xl border border-border px-4 py-3 text-sm font-bold text-text-secondary transition-colors hover:bg-surface disabled:opacity-60"
+              >
+                {t("common.back")}
+              </button>
+              <button
+                onClick={pay}
+                disabled={paying}
+                className="flex-1 rounded-xl bg-primary py-3 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
+              >
+                {paying ? t("pos.charging") : t("common.accept")}
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="flex flex-col gap-5">
           <div
             className={`grid gap-3 ${channel === "POS" ? "grid-cols-3" : "grid-cols-1"}`}
@@ -934,27 +1062,25 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           )}
 
           <button
-            onClick={pay}
+            onClick={() => setPayStep("confirm")}
             disabled={
-              paying ||
               cart.length === 0 ||
               (payment === "CASH" &&
                 (cashReceived === "" || Number(cashReceived) < total))
             }
             className="w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
           >
-            {paying
-              ? t("pos.charging")
-              : payment === "TOKEN"
-                ? t("pos.chargeTokens", {
-                    n: tokensDue,
-                    unit: t(
-                      tokensDue === 1 ? "pos.tokenUnit" : "pos.tokenUnits",
-                    ),
-                  })
-                : t("pos.chargeTotal", { v: fmt.format(total) })}
+            {payment === "TOKEN"
+              ? t("pos.chargeTokens", {
+                  n: tokensDue,
+                  unit: t(
+                    tokensDue === 1 ? "pos.tokenUnit" : "pos.tokenUnits",
+                  ),
+                })
+              : t("pos.chargeTotal", { v: fmt.format(total) })}
           </button>
         </div>
+        )}
       </Modal>
 
       {/* Venta de fichas físicas — el canje es una orden con pago TOKEN. */}
@@ -963,74 +1089,148 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
         onClose={() => setTokenSale(null)}
         title={t("pos.sellTokens")}
       >
-        {tokenSale && (
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="token-qty"
-                className="text-xs font-bold text-text-secondary"
-              >
-                {t("pos.tokenQty")}
-              </label>
-              <input
-                id="token-qty"
-                type="number"
-                min={1}
-                step={1}
-                inputMode="numeric"
-                value={tokenSale.quantity}
-                onChange={(e) =>
-                  setTokenSale({ ...tokenSale, quantity: e.target.value })
-                }
-                className="h-11 rounded-xl border border-border bg-background px-3.5 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {(
-                [
-                  ["CASH", t("ticket.cash"), Banknote],
-                  ["CARD", t("ticket.card"), CreditCard],
-                ] as const
-              ).map(([value, label, Icon]) => (
-                <button
-                  key={value}
-                  onClick={() =>
-                    setTokenSale({ ...tokenSale, method: value })
-                  }
-                  aria-pressed={tokenSale.method === value}
-                  className={`flex items-center justify-center gap-2 rounded-xl border-2 py-3 text-sm font-bold transition-colors ${
-                    tokenSale.method === value
-                      ? "border-primary bg-primary-light text-primary"
-                      : "border-border text-text-secondary hover:border-primary/40"
-                  }`}
-                >
-                  <Icon size={17} aria-hidden />
-                  {label}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={sellTokens}
-              disabled={
-                tokenSale.busy ||
-                Number(tokenSale.quantity) < 1 ||
-                !Number.isInteger(Number(tokenSale.quantity))
-              }
-              className="w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
-            >
-              {tokenSale.busy
-                ? t("pos.charging")
-                : t("pos.chargeTotal", {
-                    v: fmt.format(
-                      Math.max(
-                        0,
-                        Math.floor(Number(tokenSale.quantity) || 0),
-                      ) * (settings?.tokenPrice ?? 0),
-                    ),
-                  })}
-            </button>
-          </div>
-        )}
+        {tokenSale &&
+          (() => {
+            const qty = Math.max(0, Math.floor(Number(tokenSale.quantity) || 0));
+            const unit = settings?.tokenPrice ?? 0;
+            return (
+              <div className="flex flex-col gap-5">
+                {tokenSale.step === "done" ? (
+                  <>
+                    <div className="flex flex-col items-center gap-3 py-2 text-center">
+                      <CircleCheck
+                        size={52}
+                        aria-hidden
+                        className="text-success"
+                      />
+                      <p className="text-lg font-extrabold text-text-primary">
+                        {t("pos.tokenSaleDone")}
+                      </p>
+                      <p className="text-sm text-text-secondary">
+                        {t("pos.tokenCount", { n: qty })}
+                        {" · "}
+                        {fmt.format(qty * unit)}
+                        {" · "}
+                        {tokenSale.method === "CASH"
+                          ? t("ticket.cash")
+                          : t("ticket.card")}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setTokenSale(null)}
+                      autoFocus
+                      className="w-full rounded-xl bg-primary py-3 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover"
+                    >
+                      {t("common.close")}
+                    </button>
+                  </>
+                ) : tokenSale.step === "confirm" ? (
+                  <>
+                    <p className="text-sm text-text-secondary">
+                      {t("pos.confirmCharge")}
+                    </p>
+                    <div className="flex flex-col gap-1.5 rounded-xl border border-border px-4 py-3.5 text-sm">
+                      <p className="font-semibold text-text-primary">
+                        {t("pos.tokenCount", { n: qty })}
+                        {" × "}
+                        {fmt.format(unit)}
+                        {" = "}
+                        {fmt.format(qty * unit)}
+                      </p>
+                      <p className="text-text-secondary">
+                        {tokenSale.method === "CASH"
+                          ? t("ticket.cash")
+                          : t("ticket.card")}
+                      </p>
+                    </div>
+                    <div className="flex gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTokenSale({ ...tokenSale, step: "form" })
+                        }
+                        disabled={tokenSale.busy}
+                        className="rounded-xl border border-border px-4 py-3 text-sm font-bold text-text-secondary transition-colors hover:bg-surface disabled:opacity-60"
+                      >
+                        {t("common.back")}
+                      </button>
+                      <button
+                        onClick={sellTokens}
+                        disabled={tokenSale.busy}
+                        className="flex-1 rounded-xl bg-primary py-3 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
+                      >
+                        {tokenSale.busy
+                          ? t("pos.charging")
+                          : t("common.accept")}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm font-semibold text-text-secondary">
+                      {t("pos.tokenUnitPrice", { v: fmt.format(unit) })}
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      <label
+                        htmlFor="token-qty"
+                        className="text-xs font-bold text-text-secondary"
+                      >
+                        {t("pos.tokenQty")}
+                      </label>
+                      <input
+                        id="token-qty"
+                        type="number"
+                        min={1}
+                        step={1}
+                        inputMode="numeric"
+                        value={tokenSale.quantity}
+                        onChange={(e) =>
+                          setTokenSale({
+                            ...tokenSale,
+                            quantity: e.target.value,
+                          })
+                        }
+                        className="h-11 rounded-xl border border-border bg-background px-3.5 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(
+                        [
+                          ["CASH", t("ticket.cash"), Banknote],
+                          ["CARD", t("ticket.card"), CreditCard],
+                        ] as const
+                      ).map(([value, label, Icon]) => (
+                        <button
+                          key={value}
+                          onClick={() =>
+                            setTokenSale({ ...tokenSale, method: value })
+                          }
+                          aria-pressed={tokenSale.method === value}
+                          className={`flex items-center justify-center gap-2 rounded-xl border-2 py-3 text-sm font-bold transition-colors ${
+                            tokenSale.method === value
+                              ? "border-primary bg-primary-light text-primary"
+                              : "border-border text-text-secondary hover:border-primary/40"
+                          }`}
+                        >
+                          <Icon size={17} aria-hidden />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() =>
+                        setTokenSale({ ...tokenSale, step: "confirm" })
+                      }
+                      disabled={qty < 1}
+                      className="w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
+                    >
+                      {t("pos.chargeTotal", { v: fmt.format(qty * unit) })}
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })()}
       </Modal>
 
       <Modal
@@ -1081,6 +1281,9 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           <div className="flex flex-col items-center gap-4 text-center">
             <CircleCheck size={52} aria-hidden className="text-success" />
             <div className="flex flex-col gap-1">
+              <p className="text-sm font-bold text-success">
+                {t("pos.paymentSuccess")}
+              </p>
               <p className="text-lg font-extrabold text-text-primary">
                 {t("ticket.order", { n: receipt.number ?? receipt.id })}
               </p>

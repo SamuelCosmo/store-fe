@@ -13,8 +13,8 @@ export type Role =
   | "SUPERADMIN";
 
 export type AuthResponse = {
-  /** Marca local del login para el TTL por rol — el JWT real viaja en la
-   *  cookie httpOnly y nunca es legible desde JS. */
+  token: string;
+  /** Marca local del login para el TTL por rol. */
   loginAt: number;
   userId: number;
   name: string;
@@ -67,10 +67,10 @@ export function useSession() {
 export const SESSION_EXPIRED_EVENT = "store:session-expired";
 
 export function isSessionExpired(session: AuthResponse): boolean {
-  // Sesiones pre-cookie (sin loginAt) cuentan como expiradas → migración.
-  if (typeof session.loginAt !== "number") return true;
+  // Sesiones de la era-cookie (sin token) o viejas (sin loginAt) → migración.
+  if (!session.token || typeof session.loginAt !== "number") return true;
   // Cierre por rol según settings: horas desde el login (0 = sin límite).
-  // ponytail: solo client-side — el JWT de la cookie sigue válido hasta `exp`;
+  // ponytail: solo client-side — el JWT sigue válido hasta `exp`;
   // TTL real por rol pendiente en backend
   const hours = getSettings().session.hours[session.role] ?? 0;
   return hours > 0 && Date.now() - session.loginAt > hours * 3_600_000;

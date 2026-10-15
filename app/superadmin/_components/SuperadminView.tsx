@@ -87,7 +87,6 @@ function SuperadminLogin() {
     try {
       const res = await fetch(`${API_URL}/api/auth/superadmin`, {
         method: "POST",
-        credentials: "include", // el JWT llega en cookie httpOnly
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: String(data.get("email") ?? "")

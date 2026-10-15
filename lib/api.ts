@@ -19,11 +19,12 @@ const STATUS_KEYS: Record<number, TKey> = {
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   // FormData (uploads) lleva su propio Content-Type con boundary
   const isForm = init?.body instanceof FormData;
+  const token = getSession()?.token;
   const res = await fetch(`${BASE}${path}`, {
-    credentials: "include", // el JWT viaja en cookie httpOnly
     ...init,
     headers: {
       ...(isForm ? {} : { "Content-Type": "application/json" }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   });
@@ -37,7 +38,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* respuesta sin cuerpo JSON */
     }
-    // 401 = cookie expirada/ausente → sesión local obsoleta. 403 = autenticado
+    // 401 = token expirado/ausente → sesión local obsoleta. 403 = autenticado
     // pero sin permiso (rol/módulo) → la sesión sigue viva, no se cierra.
     if (res.status === 401 && getSession() && typeof window !== "undefined") {
       clearSession();
@@ -49,10 +50,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-/** Cierra sesión: metadata local + cookie httpOnly (solo el server la expira). */
+/** Cierra sesión local y le avisa al server para que expire cualquier
+ *  cookie store_token que una versión previa haya podido dejar. */
 export function logoutSession() {
   clearSession();
-  api("/api/auth/logout", { method: "POST" }).catch(() => {
-    /* la cookie expira sola si el server no contesta */
-  });
+  api("/api/auth/logout", { method: "POST" }).catch(() => {});
 }
