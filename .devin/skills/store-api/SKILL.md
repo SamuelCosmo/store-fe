@@ -292,6 +292,14 @@ Todos los errores llegan como `ErrorResponse`:
 
 Mapear `fieldErrors` a los campos del formulario; `message` es texto legible.
 
+## Cambios al backend — actualiza los tests
+
+Al tocar `store-be` (firmas de DTOs/records, constructores, comportamiento de
+servicios), **actualiza los tests de `src/test/` en el mismo cambio** — el
+build de Railway compila los tests (`mvnw install`) y rompe aunque el código
+principal compile. Antes de cerrar: `./mvnw -q -DskipTests compile` +
+`./mvnw -q test`.
+
 ## Decisiones de integración (docs/11)
 
 - `fetch` nativo alcanza para empezar; `TanStack Query` recomendado para
