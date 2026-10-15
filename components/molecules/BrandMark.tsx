@@ -22,23 +22,59 @@ export function BrandMark({
         <img
           src={logoUrl}
           alt={title}
-          className="h-[45px] w-auto max-w-[120px] object-contain"
+          className={
+            collapsed
+              ? "h-7 w-auto max-w-[48px] object-contain"
+              : "h-9 w-auto max-w-[110px] shrink-0 object-contain"
+          }
         />
+      ) : collapsed ? (
+        /* rail angosto: icono "A+" de la marca */
+        <>
+          <Image
+            src="/sac-icon-light.png"
+            alt=""
+            width={405}
+            height={167}
+            unoptimized
+            className="h-7 w-auto object-contain dark:hidden"
+          />
+          <Image
+            src="/sac-icon.png"
+            alt=""
+            width={405}
+            height={167}
+            unoptimized
+            className="hidden h-7 w-auto object-contain dark:block"
+          />
+        </>
       ) : (
-        /* El SVG fuente queda boca abajo; el flip replica el diseño de Figma */
-        <Image
-          src="/kofi-logo.svg"
-          alt=""
-          width={52}
-          height={45}
-          unoptimized
-          className="h-[45px] w-[52px] -rotate-180 -scale-x-100"
-        />
+        <>
+          {/* Logo de plataforma SAC+ — variante por tema */}
+          <Image
+            src="/sac-logo-light.png"
+            alt=""
+            width={120}
+            height={45}
+            unoptimized
+            className="h-9 w-auto shrink-0 object-contain dark:hidden"
+          />
+          <Image
+            src="/sac-logo.png"
+            alt=""
+            width={120}
+            height={45}
+            unoptimized
+            className="hidden h-9 w-auto shrink-0 object-contain dark:block"
+          />
+        </>
       )}
       {!collapsed && (
-        <div className="flex flex-col gap-0.5 whitespace-nowrap">
-          <p className="text-[15px] font-extrabold text-text-primary">{title}</p>
-          <p className="text-[11px] font-semibold text-text-secondary">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <p className="truncate text-[15px] font-extrabold text-text-primary">
+            {title}
+          </p>
+          <p className="truncate text-[11px] font-semibold text-text-secondary">
             {subtitle}
           </p>
         </div>

@@ -11,10 +11,11 @@ import {
   type StoreSettings,
 } from "@/lib/settings";
 import { logoutSession } from "@/lib/api";
-import { useSession } from "@/lib/session";
+import { ROLE_HOME, useSession } from "@/lib/session";
 import type { CategoryDto } from "@/app/(panel)/categories/_components/CategoriesView";
 import type { ProductDto } from "@/app/(panel)/products/_components/ProductsView";
 import {
+  ArrowLeft,
   ArrowRight,
   Banknote,
   ChefHat,
@@ -139,6 +140,11 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [storeName, setStoreName] = useState("Store");
+  // selector multi-tienda (admin/gerente en caja) — como en el KDS
+  const [storeOptions, setStoreOptions] = useState<
+    { id: number; name: string }[]
+  >([]);
+  const [viewStore, setViewStore] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<
@@ -215,33 +221,71 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     };
   }, []);
 
-  const load = useCallback(async () => {
-    const [prods, cats] = await Promise.all([
-      api<ProductDto[]>("/api/products?activeOnly=true"),
-      api<CategoryDto[]>("/api/categories"),
-    ]);
-    setProducts(prods);
-    setCategories(cats.filter((c) => c.active));
-  }, []);
+  const load = useCallback(
+    async (scope?: number | null) => {
+      const sid = scope !== undefined ? scope : viewStore;
+      const qs = sid != null ? `storeId=${sid}&` : "";
+      const [prods, cats] = await Promise.all([
+        api<ProductDto[]>(`/api/products?${qs}activeOnly=true`),
+        api<CategoryDto[]>(`/api/categories?${qs}`),
+      ]);
+      setProducts(prods);
+      setCategories(cats.filter((c) => c.active));
+    },
+    [viewStore],
+  );
 
+  // ¿puede elegir tienda? solo caja + admin/gerente — el resto usa la suya
+  const pickable =
+    channel === "POS" &&
+    (session?.role === "ADMIN" || session?.role === "MANAGER");
+
+  // Tiendas visibles — una vez por sesión; define el scope inicial.
+  // (No va junto con el catálogo: si dependiera de `load`, cambiar de tienda
+  // re-dispararía esto y resetearía viewStore — el selector "rebotaba".)
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
+    const pick =
+      channel === "POS" &&
+      (session.role === "ADMIN" || session.role === "MANAGER");
+    const storesCall = pick
+      ? api<{ id: number; name: string }[]>(`/api/users/me/stores`)
+      : api<{ id: number; name: string }[]>(
+          `/api/clients/${session.clientId}/stores`,
+        );
+    storesCall
+      .catch(() => [] as { id: number; name: string }[])
+      .then((stores) => {
+        if (cancelled) return;
+        const initial = pick
+          ? (session.storeId ?? stores[0]?.id ?? null)
+          : null;
+        setStoreOptions(stores);
+        setViewStore(initial);
+        setStoreName(
+          stores.find((s) => s.id === (initial ?? session.storeId))?.name ??
+            stores[0]?.name ??
+            "Store",
+        );
+        if (pick && initial == null) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, channel]);
+
+  // Catálogo — inicial + polling + al cambiar de tienda (load lleva el scope)
+  useEffect(() => {
+    if (!session) return;
+    // admin/gerente sin scope aún: esperar a que lleguen las tiendas — sin
+    // ?storeId= el backend no puede resolver el catálogo para ellos
+    if (pickable && viewStore == null) return;
+    let cancelled = false;
     const first = setTimeout(() => {
       load()
-        .then(() =>
-          api<{ id: number; name: string }[]>(
-            `/api/clients/${session.clientId}/stores`,
-          ).catch(() => []),
-        )
-        .then((stores) => {
-          if (cancelled) return;
-          setStoreName(
-            stores.find((s) => s.id === session.storeId)?.name ??
-              stores[0]?.name ??
-              "Store",
-          );
-          setError(null);
+        .then(() => {
+          if (!cancelled) setError(null);
         })
         .catch((e: unknown) => {
           if (!cancelled) {
@@ -267,7 +311,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       document.removeEventListener("visibilitychange", onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- t es estable
-  }, [session, load]);
+  }, [session, load, pickable, viewStore]);
 
   const resetTerminal = useCallback(() => {
     setCart([]);
@@ -300,6 +344,24 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     };
   }, [channel, idle, resetTerminal]);
 
+
+  // selector de tienda en caja — solo gerente/admin con varias asignadas
+  const canPickStore =
+    channel === "POS" &&
+    (session?.role === "ADMIN" || session?.role === "MANAGER") &&
+    storeOptions.length > 1;
+
+  function switchStore(id: number) {
+    setViewStore(id);
+    setStoreName(
+      storeOptions.find((s) => s.id === id)?.name ?? "Store",
+    );
+    // el carrito tiene productos de la otra tienda — se descarta
+    setCart([]);
+    setCategoryId(0);
+    setTokenMenu(false);
+    setMenu(null);
+  }
 
   // el kiosco esconde los agotados; la caja los muestra para poder reactivarlos
   const tokenMode = channel === "POS" && tokenMenu;
@@ -391,6 +453,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           channel,
           orderType,
           paymentMethod: payment,
+          ...(viewStore != null ? { storeId: viewStore } : {}),
           ...(payment === "CASH" && cashReceived !== ""
             ? { cashReceived: Number(cashReceived) }
             : {}),
@@ -435,6 +498,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
         body: JSON.stringify({
           quantity: Math.floor(Number(tokenSale.quantity)),
           paymentMethod: tokenSale.method,
+          ...(viewStore != null ? { storeId: viewStore } : {}),
         }),
       });
       setTokenSale({ ...tokenSale, busy: false, step: "done" });
@@ -520,8 +584,18 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               {t("pos.sellTokens")}
             </button>
           )}
-          {/* acceso al tablero de pedidos desde la caja */}
-          {channel === "POS" && (
+          {/* admin/gerente: la caja es una visita desde el panel — solo
+              "Volver". El cajero (EMPLOYEE) conserva cocina + cerrar sesión */}
+          {channel === "POS" &&
+          (session?.role === "ADMIN" || session?.role === "MANAGER") ? (
+            <Link
+              href={ROLE_HOME[session.role]}
+              className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-bold text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <ArrowLeft size={14} aria-hidden />
+              {t("common.back")}
+            </Link>
+          ) : channel === "POS" ? (
             <Link
               href="/kitchen"
               aria-label={t("pos.kitchenBoard")}
@@ -530,9 +604,11 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
             >
               <ChefHat size={17} aria-hidden />
             </Link>
-          )}
+          ) : null}
           {/* El kiosco (CUSTOMER) no tiene logout: es una cuenta compartida */}
-          {channel === "POS" && (
+          {channel === "POS" &&
+          session?.role !== "ADMIN" &&
+          session?.role !== "MANAGER" && (
             <button
               onClick={() => setConfirmLogout(true)}
               aria-label={t("user.logout")}
@@ -543,6 +619,25 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           )}
         </div>
       </header>
+
+      {/* selector de establecimiento — gerente/admin con varias tiendas (caja) */}
+      {canPickStore && (
+        <div className="flex shrink-0 items-center px-6 pt-4 pb-1">
+          <select
+            id="pos-store"
+            aria-label={t("nav.stores")}
+            value={viewStore ?? ""}
+            onChange={(e) => switchStore(Number(e.target.value))}
+            className="h-9 rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-text-primary outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+          >
+            {storeOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1 gap-6 p-6">
         <section className="flex min-w-0 flex-1 flex-col gap-5">

@@ -29,6 +29,7 @@ export function Sidebar({
         collapsed ? "w-[76px] px-3" : "w-[248px] px-5"
       }`}
     >
+      {/* logo del tenant si lo configuró; si no, marca SAC+ */}
       <BrandMark
         title={brand.title}
         subtitle={brand.subtitle}

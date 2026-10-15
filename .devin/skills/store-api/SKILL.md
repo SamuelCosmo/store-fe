@@ -52,7 +52,12 @@ POST /api/auth/stores       # { email, password } → [{id,name}] — pedirla cu
 - Un usuario puede operar varios stores (`user_stores`); el `storeId` activo
   se elige en el login y viaja en el JWT.
 - **`storeId` NUNCA va en el body** de requests — el backend lo deriva del
-  token. El query param `?storeId=` solo lo puede usar `ADMIN`.
+  token. El query param `?storeId=` lo acepta `ADMIN` (cualquier tienda del
+  cliente) y cualquier rol para sus tiendas **asignadas** (`user_stores`);
+  otra tienda → 403.
+- `GET /api/users/me/stores` → `[{id,name}]` de tiendas visibles del usuario
+  (ADMIN: todas las del cliente; otros: asignadas vivas) — alimenta el
+  selector multi-tienda del KDS.
 
 ## Enrutado por rol + módulos
 

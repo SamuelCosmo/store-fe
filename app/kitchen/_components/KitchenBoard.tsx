@@ -63,6 +63,12 @@ export function KitchenBoard() {
   const locale = lang === "en" ? "en-US" : "es-MX";
   const [orders, setOrders] = useState<OrderDto[]>([]);
   const [storeName, setStoreName] = useState("Store");
+  // tiendas visibles + scope del tablero (solo ADMIN/MANAGER con varias)
+  const [storeOptions, setStoreOptions] = useState<
+    { id: number; name: string }[]
+  >([]);
+  // null = vista combinada (solo ADMIN — el backend responde todo el cliente)
+  const [viewStore, setViewStore] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
@@ -135,8 +141,9 @@ export function KitchenBoard() {
   }, []);
 
   const load = useCallback(async () => {
+    const scope = viewStore != null ? `&storeId=${viewStore}` : "";
     const lists = await Promise.all(
-      ACTIVE.map((s) => api<OrderDto[]>(`/api/orders?status=${s}`)),
+      ACTIVE.map((s) => api<OrderDto[]>(`/api/orders?status=${s}${scope}`)),
     );
     const next = lists.flat();
     // suena solo si llega un PENDING que no estaba; la primera carga no suena
@@ -148,7 +155,7 @@ export function KitchenBoard() {
     }
     knownIds.current = new Set(next.map((o) => o.id));
     setOrders(next);
-  }, [chime]);
+  }, [chime, viewStore]);
 
   useEffect(() => {
     if (!session) return;
@@ -156,12 +163,16 @@ export function KitchenBoard() {
     const first = setTimeout(() => {
       load()
         .then(() =>
-          api<{ id: number; name: string }[]>(
-            `/api/clients/${session.clientId}/stores`,
-          ),
+          // ADMIN/MANAGER con varias tiendas ven el selector — lista las suyas
+          session.role === "ADMIN" || session.role === "MANAGER"
+            ? api<{ id: number; name: string }[]>(`/api/users/me/stores`)
+            : api<{ id: number; name: string }[]>(
+                `/api/clients/${session.clientId}/stores`,
+              ),
         )
         .then((stores) => {
           if (cancelled) return;
+          setStoreOptions(stores);
           setStoreName(
             stores.find((s) => s.id === session.storeId)?.name ??
               stores[0]?.name ??
@@ -194,6 +205,17 @@ export function KitchenBoard() {
     () => [...orders].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     [orders],
   );
+
+  const storeNameById = useMemo(
+    () => new Map(storeOptions.map((s) => [s.id, s.name])),
+    [storeOptions],
+  );
+  // selector solo para gerente/admin — el resto del staff ve su tienda
+  const canPickStore =
+    (session?.role === "ADMIN" || session?.role === "MANAGER") &&
+    storeOptions.length > 1;
+  // vista combinada = ADMIN sin tienda elegida → cada tarjeta nombra su tienda
+  const merged = session?.role === "ADMIN" && viewStore == null && canPickStore;
 
   async function advance(order: OrderDto) {
     const next = NEXT[order.status];
@@ -262,6 +284,32 @@ export function KitchenBoard() {
         </div>
       </header>
 
+      {/* selector de establecimiento — solo gerente/admin con varias tiendas */}
+      {canPickStore && (
+        <div className="flex shrink-0 items-center px-6 pt-4 pb-1">
+          <select
+            id="kitchen-store"
+            aria-label={t("nav.stores")}
+            value={viewStore ?? session?.storeId ?? ""}
+            onChange={(e) =>
+              setViewStore(
+                e.target.value === "" ? null : Number(e.target.value),
+              )
+            }
+            className="h-9 rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-text-primary outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+          >
+            {session?.role === "ADMIN" && (
+              <option value="">{t("kitchen.allStores")}</option>
+            )}
+            {storeOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-6">
         {error && (
           <p
@@ -318,6 +366,8 @@ export function KitchenBoard() {
                       : t("ticket.takeaway")}
                     {" · "}
                     {o.channel === "KIOSK" ? t("ticket.kiosk") : t("ticket.pos")}
+                    {merged &&
+                      ` · ${storeNameById.get(o.storeId) ?? `#${o.storeId}`}`}
                   </p>
 
                   <ul className="flex flex-col gap-1 border-t border-text-primary/10 pt-3">

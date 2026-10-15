@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* dark: gobernado por la clase .dark en <html> (ThemeToggle), no por el SO */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #2c2c2c;

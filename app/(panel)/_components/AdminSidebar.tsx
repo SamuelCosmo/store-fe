@@ -2,7 +2,7 @@
 
 import { Sidebar } from "@/components/organisms/Sidebar";
 import { useI18n, type TKey } from "@/lib/i18n";
-import { useSession } from "@/lib/session";
+import { useSession, type Role } from "@/lib/session";
 import {
   DEFAULT_SETTINGS,
   SETTINGS_CHANGED_EVENT,
@@ -11,6 +11,7 @@ import {
 import {
   type LucideIcon,
   ChefHat,
+  CreditCard,
   LayoutDashboard,
   ReceiptText,
   Settings,
@@ -29,11 +30,19 @@ const items: {
   icon: LucideIcon;
   exact?: boolean;
   adminOnly?: boolean;
+  /** si está, solo esos roles ven el ítem */
+  roles?: Role[];
 }[] = [
   { href: "/dashboard", key: "nav.dashboard", icon: LayoutDashboard, exact: true },
   { href: "/categories", key: "nav.categories", icon: Tag },
   { href: "/products", key: "nav.products", icon: Soup },
   { href: "/stores", key: "nav.stores", icon: Store },
+  {
+    href: "/pos",
+    key: "nav.pos",
+    icon: CreditCard,
+    roles: ["ADMIN", "MANAGER"],
+  },
   { href: "/kitchen", key: "nav.kitchen", icon: ChefHat },
   { href: "/orders", key: "nav.orders", icon: ReceiptText },
   { href: "/users", key: "nav.users", icon: Users, adminOnly: true },
@@ -63,7 +72,11 @@ export function AdminSidebar() {
         subtitle: t("sidebar.subtitle"),
       }}
       items={items
-        .filter((i) => !i.adminOnly || session?.role === "ADMIN")
+        .filter(
+          (i) =>
+            (!i.adminOnly || session?.role === "ADMIN") &&
+            (!i.roles || i.roles.includes(session?.role ?? "EMPLOYEE")),
+        )
         .map(({ key, ...i }) => ({ ...i, label: t(key) }))}
     />
   );
