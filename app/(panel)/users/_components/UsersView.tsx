@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { api } from "@/lib/api";
 import { useI18n, type TKey } from "@/lib/i18n";
 import { useSession, type Role } from "@/lib/session";
+import { useToast } from "@/lib/toast";
 import {
   Eye,
   EyeOff,
@@ -55,6 +56,7 @@ type Confirm =
 export function UsersView() {
   const session = useSession();
   const { t } = useI18n();
+  const toast = useToast();
   const [users, setUsers] = useState<UserDto[]>([]);
   const [stores, setStores] = useState<StoreDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,6 +141,7 @@ export function UsersView() {
     if (!confirm) return;
     if (confirm.kind === "save") {
       await saveUser(confirm.data, currentPassword);
+      toast.success(editing ? t("common.updated") : t("common.saved"));
       setConfirm(null);
       setModalOpen(false);
       return;
@@ -156,11 +159,13 @@ export function UsersView() {
         },
       );
       setUsers((prev) => prev.map((u) => (u.id === saved.id ? saved : u)));
+      toast.success(t("common.updated"));
     } else {
       await api(`/api/users/${confirm.user.id}`, {
         method: "DELETE",
         body,
       });
+      toast.success(t("common.deleted"));
       setReload((r) => r + 1);
     }
     setConfirm(null);
@@ -394,7 +399,7 @@ export function UsersView() {
         }
         onClose={() => setConfirm(null)}
         onConfirm={runConfirm}
-        onError={setError}
+        onError={(m) => m && toast.error(m)}
       />
     </div>
   );

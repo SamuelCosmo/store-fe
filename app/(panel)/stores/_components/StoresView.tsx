@@ -5,6 +5,7 @@ import { Modal } from "@/components/molecules/Modal";
 import { api } from "@/lib/api";
 import { useI18n, type TKey } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
+import { useToast } from "@/lib/toast";
 import {
   Building2,
   Coffee,
@@ -58,6 +59,7 @@ const GRID = "grid-cols-[1fr_200px_140px_140px_110px_60px]";
 export function StoresView() {
   const session = useSession();
   const { t, lang } = useI18n();
+  const toast = useToast();
   const locale = lang === "en" ? "en-US" : "es-MX";
   const [stores, setStores] = useState<StoreDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,9 +129,10 @@ export function StoresView() {
     try {
       await api(`/api/stores/${store.id}`, { method: "DELETE" });
       setConfirmDelete(null);
+      toast.success(t("common.deleted"));
       setReload((r) => r + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.deleteError"));
+      toast.error(e instanceof Error ? e.message : t("common.deleteError"));
     } finally {
       setBusy(false);
     }
@@ -140,8 +143,9 @@ export function StoresView() {
       await api(`/api/stores/${store.id}/restore`, { method: "POST" });
       setReload((r) => r + 1);
       setDeleted((prev) => prev.filter((s) => s.id !== store.id));
+      toast.success(t("common.restored"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.restoreError"));
+      toast.error(e instanceof Error ? e.message : t("common.restoreError"));
     }
   }
 
@@ -159,6 +163,7 @@ export function StoresView() {
         { method: editing ? "PUT" : "POST", body },
       );
       setModalOpen(false);
+      toast.success(editing ? t("common.updated") : t("common.saved"));
       if (editing) {
         setStores((prev) => prev.map((s) => (s.id === saved.id ? saved : s)));
       } else {
@@ -167,7 +172,7 @@ export function StoresView() {
         setReload((r) => r + 1);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.saveError"));
+      toast.error(e instanceof Error ? e.message : t("common.saveError"));
     }
   }
 
@@ -184,8 +189,9 @@ export function StoresView() {
         }),
       });
       setStores((prev) => prev.map((s) => (s.id === saved.id ? saved : s)));
+      toast.success(t("common.updated"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.updateError"));
+      toast.error(e instanceof Error ? e.message : t("common.updateError"));
     }
   }
 

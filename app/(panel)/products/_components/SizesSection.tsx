@@ -4,6 +4,7 @@ import { Modal } from "@/components/molecules/Modal";
 import { DeletedList } from "../../_components/DeletedList";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { useToast } from "@/lib/toast";
 import { getSettings } from "@/lib/settings";
 import {
   Eye,
@@ -41,6 +42,7 @@ export function SizesSection({
   const [menuId, setMenuId] = useState<number | null>(null);
   const dragId = useRef<number | null>(null);
   const { t, lang } = useI18n();
+  const toast = useToast();
   const MXN = new Intl.NumberFormat(lang === "en" ? "en-US" : "es-MX", {
     style: "currency",
     currency: getSettings().currency || "MXN",
@@ -52,6 +54,7 @@ export function SizesSection({
         method: "PUT",
         body: JSON.stringify(sizes.map((s) => s.id)),
       });
+      toast.success(t("common.updated"));
     } catch (e) {
       onError(e instanceof Error ? e.message : t("sizes.orderError"));
     }
@@ -64,6 +67,7 @@ export function SizesSection({
         { method: editing ? "PUT" : "POST", body: JSON.stringify(data) },
       );
       setModalOpen(false);
+      toast.success(editing ? t("common.updated") : t("common.saved"));
       onChange(
         editing
           ? sizes.map((s) => (s.id === saved.id ? saved : s))
@@ -86,6 +90,7 @@ export function SizesSection({
         }),
       });
       onChange(sizes.map((s) => (s.id === saved.id ? saved : s)));
+      toast.success(t("common.updated"));
     } catch (e) {
       onError(e instanceof Error ? e.message : t("common.updateError"));
     }
@@ -95,6 +100,7 @@ export function SizesSection({
     try {
       await api(`/api/sizes/${size.id}`, { method: "DELETE" });
       onChange(sizes.filter((s) => s.id !== size.id));
+      toast.success(t("common.deleted"));
     } catch (e) {
       onError(e instanceof Error ? e.message : t("common.deleteError"));
     }

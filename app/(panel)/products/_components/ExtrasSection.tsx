@@ -2,6 +2,7 @@
 
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { useToast } from "@/lib/toast";
 import { getSettings } from "@/lib/settings";
 import { DeletedList } from "../../_components/DeletedList";
 import { Modal } from "@/components/molecules/Modal";
@@ -40,6 +41,7 @@ export function ExtrasSection({
   const [editing, setEditing] = useState<ExtraDto | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
   const { t, lang } = useI18n();
+  const toast = useToast();
   const MXN = new Intl.NumberFormat(lang === "en" ? "en-US" : "es-MX", {
     style: "currency",
     currency: getSettings().currency || "MXN",
@@ -52,6 +54,7 @@ export function ExtrasSection({
         { method: editing ? "PUT" : "POST", body: JSON.stringify(data) },
       );
       setModalOpen(false);
+      toast.success(editing ? t("common.updated") : t("common.saved"));
       onChange(
         editing
           ? extras.map((e) => (e.id === saved.id ? saved : e))
@@ -74,6 +77,7 @@ export function ExtrasSection({
         }),
       });
       onChange(extras.map((e) => (e.id === saved.id ? saved : e)));
+      toast.success(t("common.updated"));
     } catch (e) {
       onError(e instanceof Error ? e.message : t("common.updateError"));
     }
@@ -83,6 +87,7 @@ export function ExtrasSection({
     try {
       await api(`/api/extras/${extra.id}`, { method: "DELETE" });
       onChange(extras.filter((e) => e.id !== extra.id));
+      toast.success(t("common.deleted"));
     } catch (e) {
       onError(e instanceof Error ? e.message : t("common.deleteError"));
     }

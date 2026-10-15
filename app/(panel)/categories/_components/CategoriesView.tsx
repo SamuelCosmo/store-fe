@@ -3,6 +3,7 @@
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { useToast } from "@/lib/toast";
 import { useSession } from "@/lib/session";
 import {
   Coffee,
@@ -88,6 +89,7 @@ const GRID = "grid-cols-[1fr_200px_100px_110px_60px]";
 export function CategoriesView() {
   const session = useSession();
   const { t } = useI18n();
+  const toast = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [stores, setStores] = useState<StoreDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,6 +171,7 @@ export function CategoriesView() {
         { method: editing ? "PUT" : "POST", body },
       );
       setModalOpen(false);
+      toast.success(editing ? t("common.updated") : t("common.saved"));
       if (editing) {
         setCategories((prev) =>
           prev.map((c) => (c.id === saved.id ? toCategory(saved) : c)),
@@ -179,7 +182,7 @@ export function CategoriesView() {
         setReload((r) => r + 1);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.saveError"));
+      toast.error(e instanceof Error ? e.message : t("common.saveError"));
     }
   }
 
@@ -198,17 +201,19 @@ export function CategoriesView() {
       setCategories((prev) =>
         prev.map((c) => (c.id === saved.id ? toCategory(saved) : c)),
       );
+      toast.success(t("common.updated"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.updateError"));
+      toast.error(e instanceof Error ? e.message : t("common.updateError"));
     }
   }
 
   async function remove(cat: Category) {
     try {
       await api(`/api/categories/${cat.id}`, { method: "DELETE" });
+      toast.success(t("common.deleted"));
       setReload((r) => r + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.deleteError"));
+      toast.error(e instanceof Error ? e.message : t("common.deleteError"));
     }
   }
 

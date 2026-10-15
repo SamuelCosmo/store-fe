@@ -8,6 +8,7 @@ import {
   readStoredSession,
 } from "@/lib/store";
 import { LangProvider } from "@/lib/i18n";
+import { ToastProvider } from "@/lib/toast";
 import { SESSION_EXPIRED_EVENT, isSessionExpired } from "@/lib/session";
 import { refreshSettings } from "@/lib/settings";
 import { usePathname, useRouter } from "next/navigation";
@@ -85,7 +86,9 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <Provider store={store}>
-      <LangProvider>{children}</LangProvider>
+      <LangProvider>
+        <ToastProvider>{children}</ToastProvider>
+      </LangProvider>
     </Provider>
   );
 }

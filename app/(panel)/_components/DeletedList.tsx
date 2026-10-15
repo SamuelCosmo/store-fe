@@ -2,6 +2,7 @@
 
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { useToast } from "@/lib/toast";
 import { ChevronDown, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 
@@ -20,15 +21,15 @@ export function DeletedList({
 }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<DeletedItem[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const { t } = useI18n();
+  const toast = useToast();
 
   async function toggle() {
     if (!open && items === null) {
       try {
         setItems(await api<DeletedItem[]>(`${endpoint}?deleted=true`));
       } catch (e) {
-        setError(e instanceof Error ? e.message : t("common.error"));
+        toast.error(e instanceof Error ? e.message : t("common.error"));
       }
     }
     setOpen((v) => !v);
@@ -38,9 +39,10 @@ export function DeletedList({
     try {
       await api(`${endpoint}/${item.id}/restore`, { method: "POST" });
       setItems((prev) => prev?.filter((i) => i.id !== item.id) ?? null);
+      toast.success(t("common.restored"));
       onRestored?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.error"));
+      toast.error(e instanceof Error ? e.message : t("common.restoreError"));
     }
   }
 
@@ -67,11 +69,6 @@ export function DeletedList({
       </button>
       {open && (
         <div className="border-t border-border px-5 py-3">
-          {error && (
-            <p role="alert" className="py-2 text-sm text-error">
-              {error}
-            </p>
-          )}
           {items === null ? (
             <p className="py-4 text-center text-sm text-text-muted">
               {t("common.loading")}

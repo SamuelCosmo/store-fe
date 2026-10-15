@@ -4,6 +4,7 @@ import { Modal } from "@/components/molecules/Modal";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
 import { api, logoutSession } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { useToast } from "@/lib/toast";
 import {
   clearSession,
   saveSession,
@@ -181,6 +182,7 @@ export function SuperadminView() {
   const router = useRouter();
   const session = useSession();
   const { t, lang } = useI18n();
+  const toast = useToast();
   const locale = lang === "en" ? "en-US" : "es-MX";
   const [clients, setClients] = useState<ClientDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,8 +263,9 @@ export function SuperadminView() {
           : prev.map((c) => (c.id === saved.id ? saved : c)),
       );
       setModal(null);
+      toast.success(modal === "new" ? t("common.saved") : t("common.updated"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.saveError"));
+      toast.error(e instanceof Error ? e.message : t("common.saveError"));
     } finally {
       setSaving(false);
     }
@@ -312,6 +315,7 @@ export function SuperadminView() {
         }),
       });
       setAdminModal(null);
+      toast.success(t("common.updated"));
     } catch (e) {
       const msg = e instanceof Error ? e.message : t("common.saveError");
       setAdminError(

@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { api } from "@/lib/api";
 import { useI18n, type Lang, type TKey } from "@/lib/i18n";
 import { saveSession, useSession, type Role } from "@/lib/session";
+import { useToast } from "@/lib/toast";
 import {
   DEFAULT_SETTINGS,
   isAutoPrint,
@@ -112,6 +113,7 @@ function Card({
 export function SettingsView() {
   const session = useSession();
   const { lang, setLang, t } = useI18n();
+  const toast = useToast();
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [storeId, setStoreId] = useState<number | null>(null);
   const [form, setForm] = useState<StoreSettings | null>(null);
@@ -220,7 +222,7 @@ export function SettingsView() {
       });
       setBrand({ ...brand, logoUrl: res.url });
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("settings.logoError"));
+      toast.error(e instanceof Error ? e.message : t("settings.logoError"));
     } finally {
       setUploading(false);
     }
@@ -276,8 +278,9 @@ export function SettingsView() {
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+      toast.success(t("settings.saved"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.saveError"));
+      toast.error(e instanceof Error ? e.message : t("common.saveError"));
     } finally {
       setSaving(false);
     }

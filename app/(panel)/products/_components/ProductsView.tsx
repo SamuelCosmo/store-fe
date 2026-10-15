@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { useI18n, type TKey } from "@/lib/i18n";
 import { getSettings } from "@/lib/settings";
 import { useSession } from "@/lib/session";
+import { useToast } from "@/lib/toast";
 import {
   ChevronDown,
   Eye,
@@ -101,6 +102,7 @@ const TABS: { id: Tab; key: TKey }[] = [
 export function ProductsView() {
   const session = useSession();
   const { t, lang } = useI18n();
+  const toast = useToast();
   const MXN = moneyFmt(lang);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
@@ -217,6 +219,7 @@ export function ProductsView() {
         { method: editing ? "PUT" : "POST", body: JSON.stringify(data) },
       );
       setModalOpen(false);
+      toast.success(editing ? t("common.updated") : t("common.saved"));
       const next = toProduct(saved);
       if (editing) {
         setProducts((prev) =>
@@ -232,7 +235,7 @@ export function ProductsView() {
         if (allLoaded) setAllProducts((prev) => [...prev, next]);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.saveError"));
+      toast.error(e instanceof Error ? e.message : t("common.saveError"));
     }
   }
 
@@ -249,7 +252,7 @@ export function ProductsView() {
         prev.map((p) => (p.id === saved.id ? toProduct(saved) : p)),
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.updateError"));
+      toast.error(e instanceof Error ? e.message : t("common.updateError"));
     }
   }
 
@@ -257,9 +260,10 @@ export function ProductsView() {
     try {
       await api(`/api/products/${product.id}`, { method: "DELETE" });
       setAllProducts((prev) => prev.filter((p) => p.id !== product.id));
+      toast.success(t("common.deleted"));
       setReload((r) => r + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.deleteError"));
+      toast.error(e instanceof Error ? e.message : t("common.deleteError"));
     }
   }
 
@@ -608,7 +612,7 @@ export function ProductsView() {
             setProducts((prev) => prev.map(sync));
           }
         }}
-        onError={setError}
+        onError={(m) => m && toast.error(m)}
       />
       )}
 
@@ -630,7 +634,7 @@ export function ProductsView() {
             setProducts((prev) => prev.map(sync));
           }
         }}
-        onError={setError}
+        onError={(m) => m && toast.error(m)}
       />
       )}
 
