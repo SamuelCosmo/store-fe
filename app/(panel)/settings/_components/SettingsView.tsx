@@ -3,7 +3,7 @@
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { api } from "@/lib/api";
 import { useI18n, type Lang, type TKey } from "@/lib/i18n";
-import { saveSession, useSession, type Role } from "@/lib/session";
+import { useSession, type Role } from "@/lib/session";
 import { useToast } from "@/lib/toast";
 import {
   DEFAULT_SETTINGS,
@@ -22,7 +22,6 @@ import {
   Coins,
   Languages,
   MonitorSmartphone,
-  Palette,
   Printer,
   type LucideIcon,
 } from "lucide-react";
@@ -117,11 +116,6 @@ export function SettingsView() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [storeId, setStoreId] = useState<number | null>(null);
   const [form, setForm] = useState<StoreSettings | null>(null);
-  const [brand, setBrand] = useState<{
-    name: string;
-    logoUrl: string | null;
-  } | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,7 +145,6 @@ export function SettingsView() {
         if (cancelled) return;
         setStores(storeList);
         setStoreId(sessionStoreId ?? storeList[0]?.id ?? null);
-        setBrand({ name: client.name, logoUrl: client.logoUrl });
         setForm({
           general: { ...DEFAULT_SETTINGS.general },
           kitchen: { ...DEFAULT_SETTINGS.kitchen },
@@ -209,25 +202,6 @@ export function SettingsView() {
     };
   }, [storeId]);
 
-  async function uploadLogo(file: File) {
-    if (!brand) return;
-    setUploading(true);
-    setError(null);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await api<{ url: string }>("/api/uploads/brand", {
-        method: "POST",
-        body: fd,
-      });
-      setBrand({ ...brand, logoUrl: res.url });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("settings.logoError"));
-    } finally {
-      setUploading(false);
-    }
-  }
-
   async function save() {
     if (!form || !session) return;
     setSaving(true);
@@ -241,10 +215,6 @@ export function SettingsView() {
       await api(`/api/clients/${session.clientId}/settings`, {
         method: "PUT",
         body: JSON.stringify({
-          // logoUrl "" le dice al server que quite el logo
-          ...(brand
-            ? { name: brand.name.trim(), logoUrl: brand.logoUrl ?? "" }
-            : {}),
           currency: form.currency,
           taxRate: form.taxRate,
           tokenPrice: form.tokenPrice,
@@ -264,14 +234,6 @@ export function SettingsView() {
         });
       }
       setForm({ ...form, kitchen });
-      // marca al instante en sidebar/terminales sin re-login
-      if (brand) {
-        saveSession({
-          ...session,
-          clientName: brand.name.trim(),
-          clientLogoUrl: brand.logoUrl,
-        });
-      }
       // refresca el cache local del establecimiento de esta sesión
       if (session.clientId != null) {
         await refreshSettings(session.clientId, session.storeId).catch(() => {});
@@ -306,62 +268,28 @@ export function SettingsView() {
       ) : (
         <div className="flex flex-col items-start gap-5 lg:flex-row">
           <div className="flex w-full min-w-0 flex-1 flex-col gap-5">
-            {brand && (
-              <Card icon={Palette} title={t("settings.brand")}>
-                <Field label={t("settings.brandName")}>
-                  <input
-                    type="text"
-                    value={brand.name}
-                    onChange={(e) =>
-                      setBrand({ ...brand, name: e.target.value })
-                    }
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label={t("settings.logo")}>
-                  <input
-                    id="brand-logo-upload"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) void uploadLogo(f);
-                      e.target.value = "";
-                    }}
-                  />
-                  <label
-                    htmlFor="brand-logo-upload"
-                    className="flex h-24 cursor-pointer items-center justify-center rounded-lg border border-dashed border-border bg-surface text-[12px] text-text-secondary transition-colors hover:border-primary"
+            <Card icon={Languages} title={t("settings.language")}>
+              <div className="flex gap-2">
+                {(["es", "en"] as Lang[]).map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setLang(l)}
+                    aria-pressed={lang === l}
+                    className={`h-10 flex-1 rounded-lg border text-sm font-semibold transition-colors ${
+                      lang === l
+                        ? "border-primary bg-primary text-white"
+                        : "border-border bg-surface text-text-secondary hover:bg-surface-warm"
+                    }`}
                   >
-                    {uploading ? (
-                      <span>{t("common.uploading")}</span>
-                    ) : brand.logoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={brand.logoUrl}
-                        alt="Logo"
-                        className="max-h-20 w-auto object-contain p-2"
-                      />
-                    ) : (
-                      <span>{t("settings.logoUpload")}</span>
-                    )}
-                  </label>
-                  {brand.logoUrl && !uploading && (
-                    <button
-                      type="button"
-                      onClick={() => setBrand({ ...brand, logoUrl: null })}
-                      className="self-start text-[11px] text-error hover:underline"
-                    >
-                      {t("settings.logoRemove")}
-                    </button>
-                  )}
-                </Field>
-                <p className="text-[11px] text-text-secondary">
-                  {t("settings.brandHint")}
-                </p>
-              </Card>
-            )}
+                    {l === "es" ? "Español" : "English"}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-text-secondary">
+                {t("settings.language.hint")}
+              </p>
+            </Card>
 
             <Card icon={ChefHat} title={t("settings.kitchen")}>
               <Field label={t("login.store")}>
@@ -540,29 +468,6 @@ export function SettingsView() {
               />
               <p className="text-[11px] text-text-secondary">
                 {t("settings.printHint")}
-              </p>
-            </Card>
-
-            <Card icon={Languages} title={t("settings.language")}>
-              <div className="flex gap-2">
-                {(["es", "en"] as Lang[]).map((l) => (
-                  <button
-                    key={l}
-                    type="button"
-                    onClick={() => setLang(l)}
-                    aria-pressed={lang === l}
-                    className={`h-10 flex-1 rounded-lg border text-sm font-semibold transition-colors ${
-                      lang === l
-                        ? "border-primary bg-primary text-white"
-                        : "border-border bg-surface text-text-secondary hover:bg-surface-warm"
-                    }`}
-                  >
-                    {l === "es" ? "Español" : "English"}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[11px] text-text-secondary">
-                {t("settings.language.hint")}
               </p>
             </Card>
 

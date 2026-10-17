@@ -3,6 +3,7 @@
 import { BrandMark } from "@/components/molecules/BrandMark";
 import { Modal } from "@/components/molecules/Modal";
 import { api } from "@/lib/api";
+import { brandCss } from "@/lib/branding";
 import { useI18n } from "@/lib/i18n";
 import {
   SETTINGS_CHANGED_EVENT,
@@ -54,6 +55,17 @@ type CartItem = {
 let nextCartId = 1;
 
 type OrderDto = TicketOrder;
+
+// StoreOption (users/me/stores) y StoreResponse (clients/{id}/stores) traen
+// la misma marca — logo + paleta de la terminal de ese establecimiento
+type StoreOpt = {
+  id: number;
+  name: string;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  accentColor: string | null;
+  canvasColor: string | null;
+};
 
 function lineUnit(item: CartItem) {
   return (
@@ -143,9 +155,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [storeName, setStoreName] = useState("Store");
   // selector multi-tienda (admin/gerente en caja) — como en el KDS
-  const [storeOptions, setStoreOptions] = useState<
-    { id: number; name: string }[]
-  >([]);
+  const [storeOptions, setStoreOptions] = useState<StoreOpt[]>([]);
   const [viewStore, setViewStore] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -252,12 +262,10 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       channel === "POS" &&
       (session.role === "ADMIN" || session.role === "MANAGER");
     const storesCall = pick
-      ? api<{ id: number; name: string }[]>(`/api/users/me/stores`)
-      : api<{ id: number; name: string }[]>(
-          `/api/clients/${session.clientId}/stores`,
-        );
+      ? api<StoreOpt[]>(`/api/users/me/stores`)
+      : api<StoreOpt[]>(`/api/clients/${session.clientId}/stores`);
     storesCall
-      .catch(() => [] as { id: number; name: string }[])
+      .catch(() => [] as StoreOpt[])
       .then((stores) => {
         if (cancelled) return;
         const initial = pick
@@ -364,6 +372,16 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     setTokenMenu(false);
     setMenu(null);
   }
+
+  // marca del establecimiento operado — logo/nombre en navbar y paleta
+  // (viewStore = la elegida en el selector; si no hay, la de la sesión)
+  const brand = useMemo(
+    () =>
+      storeOptions.find((s) => s.id === (viewStore ?? session?.storeId)) ??
+      null,
+    [storeOptions, viewStore, session?.storeId],
+  );
+  const brandStyle = useMemo(() => brandCss(brand), [brand]);
 
   // el kiosco esconde los agotados; la caja los muestra para poder reactivarlos
   const tokenMode = channel === "POS" && tokenMenu;
@@ -559,15 +577,14 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   }, [receipt, closeReceipt]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-canvas">
+    <div className="store-brand flex h-screen flex-col overflow-hidden bg-canvas">
+      {brandStyle && <style>{brandStyle}</style>}
       <header className="flex h-[88px] shrink-0 items-center justify-between border-b border-border bg-background px-8">
         <BrandMark
-          title={
-            (session?.clientName || settings?.general.menuName || storeName
-            ).toUpperCase()
-          }
+          title={(brand?.name ?? session?.clientName ?? storeName)
+            .toUpperCase()}
           subtitle={channel === "POS" ? t("pos.subtitle") : t("ticket.kiosk")}
-          logoUrl={session?.clientLogoUrl}
+          logoUrl={brand?.logoUrl ?? session?.clientLogoUrl}
         />
         <div className="flex items-center gap-4">
           <p className="text-lg font-bold text-text-secondary tabular-nums">
@@ -722,7 +739,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               {t("pos.emptyCategory")}
             </p>
           ) : (
-            <div className="grid min-h-0 flex-1 auto-rows-[268px] grid-cols-2 gap-4 overflow-y-auto pb-1 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="scrollbar-none grid min-h-0 flex-1 auto-rows-[268px] grid-cols-2 gap-4 overflow-y-auto pb-1 lg:grid-cols-3 xl:grid-cols-4">
               {visible.map((p) => (
                 <div key={p.id} className="relative">
                   <button
@@ -1219,7 +1236,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                 </li>
               ))}
             </ul>
-            <dl className="mt-3 flex flex-col gap-1.5 border-t border-dashed border-border pt-3">
+            <dl className="mt-3 flex flex-col gap-1.5 border-t border-dashed border-border pt-3 text-text-primary">
               <div className="flex justify-between">
                 <dt className="text-text-secondary">{t("ticket.subtotal")}</dt>
                 <dd className="tabular-nums">{fmt.format(subtotal)}</dd>
@@ -1539,7 +1556,8 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           <SeaWaves />
           <span className="relative z-10 flex h-full flex-col items-center justify-center gap-3">
             <span className="text-4xl font-extrabold tracking-tight">
-              {(settings?.general.menuName || storeName).toUpperCase()}
+              {(brand?.name ?? settings?.general.menuName ?? storeName)
+                .toUpperCase()}
             </span>
             <span className="text-base font-medium opacity-90">
               {t("pos.idleKiosk")}
@@ -1553,7 +1571,8 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           <SeaWaves />
           <div className="relative z-10 flex h-full flex-col items-center justify-center gap-5">
             <p className="text-4xl font-extrabold tracking-tight">
-              {(settings?.general.menuName || storeName).toUpperCase()}
+              {(brand?.name ?? settings?.general.menuName ?? storeName)
+                .toUpperCase()}
             </p>
             <p className="text-base font-medium opacity-90">
               {t("pos.idlePos")}

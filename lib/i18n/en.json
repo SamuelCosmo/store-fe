@@ -351,6 +351,12 @@
   "stores.type.RETAIL": "Retail",
   "stores.type.BAR": "Bar",
   "stores.type.CAFE": "Café",
+  "stores.brand": "Location branding",
+  "stores.colorPrimary": "Primary color",
+  "stores.colorAccent": "Accent",
+  "stores.colorCanvas": "Background",
+  "stores.colorClear": "Reset (use base theme)",
+  "stores.brandHint": "The logo and colors show on this location's terminals (register, kiosk, kitchen) and on its printed ticket. Dark mode is derived automatically.",
 
   "users.title": "Users",
   "users.subtitle": "Staff accounts for the business",

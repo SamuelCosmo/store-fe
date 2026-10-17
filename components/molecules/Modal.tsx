@@ -13,7 +13,7 @@ export function Modal({
 }: {
   open: boolean;
   onClose: () => void;
-  title: string;
+  title?: string;
   wide?: boolean;
   children: ReactNode;
 }) {
@@ -36,8 +36,12 @@ export function Modal({
       }}
       className={`m-auto w-full ${wide ? "max-w-2xl" : "max-w-md"} rounded-2xl border border-border bg-background p-6 shadow-xl backdrop:bg-black/40`}
     >
-      <div className="mb-5 flex items-center justify-between">
-        <h2 className="text-lg font-extrabold text-text-primary">{title}</h2>
+      <div
+        className={`mb-5 flex items-center ${title ? "justify-between" : "justify-end"}`}
+      >
+        {title && (
+          <h2 className="text-lg font-extrabold text-text-primary">{title}</h2>
+        )}
         <button
           type="button"
           onClick={onClose}
