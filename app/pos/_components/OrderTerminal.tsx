@@ -24,6 +24,7 @@ import {
   Coins,
   CopyPlus,
   CreditCard,
+  Delete,
   LogOut,
   MoreHorizontal,
   Pencil,
@@ -38,6 +39,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   OrderTicket,
   TicketModal,
+  printTicket,
   type TicketOrder,
 } from "@/components/molecules/OrderTicket";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
@@ -436,6 +438,18 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     });
   }
 
+  // teclado numérico del modal de cobro — escribe sobre cashReceived
+  function pressCashKey(k: string) {
+    setCashReceived((v) => {
+      if (k === "back") return v.slice(0, -1);
+      if (k === "clear") return "";
+      if (k === "exact") return total.toFixed(2);
+      const next = k === "." ? (v.includes(".") ? v : v + ".") : v + k;
+      const [, dec] = next.split(".");
+      return dec && dec.length > 2 ? v : next;
+    });
+  }
+
   function duplicateLine(item: CartItem) {
     setCart((prev) => [
       ...prev,
@@ -524,7 +538,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       return;
     }
     printedOrderId.current = receipt.id;
-    const t = setTimeout(() => window.print(), 250);
+    const t = setTimeout(printTicket, 250);
     return () => clearTimeout(t);
   }, [receipt, autoPrint]);
 
@@ -918,6 +932,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
                 setPayment("TOKEN");
                 setPayStep("confirm");
               } else {
+                setPayment("CASH");
                 setPayStep("form");
               }
               setPayOpen(true);
@@ -1000,6 +1015,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           setPayStep("form");
         }}
         title={t("pos.charge")}
+        wide
       >
         {payStep === "confirm" ? (
           <div className="flex flex-col gap-5">
@@ -1057,123 +1073,191 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
             </div>
           </div>
         ) : (
-        <div className="flex flex-col gap-5">
-          <div
-            className={`grid gap-3 ${channel === "POS" ? "grid-cols-3" : "grid-cols-1"}`}
-          >
-            {channel === "POS" && (
-              <button
-                onClick={() => setPayment("CASH")}
-                aria-pressed={payment === "CASH"}
-                className={`flex flex-col items-center gap-2 rounded-xl border-2 py-4 text-sm font-bold transition-colors ${
-                  payment === "CASH"
-                    ? "border-primary bg-primary-light text-primary"
-                    : "border-border text-text-secondary hover:border-primary/40"
-                }`}
-              >
-                <Banknote size={20} aria-hidden />
-                {t("ticket.cash")}
-              </button>
-            )}
-            <button
-              onClick={() => setPayment("CARD")}
-              aria-pressed={payment === "CARD"}
-              className={`flex flex-col items-center gap-2 rounded-xl border-2 py-4 text-sm font-bold transition-colors ${
-                payment === "CARD"
-                  ? "border-primary bg-primary-light text-primary"
-                  : "border-border text-text-secondary hover:border-primary/40"
-              }`}
+        <div className="grid gap-6 sm:grid-cols-2">
+          {/* izquierda: método de pago + teclado para el efectivo */}
+          <div className="flex flex-col gap-4">
+            <div
+              className={`grid gap-3 ${channel === "POS" ? "grid-cols-2" : "grid-cols-1"}`}
             >
-              <CreditCard size={20} aria-hidden />
-              {t("ticket.card")}
-            </button>
-            {channel === "POS" && (
+              {channel === "POS" && (
+                <button
+                  onClick={() => setPayment("CASH")}
+                  aria-pressed={payment === "CASH"}
+                  className={`flex flex-col items-center gap-2 rounded-xl border-2 py-3.5 text-sm font-bold transition-colors ${
+                    payment === "CASH"
+                      ? "border-primary bg-primary-light text-primary"
+                      : "border-border text-text-secondary hover:border-primary/40"
+                  }`}
+                >
+                  <Banknote size={20} aria-hidden />
+                  {t("ticket.cash")}
+                </button>
+              )}
               <button
-                onClick={() => setPayment("TOKEN")}
-                disabled={!cartAllTokenable}
-                aria-pressed={payment === "TOKEN"}
-                title={
-                  cartAllTokenable
-                    ? t("pos.payTokens")
-                    : t("pos.notTokenable")
-                }
-                className={`flex flex-col items-center gap-2 rounded-xl border-2 py-4 text-sm font-bold transition-colors disabled:opacity-40 ${
-                  payment === "TOKEN"
+                onClick={() => setPayment("CARD")}
+                aria-pressed={payment === "CARD"}
+                className={`flex flex-col items-center gap-2 rounded-xl border-2 py-3.5 text-sm font-bold transition-colors ${
+                  payment === "CARD"
                     ? "border-primary bg-primary-light text-primary"
                     : "border-border text-text-secondary hover:border-primary/40"
                 }`}
               >
-                <Coins size={20} aria-hidden />
-                {t("ticket.token")}
+                <CreditCard size={20} aria-hidden />
+                {t("ticket.card")}
               </button>
+            </div>
+
+            {channel === "POS" && payment === "CASH" && (
+              <>
+                <div className="flex flex-col gap-2">
+                  <label
+                    htmlFor="cash-received"
+                    className="text-xs font-bold text-text-secondary"
+                  >
+                    {t("pos.cashReceived")}
+                  </label>
+                  <input
+                    id="cash-received"
+                    type="text"
+                    inputMode="decimal"
+                    readOnly
+                    placeholder={fmt.format(total)}
+                    value={cashReceived}
+                    className="h-11 rounded-xl border border-border bg-background px-3.5 text-center text-lg font-bold text-text-primary tabular-nums outline-none"
+                  />
+                  {cashReceived !== "" &&
+                    (Number(cashReceived) >= total ? (
+                      <p className="rounded-lg border border-success/40 bg-success/5 px-3.5 py-2 text-sm font-semibold text-success">
+                        {t("pos.changeBack", {
+                          v: fmt.format(Number(cashReceived) - total),
+                        })}
+                      </p>
+                    ) : (
+                      <p className="rounded-lg border border-error/40 bg-error/5 px-3.5 py-2 text-sm font-semibold text-error">
+                        {t("pos.missing", {
+                          v: fmt.format(total - Number(cashReceived)),
+                        })}
+                      </p>
+                    ))}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    ".",
+                    "0",
+                    "back",
+                  ].map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => pressCashKey(k)}
+                      aria-label={
+                        k === "back" ? t("common.delete") : undefined
+                      }
+                      className="flex h-12 items-center justify-center rounded-xl border border-border bg-surface text-lg font-bold text-text-primary transition-colors hover:border-primary/50 hover:bg-primary-light active:bg-primary-light"
+                    >
+                      {k === "back" ? <Delete size={18} aria-hidden /> : k}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => pressCashKey("clear")}
+                    className="flex h-11 items-center justify-center rounded-xl border border-error/40 text-sm font-bold text-error transition-colors hover:bg-error/5"
+                  >
+                    C
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => pressCashKey("exact")}
+                    className="col-span-2 flex h-11 items-center justify-center rounded-xl border border-success/40 text-sm font-bold text-success transition-colors hover:bg-success/5"
+                  >
+                    {t("pos.exactAmount")}
+                  </button>
+                </div>
+              </>
             )}
+
+            <button
+              onClick={() => setPayStep("confirm")}
+              disabled={
+                cart.length === 0 ||
+                (payment === "CASH" &&
+                  (cashReceived === "" || Number(cashReceived) < total))
+              }
+              className="mt-auto w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
+            >
+              {t("pos.chargeTotal", { v: fmt.format(total) })}
+            </button>
           </div>
 
-          {channel === "POS" && payment === "TOKEN" && (
-            <p className="rounded-lg border border-primary/30 bg-primary-light px-3.5 py-2.5 text-sm font-semibold text-primary">
-              {t("pos.tokenChargeInfo", {
-                n: tokensDue,
-                unit: t(
-                  tokensDue === 1 ? "pos.tokenUnit" : "pos.tokenUnits",
-                ),
-              })}
-            </p>
-          )}
-
-          {channel === "POS" && payment === "CASH" && (
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="cash-received"
-                className="text-xs font-bold text-text-secondary"
-              >
-                {t("pos.cashReceived")}
-              </label>
-              <input
-                id="cash-received"
-                type="number"
-                min={0}
-                step="0.01"
-                inputMode="decimal"
-                placeholder={fmt.format(total)}
-                value={cashReceived}
-                onChange={(e) => setCashReceived(e.target.value)}
-                className="h-11 rounded-xl border border-border bg-background px-3.5 text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
-              />
-              {cashReceived !== "" &&
-                (Number(cashReceived) >= total ? (
-                  <p className="rounded-lg border border-success/40 bg-success/5 px-3.5 py-2.5 text-sm font-semibold text-success">
-                    {t("pos.changeBack", {
-                      v: fmt.format(Number(cashReceived) - total),
-                    })}
-                  </p>
-                ) : (
-                  <p className="rounded-lg border border-error/40 bg-error/5 px-3.5 py-2.5 text-sm font-semibold text-error">
-                    {t("pos.missing", {
-                      v: fmt.format(total - Number(cashReceived)),
-                    })}
-                  </p>
-                ))}
-            </div>
-          )}
-
-          <button
-            onClick={() => setPayStep("confirm")}
-            disabled={
-              cart.length === 0 ||
-              (payment === "CASH" &&
-                (cashReceived === "" || Number(cashReceived) < total))
-            }
-            className="w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
-          >
-            {payment === "TOKEN"
-              ? t("pos.chargeTokens", {
-                  n: tokensDue,
-                  unit: t(
-                    tokensDue === 1 ? "pos.tokenUnit" : "pos.tokenUnits",
-                  ),
-                })
-              : t("pos.chargeTotal", { v: fmt.format(total) })}
-          </button>
+          {/* derecha: detalle del pedido */}
+          <div className="flex max-h-[60vh] flex-col rounded-xl border border-border bg-surface/60 px-4 py-3.5 text-sm">
+            <ul className="flex min-h-0 flex-col gap-2 overflow-y-auto">
+              {cart.map((item) => (
+                <li key={item.id}>
+                  <div className="flex justify-between gap-2">
+                    <span className="font-semibold text-text-primary">
+                      {item.product.name}
+                    </span>
+                    <span className="shrink-0 font-semibold whitespace-nowrap text-text-primary tabular-nums">
+                      {fmt.format(lineUnit(item))}
+                    </span>
+                  </div>
+                  {lineNote(item) && (
+                    <span className="text-xs text-text-secondary">
+                      {lineNote(item)}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <dl className="mt-3 flex flex-col gap-1.5 border-t border-dashed border-border pt-3">
+              <div className="flex justify-between">
+                <dt className="text-text-secondary">{t("ticket.subtotal")}</dt>
+                <dd className="tabular-nums">{fmt.format(subtotal)}</dd>
+              </div>
+              {taxRate > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-text-secondary">
+                    {t("ticket.tax", { rate: taxRate })}
+                  </dt>
+                  <dd className="tabular-nums">{fmt.format(taxAmount)}</dd>
+                </div>
+              )}
+              <div className="flex justify-between pt-1 text-base font-extrabold text-text-primary">
+                <dt>{t("ticket.total")}</dt>
+                <dd className="tabular-nums">{fmt.format(total)}</dd>
+              </div>
+              {payment === "CASH" &&
+                cashReceived !== "" &&
+                Number(cashReceived) >= total && (
+                  <>
+                    <div className="flex justify-between">
+                      <dt className="text-text-secondary">
+                        {t("ticket.received")}
+                      </dt>
+                      <dd className="tabular-nums">
+                        {fmt.format(Number(cashReceived))}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between font-bold text-success">
+                      <dt>{t("ticket.change")}</dt>
+                      <dd className="tabular-nums">
+                        {fmt.format(Number(cashReceived) - total)}
+                      </dd>
+                    </div>
+                  </>
+                )}
+            </dl>
+          </div>
         </div>
         )}
       </Modal>
@@ -1436,7 +1520,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           (h-0 la colapsa en pantalla; en print #print-ticket es absolute y
           escapa el overflow:hidden del padre estático) */}
       {receipt && autoPrint && !ticket && (
-        <div aria-hidden className="invisible h-0 overflow-hidden">
+        <div aria-hidden className="print-copy invisible h-0 overflow-hidden">
           <OrderTicket order={receipt} storeName={storeName} print />
         </div>
       )}

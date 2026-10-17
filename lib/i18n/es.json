@@ -273,6 +273,7 @@
   "pos.charging": "Cobrando…",
   "pos.chargeTotal": "Cobrar {v}",
   "pos.cashReceived": "Efectivo recibido",
+  "pos.exactAmount": "Exacto",
   "pos.changeBack": "Cambio a devolver: {v}",
   "pos.missing": "Faltan {v}",
   "pos.payTokens": "Pagar con fichas",

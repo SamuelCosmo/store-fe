@@ -73,8 +73,8 @@ button:not(:disabled),
 
 /* reimpresión de tickets: solo #print-ticket sale en papel.
    Térmica 80mm — Chrome no acepta `size: 80mm auto` (descarta la regla
-   y usa Letter), así que la página es 80×297mm; un ticket más largo
-   pagina y el driver de la impresora corta al final del documento. */
+   y usa Letter). Fallback 80×297mm; printTicket() (OrderTicket.tsx)
+   inyecta un @page con el alto real del ticket antes de imprimir. */
 @page {
   size: 80mm 297mm;
   margin: 0;
@@ -103,8 +103,30 @@ button:not(:disabled),
     position: absolute;
     top: 0;
     left: 0;
-    width: 80mm;
-    max-width: 80mm;
-    margin: 0;
   }
+}
+
+/* copia oculta de impresión (.print-copy): rinde al tamaño real de papel
+   (80mm de página, el driver Rongta recorta lo que se salga) para que
+   medir el alto del ticket sea exacto; letra grande para la térmica */
+.print-copy #print-ticket {
+  width: 80mm;
+  max-width: 80mm;
+  padding: 0 3mm;
+  border: none;
+  border-radius: 0;
+  font-size: 20px;
+  line-height: 1.35;
+}
+.print-copy #print-ticket .text-sm {
+  font-size: 21px;
+}
+.print-copy #print-ticket .text-xs {
+  font-size: 18px;
+}
+.print-copy #print-ticket .text-\[11px\] {
+  font-size: 15px;
+}
+.print-copy #print-ticket img {
+  max-height: 24mm;
 }

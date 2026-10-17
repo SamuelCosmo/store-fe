@@ -191,7 +191,20 @@ export function OrderTicket({
   );
 }
 
-/** Ticket + botón Imprimir (window.print). */
+/** Imprime #print-ticket en una página del largo exacto del ticket — con la
+ *  página fija de globals.css (80×297) la térmica avanza papel en blanco. */
+export function printTicket() {
+  const el = document.getElementById("print-ticket");
+  // la copia .print-copy ya rinde al tamaño real de papel (ver globals.css)
+  const heightMm = el ? Math.ceil((el.scrollHeight * 25.4) / 96) + 15 : 297;
+  const style = document.createElement("style");
+  style.textContent = `@page { size: 80mm ${heightMm}mm; margin: 0; }`;
+  document.head.appendChild(style);
+  window.addEventListener("afterprint", () => style.remove(), { once: true });
+  window.print();
+}
+
+/** Ticket + botón Imprimir. */
 export function TicketModal({
   order,
   storeName,
@@ -215,14 +228,14 @@ export function TicketModal({
               dentro del modal quedaría anclada/recortada al imprimir */}
           {typeof document !== "undefined" &&
             createPortal(
-              <div aria-hidden className="invisible h-0 overflow-hidden">
+              <div aria-hidden className="print-copy invisible h-0 overflow-hidden">
                 <OrderTicket order={order} storeName={storeName} print />
               </div>,
               document.body,
             )}
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={printTicket}
             className="flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-white transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             <Printer size={16} aria-hidden />

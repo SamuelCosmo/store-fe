@@ -273,6 +273,7 @@
   "pos.charging": "Charging…",
   "pos.chargeTotal": "Charge {v}",
   "pos.cashReceived": "Cash received",
+  "pos.exactAmount": "Exact",
   "pos.changeBack": "Change to return: {v}",
   "pos.missing": "Missing {v}",
   "pos.payTokens": "Pay with tokens",
