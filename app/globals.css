@@ -44,6 +44,15 @@ button:not(:disabled),
   cursor: pointer;
 }
 
+/* scroll funcional sin barra visible (menú del POS y listas de terminales) */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Tema nocturno — todas las utilidades usan var(--color-*): basta
    sobreescribir los tokens bajo .dark (clase en <html>, ver layout.tsx
    y components/molecules/ThemeToggle.tsx). Misma paleta base adaptada:

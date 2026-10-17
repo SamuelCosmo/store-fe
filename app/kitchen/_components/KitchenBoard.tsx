@@ -3,8 +3,13 @@
 import { BrandMark } from "@/components/molecules/BrandMark";
 import { Modal } from "@/components/molecules/Modal";
 import { api } from "@/lib/api";
+import { brandCss } from "@/lib/branding";
 import { useI18n, type TKey } from "@/lib/i18n";
-import { SETTINGS_CHANGED_EVENT, getSettings } from "@/lib/settings";
+import {
+  SETTINGS_CHANGED_EVENT,
+  getSettings,
+  type StoreSettingsDto,
+} from "@/lib/settings";
 import {
   TicketModal,
   type TicketOrder,
@@ -25,6 +30,16 @@ type OrderStatus =
   | "CANCELLED";
 
 type OrderDto = TicketOrder & { status: OrderStatus };
+
+// la marca viaja en StoreOption/StoreResponse — logo + paleta por tienda
+type StoreBrandOpt = {
+  id: number;
+  name: string;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  accentColor: string | null;
+  canvasColor: string | null;
+};
 
 const ACTIVE: OrderStatus[] = ["PENDING", "CONFIRMED", "PREPARING", "READY"];
 
@@ -64,9 +79,7 @@ export function KitchenBoard() {
   const [orders, setOrders] = useState<OrderDto[]>([]);
   const [storeName, setStoreName] = useState("Store");
   // tiendas visibles + scope del tablero (solo ADMIN/MANAGER con varias)
-  const [storeOptions, setStoreOptions] = useState<
-    { id: number; name: string }[]
-  >([]);
+  const [storeOptions, setStoreOptions] = useState<StoreBrandOpt[]>([]);
   // null = vista combinada (solo ADMIN — el backend responde todo el cliente)
   const [viewStore, setViewStore] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,11 +88,15 @@ export function KitchenBoard() {
   const [confirmCancel, setConfirmCancel] = useState<OrderDto | null>(null);
   const [ticket, setTicket] = useState<OrderDto | null>(null);
   const [now, setNow] = useState<Date | null>(null);
+  // umbrales por establecimiento — los settings de cocina son por tienda
+  // (el cache de getSettings solo trae los del session.storeId)
+  const [kitchenCfg, setKitchenCfg] = useState<
+    Map<number, StoreSettingsDto>
+  >(new Map());
   const audioRef = useRef<AudioContext | null>(null);
   const knownIds = useRef<Set<number> | null>(null);
 
   const chime = useCallback(() => {
-    if (!getSettings().kitchen.sound) return;
     const ctx = (audioRef.current ??= new AudioContext());
     if (ctx.state === "suspended") void ctx.resume();
     [880, 1318].forEach((freq, i) => {
@@ -146,10 +163,28 @@ export function KitchenBoard() {
       ACTIVE.map((s) => api<OrderDto[]>(`/api/orders?status=${s}${scope}`)),
     );
     const next = lists.flat();
+    // umbrales del establecimiento de cada orden (no del de la sesión) —
+    // así el selector/vista combinada aplican la config correcta y los
+    // cambios de /settings llegan al tablero sin recargar
+    const ids = [...new Set(next.map((o) => o.storeId))];
+    const cfgs = new Map<number, StoreSettingsDto>();
+    await Promise.all(
+      ids.map((id) =>
+        api<StoreSettingsDto>(`/api/stores/${id}/settings`)
+          .then((c) => cfgs.set(id, c))
+          .catch(() => {}),
+      ),
+    );
+    setKitchenCfg(cfgs);
+    const soundOn = (o: OrderDto) =>
+      cfgs.get(o.storeId)?.kitchenSound ?? getSettings().kitchen.sound;
     // suena solo si llega un PENDING que no estaba; la primera carga no suena
     if (
       knownIds.current &&
-      next.some((o) => o.status === "PENDING" && !knownIds.current!.has(o.id))
+      next.some(
+        (o) =>
+          o.status === "PENDING" && !knownIds.current!.has(o.id) && soundOn(o),
+      )
     ) {
       chime();
     }
@@ -165,8 +200,8 @@ export function KitchenBoard() {
         .then(() =>
           // ADMIN/MANAGER con varias tiendas ven el selector — lista las suyas
           session.role === "ADMIN" || session.role === "MANAGER"
-            ? api<{ id: number; name: string }[]>(`/api/users/me/stores`)
-            : api<{ id: number; name: string }[]>(
+            ? api<StoreBrandOpt[]>(`/api/users/me/stores`)
+            : api<StoreBrandOpt[]>(
                 `/api/clients/${session.clientId}/stores`,
               ),
         )
@@ -217,6 +252,15 @@ export function KitchenBoard() {
   // vista combinada = ADMIN sin tienda elegida → cada tarjeta nombra su tienda
   const merged = session?.role === "ADMIN" && viewStore == null && canPickStore;
 
+  // marca del establecimiento mostrado — logo/nombre en navbar + paleta
+  const brand = useMemo(
+    () =>
+      storeOptions.find((s) => s.id === (viewStore ?? session?.storeId)) ??
+      null,
+    [storeOptions, viewStore, session?.storeId],
+  );
+  const brandStyle = useMemo(() => brandCss(brand), [brand]);
+
   async function advance(order: OrderDto) {
     const next = NEXT[order.status];
     if (!next) return;
@@ -254,12 +298,14 @@ export function KitchenBoard() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-canvas">
+    <div className="store-brand flex h-screen flex-col overflow-hidden bg-canvas">
+      {brandStyle && <style>{brandStyle}</style>}
       <header className="flex h-[88px] shrink-0 items-center justify-between border-b border-border bg-background px-8">
         <BrandMark
-          title={(session?.clientName || storeName).toUpperCase()}
+          title={(brand?.name ?? session?.clientName ?? storeName)
+            .toUpperCase()}
           subtitle={t("kitchen.title")}
-          logoUrl={session?.clientLogoUrl}
+          logoUrl={brand?.logoUrl ?? session?.clientLogoUrl}
         />
         <div className="flex items-center gap-4">
           <p className="text-lg font-bold text-text-secondary tabular-nums">
@@ -338,7 +384,10 @@ export function KitchenBoard() {
               const next = NEXT[o.status];
               const chip = STATUS_CHIP[o.status];
               const min = now ? elapsedMin(o.createdAt, now) : 0;
-              const { okMin, warnMin } = getSettings().kitchen;
+              const cfg = kitchenCfg.get(o.storeId);
+              const okMin = cfg?.kitchenOkMin ?? getSettings().kitchen.okMin;
+              const warnMin =
+                cfg?.kitchenWarnMin ?? getSettings().kitchen.warnMin;
               return (
                 <article
                   key={o.id}

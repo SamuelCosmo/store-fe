@@ -351,6 +351,12 @@
   "stores.type.RETAIL": "Tienda",
   "stores.type.BAR": "Bar",
   "stores.type.CAFE": "Café",
+  "stores.brand": "Marca del establecimiento",
+  "stores.colorPrimary": "Color principal",
+  "stores.colorAccent": "Acento",
+  "stores.colorCanvas": "Fondo",
+  "stores.colorClear": "Quitar (usa el tema base)",
+  "stores.brandHint": "El logo y los colores se ven en las terminales (caja, kiosco, cocina) y en el ticket impreso. El modo nocturno se genera solo.",
 
   "users.title": "Usuarios",
   "users.subtitle": "Cuentas del personal del negocio",

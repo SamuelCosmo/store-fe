@@ -12,12 +12,12 @@ export type TicketOrder = {
   // folio semanal por tienda persistido en la orden (backend: id para viejas)
   ticketNumber?: number | null;
   storeId: number;
-  // nombre del negocio del tenant — gana sobre storeName en el encabezado
+  // nombre del tenant — último fallback del encabezado
   clientName?: string | null;
   // vienen del endpoint /{id}/ticket; el POS/KDS pueden pasar el nombre por prop
   storeName?: string;
   storeAddress?: string | null;
-  // logo del tenant — encabezado del ticket cuando existe
+  // logo del establecimiento (el backend cae al del tenant si no tiene)
   logoUrl?: string | null;
   channel: "POS" | "KIOSK";
   orderType: "DINE_IN" | "TAKEAWAY";
@@ -82,7 +82,7 @@ export function OrderTicket({
         />
       )}
       <p className="text-center text-sm font-bold uppercase">
-        {order.clientName ?? order.storeName ?? storeName ?? "Store"}
+        {order.storeName ?? storeName ?? order.clientName ?? "Store"}
       </p>
       {order.storeAddress && (
         <p className="text-center text-[11px] text-text-secondary">
@@ -216,11 +216,7 @@ export function TicketModal({
 }) {
   const { t } = useI18n();
   return (
-    <Modal
-      open={order !== null}
-      onClose={onClose}
-      title={order ? t("ticket.title", { n: order.id }) : ""}
-    >
+    <Modal open={order !== null} onClose={onClose}>
       {order && (
         <div className="flex flex-col gap-4">
           <OrderTicket order={order} storeName={storeName} />

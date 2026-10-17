@@ -32,7 +32,7 @@ POST /api/auth/login        # { email, password, storeId } → AuthResponse
 POST /api/auth/logout       # 204 — limpia cookies store_token de versiones
                             # previas; la sesión real muere al borrar el
                             # token local
-POST /api/auth/stores       # { email, password } → [{id,name}] — pedirla cuando
+POST /api/auth/stores       # { email, password } → [{id,name,logoUrl,…}] — pedirla cuando
                             # login responde "storeId required" (roles
                             # operativos con varias tiendas asignadas) →
                             # selector + reintento con storeId. El ADMIN no
@@ -55,7 +55,8 @@ POST /api/auth/stores       # { email, password } → [{id,name}] — pedirla cu
   token. El query param `?storeId=` lo acepta `ADMIN` (cualquier tienda del
   cliente) y cualquier rol para sus tiendas **asignadas** (`user_stores`);
   otra tienda → 403.
-- `GET /api/users/me/stores` → `[{id,name}]` de tiendas visibles del usuario
+- `GET /api/users/me/stores` → `[{id,name,logoUrl,primaryColor,accentColor,canvasColor}]`
+  de tiendas visibles del usuario
   (ADMIN: todas las del cliente; otros: asignadas vivas) — alimenta el
   selector multi-tienda del KDS.
 
@@ -124,9 +125,15 @@ GET/PUT   /api/clients/{id}/settings   # { name, logoUrl, currency, taxRate,
                                        # (null en SUPERADMIN) — BrandMark los usa.
 GET/PUT   /api/stores/{id}/settings    # { menuName, kitchenOkMin,
                                        #   kitchenWarnMin, kitchenSound }
-# menuName es LEGACY (sin input en /settings): en pantallas y tickets se
-# muestra clientName (clients.name — sección Marca); menuName vacío →
-# fallback al name del store. El frontend cachea ambos en
+# La MARCA vive por establecimiento (en Store, no en settings): logoUrl +
+# primaryColor/accentColor/canvasColor (#rrggbb; null = tema base; "" quita,
+# ausente conserva en el PUT). La ve el admin en el modal del store
+# (StoresView) y las terminales la obtienen de StoreOption
+# (users/me/stores) / StoreResponse (clients/{id}/stores) — lib/branding.ts
+# deriva la variante nocturna y OrderTerminal/KitchenBoard la aplican con
+# la clase .store-brand. El ticket usa store.logoUrl ?: client.logoUrl y
+# OrderResponse/TicketResponse traen storeName (menuName ?: name).
+# El frontend cachea settings en
 # localStorage (lib/settings.ts: getSettings/refreshSettings) para lectura
 # sync en terminales y en el chequeo de expiración de sesión.
 ```

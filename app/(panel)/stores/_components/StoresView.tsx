@@ -39,6 +39,11 @@ export type StoreDto = {
   address: string | null;
   businessType: BusinessType;
   active: boolean;
+  // marca propia — null = hereda el logo del tenant / el tema base
+  logoUrl: string | null;
+  primaryColor: string | null;
+  accentColor: string | null;
+  canvasColor: string | null;
   createdAt: string;
 };
 
@@ -155,8 +160,20 @@ export function StoresView() {
     address: string;
     businessType: BusinessType;
     active: boolean;
+    logoUrl: string | null;
+    primaryColor: string | null;
+    accentColor: string | null;
+    canvasColor: string | null;
   }) {
-    const body = JSON.stringify(data);
+    // null del formulario = campo borrado → "" ("" quita, campo ausente conserva;
+    // por eso toggleActive no manda los de marca)
+    const body = JSON.stringify({
+      ...data,
+      logoUrl: data.logoUrl ?? "",
+      primaryColor: data.primaryColor ?? "",
+      accentColor: data.accentColor ?? "",
+      canvasColor: data.canvasColor ?? "",
+    });
     try {
       const saved = await api<StoreDto>(
         editing ? `/api/stores/${editing.id}` : "/api/stores",
