@@ -29,9 +29,7 @@ POST /api/auth/register     # SUPERADMIN — primer ADMIN de un tenant sin admin
 POST /api/auth/superadmin   # login de plataforma — solo cuentas SUPERADMIN
 POST /api/auth/login        # { email, password, storeId } → AuthResponse
                             # con `token` (JWT) en el body
-POST /api/auth/logout       # 204 — limpia cookies store_token de versiones
-                            # previas; la sesión real muere al borrar el
-                            # token local
+# logout = borrar el token local (no hay endpoint)
 POST /api/auth/stores       # { email, password } → [{id,name,logoUrl,…}] — pedirla cuando
                             # login responde "storeId required" (roles
                             # operativos con varias tiendas asignadas) →

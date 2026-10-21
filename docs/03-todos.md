@@ -168,20 +168,12 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       `PATCH /{id}/status` a ADMIN/MANAGER/EMPLOYEE/KITCHEN y `GET
       /api/orders` hace scoping por store de sesión — cancelar restaura
       inventario y marca `refund_status=REFUNDED`.
-- [x] **Cookie httpOnly para el token** — el JWT viaja en la cookie
-      `store_token` (httpOnly, Path=/, Max-Age = `JWT_EXPIRATION_MS`);
-      `POST /api/auth/login` y `/superadmin` la setean, `POST
-      /api/auth/logout` la expira (JS no puede borrar httpOnly).
-      `api()` usa `credentials: "include"` y ya no manda `Authorization`;
-      el body del login ya no trae `token` (`@JsonIgnore`). La sesión
-      local guarda `loginAt` para el TTL por rol — el `exp` real lo
-      refuerza el server (401 → cierra sesión; 403 solo es "sin
-      permiso"). Filtro acepta cookie o Bearer (scripts), y en mutaciones
-      con cookie exige `Origin` en la allowlist de CORS (CSRF).
-      Config: `COOKIE_SECURE=true` + `COOKIE_SAMESITE=None` en Railway
-      (fe/be son sitios distintos por public suffix); en local queda
-      `Lax` (localhost es same-site). Sesiones viejas con `token` en
-      localStorage se descartan como expiradas → re-login una vez.
+- [x] ~~Cookie httpOnly para el token~~ — **revertido**: la cookie
+      cross-site (fe/be en dominios distintos de Railway) no funcionó.
+      Auth es `Authorization: Bearer` con el JWT en la sesión local; el
+      endpoint `/api/auth/logout` y `AuthCookie` se eliminaron. La
+      revocación real es server-side (`users.token_version` + TTL por
+      rol sobre `iat`, ver `store-be/docs/02-authentication.md`).
 - [x] **Impresión/reimpresión de tickets** — `OrderTicket` +
       `TicketModal` compartidos (`components/molecules/OrderTicket.tsx`)
       renderizan el ticket desde `OrderResponse` (items, tamaño/extras/

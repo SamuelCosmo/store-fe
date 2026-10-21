@@ -74,10 +74,8 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-/** Cierra sesión local y le avisa al server para que expire cualquier
- *  cookie store_token que una versión previa haya podido dejar. */
+/** Cierra sesión local — auth es Bearer: sin token no hay sesión. */
 export function logoutSession() {
   report("info", "session.logout", "user logout");
   clearSession();
-  api("/api/auth/logout", { method: "POST" }).catch(() => {});
 }

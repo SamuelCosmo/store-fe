@@ -29,10 +29,18 @@ Opciones de cada equipo:
    papel térmico de 80 mm.
 3. **Predeterminada**: en Windows → Configuración → Impresoras, dejarla
    como impresora predeterminada y mandar una página de prueba.
-4. **Corte automático**: en Propiedades de la impresora → opciones de
-   papel, activar "cortar al final del documento" (el nombre exacto varía
-   por driver). El cajón de dinero (si se conecta) se habilita ahí mismo:
-   "abrir cajón al imprimir".
+4. **Papel y corte**: clic derecho en la impresora → Preferencias de
+   impresión → Opciones avanzadas:
+   - **Paper Size: `RP80: 297 mm`** — NO `RP80: roll`: con "roll" el
+     driver encoge el ticket a ~2/3 del ancho (texto de ~48 mm en rollo
+     de 80 mm). Elegir el mismo tamaño en el diálogo de Chrome la primera
+     vez (márgenes "Ninguno", escala "Predeterminada") — la impresión
+     silenciosa reusa esos ajustes.
+   - **Paper Cut: Full cut at Page End** · **Paper Feed After Page: 3 mm**.
+   - El driver Rongta no acepta formularios de papel personalizados de
+     Windows — usar sus tamaños `RP80:`.
+   - El cajón de dinero (si se conecta) se habilita en el driver:
+     "abrir cajón al imprimir".
 5. **Navegador**: crear un acceso directo de Chrome para cada terminal:
 
    ```text
@@ -63,7 +71,9 @@ Opciones de cada equipo:
 |---|---|
 | No sale nada | La impresora no es la predeterminada, o está apagada/sin papel |
 | Sale el diálogo de Windows | Falta el flag `--kiosk-printing` en el acceso directo |
+| El ticket sale angosto / letra chiquita (~48 mm de texto) | Papel en `RP80: roll` — cambiar a `RP80: 297 mm` en el driver **y** en el diálogo de Chrome |
 | El ticket sale cortado raro o miniatura | Escala del diálogo/driver distinta de 100 % — con `--kiosk-printing` Chrome usa el `@page` CSS (80 mm) y escala real |
+| Autotest (apagada → mantener FEED → encender) sale a todo el ancho pero el ticket no | El hardware está bien: es el tamaño de papel del driver (fila anterior) |
 | No corta el papel | "Cortar al final del documento" apagado en el driver |
 | No abre el cajón | Habilitarlo en el driver; si no lo expone → requiere ESC/POS (ver abajo) |
 | Texto pálido/grisáceo | El print fuerza negro; si aun así sale tenue es densidad del driver ("print density") |
