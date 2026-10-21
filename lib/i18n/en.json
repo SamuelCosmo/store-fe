@@ -252,6 +252,8 @@
   "dash.card": "Card",
   "dash.cash": "Cash",
   "dash.token": "Tokens",
+  "dash.tokens": "Tokens sold",
+  "dash.tokensSold": "{n} tokens",
 
   "orders.title": "Orders",
   "orders.subtitle": "Store order history",
@@ -268,6 +270,9 @@
   "orders.emptyFiltered": "No orders with status {s}.",
   "orders.reprint": "Reprint ticket",
   "orders.reprintAria": "Reprint ticket for order {n}",
+  "orders.refunded": "Refunded",
+  "orders.noRefund": "Not refunded",
+  "orders.cancelledBy": "by {name}",
 
   "kitchen.title": "Kitchen",
   "kitchen.loginRequired": "Sign in to view orders.",
@@ -276,7 +281,8 @@
   "kitchen.allStores": "All stores",
   "kitchen.deliver": "Deliver",
   "kitchen.cancelTitle": "Cancel order #{n}",
-  "kitchen.cancelText": "The order will be cancelled and marked as a pending refund. Configured inventory is restocked. This action cannot be undone.",
+  "kitchen.cancelText": "The order will be cancelled. Configured inventory is restocked. This action cannot be undone.",
+  "kitchen.refundQ": "Money already returned to the customer",
   "kitchen.cancelOrder": "Cancel order",
   "kitchen.loadError": "Could not load orders",
   "kitchen.updateError": "Could not update the order",

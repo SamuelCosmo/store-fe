@@ -17,7 +17,11 @@ import {
   type PageDto,
 } from "../../_components/usePagination";
 
-type OrderDto = TicketOrder;
+type OrderDto = TicketOrder & {
+  refundStatus?: "NONE" | "REFUNDED";
+  cancelledBy?: string | null;
+  cancelledAt?: string | null;
+};
 
 const GRID =
   "grid-cols-[70px_150px_90px_110px_120px_80px_100px_50px]";
@@ -187,6 +191,15 @@ export function OrdersView() {
                 >
                   {STATUS_KEYS[o.status] ? t(STATUS_KEYS[o.status]) : o.status}
                 </span>
+                {o.status === "CANCELLED" && (
+                  <span className="mt-1 block text-[10px] leading-tight text-text-muted">
+                    {o.refundStatus === "REFUNDED"
+                      ? t("orders.refunded")
+                      : t("orders.noRefund")}
+                    {o.cancelledBy &&
+                      ` · ${t("orders.cancelledBy", { name: o.cancelledBy })}`}
+                  </span>
+                )}
               </span>
               <span className="text-text-secondary tabular-nums">
                 {o.items.reduce((n, i) => n + i.quantity, 0)}

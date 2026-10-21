@@ -86,6 +86,8 @@ export function KitchenBoard() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<OrderDto | null>(null);
+  // si el dinero ya se devolvió al cancelar — solo aplica a pagos con dinero
+  const [refundMoney, setRefundMoney] = useState(false);
   const [ticket, setTicket] = useState<OrderDto | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   // umbrales por establecimiento — los settings de cocina son por tienda
@@ -285,9 +287,10 @@ export function KitchenBoard() {
     try {
       await api(`/api/orders/${order.id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ status: "CANCELLED" }),
+        body: JSON.stringify({ status: "CANCELLED", refunded: refundMoney }),
       });
       setConfirmCancel(null);
+      setRefundMoney(false);
       await load();
     } catch (e: unknown) {
       setConfirmCancel(null);
@@ -475,7 +478,10 @@ export function KitchenBoard() {
                     {o.status !== "READY" && (
                       <button
                         type="button"
-                        onClick={() => setConfirmCancel(o)}
+                        onClick={() => {
+                          setConfirmCancel(o);
+                          setRefundMoney(false);
+                        }}
                         disabled={busy === o.id}
                         className="h-10 rounded-xl border border-text-primary/20 bg-background/60 px-3 text-[13px] font-semibold text-text-secondary transition-colors hover:border-error/50 hover:text-error disabled:opacity-50"
                       >
@@ -506,6 +512,17 @@ export function KitchenBoard() {
               {t("kitchen.cancelText")}
             </p>
           </div>
+          {confirmCancel?.paymentMethod !== "TOKEN" && (
+            <label className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold text-text-primary">
+              <input
+                type="checkbox"
+                checked={refundMoney}
+                onChange={(e) => setRefundMoney(e.target.checked)}
+                className="size-4 accent-primary"
+              />
+              {t("kitchen.refundQ")}
+            </label>
+          )}
           <div className="flex justify-end gap-2.5">
             <button
               type="button"

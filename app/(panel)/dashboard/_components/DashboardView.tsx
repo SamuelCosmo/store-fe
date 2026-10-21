@@ -60,6 +60,8 @@ type Slice = { key: string; orders: number; total: number };
 
 type DashboardData = {
   totalSales: number;
+  tokenSales: number;
+  tokensSold: number;
   orders: number;
   avgTicket: number;
   cancelledOrders: number;
@@ -164,8 +166,9 @@ export function DashboardView() {
         </p>
       ) : data && (
         <>
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-3 xl:grid-cols-6 gap-4">
             <StatCard label={t("dash.sales")} value={MXN.format(data.totalSales)} hint={t(RANGES.find((r) => r.id === rangeId)!.key)} />
+            <StatCard label={t("dash.tokens")} value={MXN.format(data.tokenSales)} hint={t("dash.tokensSold", { n: data.tokensSold })} />
             <StatCard label={t("dash.orders")} value={String(data.orders)} hint={t("dash.avgTicket", { v: MXN.format(data.avgTicket) })} />
             <StatCard label={t("dash.dineInLabel")} value={`${dineIn}%`} />
             <StatCard

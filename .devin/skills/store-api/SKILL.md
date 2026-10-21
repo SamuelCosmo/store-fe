@@ -229,7 +229,9 @@ el total que valida el backend. No sumes precios como floats.
 
 ```json
 // PATCH /api/orders/{id}/status
-{ "status": "PENDING | CONFIRMED | PREPARING | READY | COMPLETED | CANCELLED" }
+{ "status": "PENDING | CONFIRMED | PREPARING | READY | COMPLETED | CANCELLED",
+  "refunded": true }   // opcional, solo al cancelar: ¿ya se devolvió el dinero?
+                       // CASH/CARD → REFUNDED; TOKEN ($0) siempre queda NONE
 ```
 
 **Reglas:**
@@ -242,8 +244,10 @@ el total que valida el backend. No sumes precios como floats.
   descuenta inventario en la misma transacción. `sizeId`/`extras` deben
   estar asignados al producto (si no → 400); mismo producto con distinta
   selección queda como líneas separadas.
-- `CANCELLED` permitido hasta `PREPARING` inclusive → restaura inventario y
-  `refund_status=REFUNDED` (reembolso manual por staff).
+- `CANCELLED` permitido hasta `PREPARING` inclusive → restaura inventario;
+  `refunded` del request decide `refund_status` (REFUNDED solo en pagos con
+  dinero). `OrderResponse` trae `cancelledBy`/`cancelledAt` — el historial
+  los muestra bajo el chip CANCELLED.
 - KDS usa: `PREPARING`, `READY`, `CANCELLED`.
 - `PATCH /status` y `GET /api/orders` abiertos a ADMIN/MANAGER/EMPLOYEE/
   KITCHEN — el tablero `/kitchen` es accesible para todo el staff.
@@ -277,7 +281,8 @@ PATCH  /api/bar/items/{id}/status
 
 # Reportes (REPORTS) — ADMIN/MANAGER ✅
 GET    /api/reports/dashboard?from=&to=&storeId=&top=
-#   → { totalSales, orders, avgTicket, cancelledOrders, refundedTotal,
+#   → { totalSales, tokenSales ($ venta de fichas), tokensSold (piezas),
+#       orders, avgTicket, cancelledOrders, refundedTotal,
 #       channels[], orderTypes[], payments[], hourly[], topProducts[],
 #       employees[] } — CANCELLED no cuentan en ventas
 

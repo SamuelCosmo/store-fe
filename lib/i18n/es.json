@@ -252,6 +252,8 @@
   "dash.card": "Tarjeta",
   "dash.cash": "Efectivo",
   "dash.token": "Fichas",
+  "dash.tokens": "Fichas vendidas",
+  "dash.tokensSold": "{n} fichas",
 
   "orders.title": "Pedidos",
   "orders.subtitle": "Historial de pedidos del establecimiento",
@@ -268,6 +270,9 @@
   "orders.emptyFiltered": "Sin pedidos con estatus {s}.",
   "orders.reprint": "Reimprimir ticket",
   "orders.reprintAria": "Reimprimir ticket del pedido {n}",
+  "orders.refunded": "Reembolsada",
+  "orders.noRefund": "Sin reembolso",
+  "orders.cancelledBy": "por {name}",
 
   "kitchen.title": "Cocina",
   "kitchen.loginRequired": "Inicia sesión para ver las órdenes.",
@@ -276,7 +281,8 @@
   "kitchen.allStores": "Todos los establecimientos",
   "kitchen.deliver": "Entregar",
   "kitchen.cancelTitle": "Cancelar pedido #{n}",
-  "kitchen.cancelText": "El pedido se cancelará y se marcará como reembolso pendiente. El inventario configurado se repone. Esta acción no se puede deshacer.",
+  "kitchen.cancelText": "El pedido se cancelará. El inventario configurado se repone. Esta acción no se puede deshacer.",
+  "kitchen.refundQ": "Ya se devolvió el dinero al cliente",
   "kitchen.cancelOrder": "Cancelar pedido",
   "kitchen.loadError": "No se pudieron cargar las órdenes",
   "kitchen.updateError": "No se pudo actualizar la orden",
