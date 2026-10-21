@@ -73,8 +73,8 @@ export function isSessionExpired(session: AuthResponse): boolean {
   // Sesiones de la era-cookie (sin token) o viejas (sin loginAt) → migración.
   if (!session.token || typeof session.loginAt !== "number") return true;
   // Cierre por rol según settings: horas desde el login (0 = sin límite).
-  // ponytail: solo client-side — el JWT sigue válido hasta `exp`;
-  // TTL real por rol pendiente en backend
+  // El backend aplica el mismo TTL sobre el `iat` del JWT (401 al vencer);
+  // esto solo evita mostrar pantallas con una sesión ya muerta.
   const hours = getSettings().session.hours[session.role] ?? 0;
   return hours > 0 && Date.now() - session.loginAt > hours * 3_600_000;
 }

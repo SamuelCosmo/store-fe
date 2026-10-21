@@ -226,7 +226,10 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       pantalla ofrece "Continuar con el pedido" o "Comenzar pedido nuevo"
       (este último sí resetea).
 - [ ] **Pago con tarjeta en terminal física** — hoy `paymentMethod: CARD`
-      se registra sin procesar nada. Investigación hecha (doc completo en
+      se registra sin procesar nada. **Decidido: integración Bancomer
+      (BBVA), la implementación la entrega el banco** — ver
+      `TODO(bancomer)` en `OrderService.create` (flujo PENDING_PAYMENT →
+      aprobación → PENDING). Investigación hecha (doc completo en
       `store-be/docs/14-card-terminals.md`): el proveedor/terminal es
       **por restaurante** (cada tenant trae su cuenta y sus terminales —
       la plataforma no toca dinero). Opciones analizadas:
