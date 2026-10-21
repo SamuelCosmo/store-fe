@@ -2,6 +2,7 @@
 
 import { Modal } from "@/components/molecules/Modal";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
+import { apiErrorMessage } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -67,9 +68,8 @@ export default function LoginPage() {
     });
     const body = await res.json().catch(() => null);
     if (!res.ok) {
-      const message = String(body?.message ?? t("login.failed"));
       // la cuenta opera varias tiendas → traer las elegibles y elegir
-      if (message.startsWith("storeId required")) {
+      if (body?.code === "STORE_REQUIRED") {
         const storesRes = await fetch(`${API_URL}/api/auth/stores`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -86,7 +86,11 @@ export default function LoginPage() {
         }
       }
       setError(
-        message === "Invalid credentials" ? t("login.badCredentials") : message,
+        body?.code === "INVALID_CREDENTIALS"
+          ? t("login.badCredentials")
+          : body
+            ? apiErrorMessage(res.status, body)
+            : t("login.failed"),
       );
       return;
     }

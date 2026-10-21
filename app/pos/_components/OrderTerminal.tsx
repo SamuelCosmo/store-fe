@@ -212,6 +212,10 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
   // la red se corta tras cobrar, reintentar devuelve la orden ya creada en
   // vez de duplicarla. Carrito nuevo (o cobro exitoso, que lo vacía) → key nuevo.
   const payKey = useRef("");
+  // mismo criterio para la venta de fichas: se renueva solo tras una venta
+  // exitosa — si falló la red y el cajero reintenta, el server devuelve la
+  // venta ya registrada en vez de cobrar dos veces
+  const tokenKey = useRef(newRequestId());
   const [cashReceived, setCashReceived] = useState("");
   const [idle, setIdle] = useState(false);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -561,12 +565,14 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     try {
       await api("/api/tokens", {
         method: "POST",
+        headers: { "Idempotency-Key": tokenKey.current },
         body: JSON.stringify({
           quantity: Math.floor(Number(tokenSale.quantity)),
           paymentMethod: tokenSale.method,
           ...(viewStore != null ? { storeId: viewStore } : {}),
         }),
       });
+      tokenKey.current = newRequestId();
       setTokenSale({ ...tokenSale, busy: false, step: "done" });
     } catch (e) {
       setError(

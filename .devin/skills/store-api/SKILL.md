@@ -305,13 +305,26 @@ Todos los errores llegan como `ErrorResponse`:
   "timestamp": "...",
   "status": 409,
   "error": "Conflict",
+  "code": "OUT_OF_STOCK",
   "message": "Insufficient stock for product: Espresso",
+  "params": { "product": "Espresso" },
   "path": "/api/orders",
   "fieldErrors": { "name": "must not be blank" }
 }
 ```
 
-Mapear `fieldErrors` a los campos del formulario; `message` es texto legible.
+- **Nunca mostrar `message`** (técnico, inglés). `api()` lanza `ApiError`
+  con el texto ya traducido desde `code` (`err.<CODE>` en
+  `lib/i18n/*.json`, `params` como variables) o el genérico del status;
+  para fetch crudo (login/superadmin) usar `apiErrorMessage(status, body)`.
+- Lógica por error → comparar `err.code` (`ApiError`) / `body.code`,
+  nunca el texto: `STORE_REQUIRED` (login multi-tienda),
+  `INVALID_CREDENTIALS` (401 de contraseña equivocada — `api()` NO cierra
+  sesión con este code; un 401 sin code sí).
+- Código nuevo en el back ⇒ agregar `err.<CODE>` en es.json y en.json.
+- Cobros (`POST /api/orders`, `POST /api/tokens`) aceptan header
+  `Idempotency-Key`; `CONCURRENT_UPDATE` (409) = otra pantalla cambió la
+  misma orden → recargar.
 
 ## Logs y diagnóstico
 

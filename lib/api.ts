@@ -1,4 +1,4 @@
-import { translateNow, type TKey } from "./i18n";
+import { hasKey, translateNow, type TKey, type TParams } from "./i18n";
 import { breadcrumb, newRequestId, redact, report } from "./log";
 import {
   SESSION_EXPIRED_EVENT,
@@ -8,14 +8,39 @@ import {
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
-// Fallback cuando el server no manda `message` — nadie entiende "Error 403"
+// Mensaje genérico por status cuando el error no trae un `code` conocido
 const STATUS_KEYS: Record<number, TKey> = {
   400: "api.badRequest",
   401: "api.expired",
   403: "api.forbidden",
   404: "api.notFound",
+  409: "api.badRequest",
   500: "api.server",
 };
+
+/** Error de la API — `message` ya viene traducido para el usuario; `code`
+ *  es el del backend (ErrorResponse.code) para decidir en el código. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string | null,
+  ) {
+    super(message);
+  }
+}
+
+/** Texto para el usuario a partir del body de error del backend: el
+ *  `code` se traduce con `err.<CODE>` (params como variables); sin
+ *  traducción → genérico del status. Nunca muestra el `message` técnico. */
+export function apiErrorMessage(
+  status: number,
+  body: { code?: string | null; params?: TParams | null } | null,
+): string {
+  const key = body?.code ? `err.${body.code}` : "";
+  if (hasKey(key)) return translateNow(key, body?.params ?? undefined);
+  return translateNow(STATUS_KEYS[status] ?? (status >= 500 ? "api.server" : "api.badRequest"));
+}
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   // FormData (uploads) lleva su propio Content-Type con boundary
@@ -45,30 +70,27 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
       error: String(e),
       body: redact(init?.body),
     });
-    throw new Error(translateNow("api.network") + ref);
+    throw new ApiError(translateNow("api.network") + ref, 0, null);
   }
   breadcrumb("api", `${method} ${path} ${res.status}`);
   if (!res.ok) {
-    let message = STATUS_KEYS[res.status]
-      ? translateNow(STATUS_KEYS[res.status])
-      : `Error ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body?.message) message = body.message;
-    } catch {
-      /* respuesta sin cuerpo JSON */
-    }
+    const body = await res.json().catch(() => null);
+    const code: string | null = body?.code ?? null;
+    const message = apiErrorMessage(res.status, body);
+    // el log guarda el mensaje técnico del back (en inglés) para soporte
     report(res.status >= 500 ? "error" : "warn", "api.error",
-      `${method} ${path} -> ${res.status}: ${message}`,
-      { requestId, status: res.status, ms: Date.now() - started });
-    // 401 = token expirado/ausente → sesión local obsoleta. 403 = autenticado
-    // pero sin permiso (rol/módulo) → la sesión sigue viva, no se cierra.
-    if (res.status === 401 && getSession() && typeof window !== "undefined") {
+      `${method} ${path} -> ${res.status} ${code ?? ""}: ${body?.message ?? ""}`,
+      { requestId, status: res.status, code, ms: Date.now() - started });
+    // 401 = token expirado/revocado → sesión local obsoleta. Excepción:
+    // INVALID_CREDENTIALS es una contraseña mal tecleada al re-confirmar —
+    // la sesión sigue viva. 403 = sin permiso, tampoco cierra sesión.
+    if (res.status === 401 && code !== "INVALID_CREDENTIALS"
+        && getSession() && typeof window !== "undefined") {
       report("info", "session.expired", "401 from API");
       clearSession();
       window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     }
-    throw new Error(res.status >= 500 ? message + ref : message);
+    throw new ApiError(res.status >= 500 ? message + ref : message, res.status, code);
   }
   if (res.status === 204) return undefined as T;
   return res.json();

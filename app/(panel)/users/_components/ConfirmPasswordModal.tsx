@@ -1,6 +1,7 @@
 "use client";
 
 import { Modal } from "@/components/molecules/Modal";
+import { ApiError } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { useState, type FormEvent } from "react";
 
@@ -61,7 +62,7 @@ function ConfirmForm({
     try {
       await onConfirm(password);
     } catch (err) {
-      if (err instanceof Error && err.message === "Invalid credentials") {
+      if (err instanceof ApiError && err.code === "INVALID_CREDENTIALS") {
         // wrong admin password — stay open and let them retry
         setError(t("users.pwdWrong"));
       } else {

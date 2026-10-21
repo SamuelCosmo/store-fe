@@ -2,7 +2,7 @@
 
 import { Modal } from "@/components/molecules/Modal";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
-import { api, logoutSession } from "@/lib/api";
+import { ApiError, api, apiErrorMessage, logoutSession } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/lib/toast";
 import {
@@ -100,9 +100,9 @@ function SuperadminLogin() {
       const body = await res.json().catch(() => null);
       if (!res.ok) {
         setError(
-          body?.message === "Invalid credentials"
+          body?.code === "INVALID_CREDENTIALS"
             ? t("sa.badCredentials")
-            : (body?.message ?? t("sa.loginError")),
+            : apiErrorMessage(res.status, body),
         );
         return;
       }
@@ -319,9 +319,12 @@ export function SuperadminView() {
       setAdminModal(null);
       toast.success(t("common.updated"));
     } catch (e) {
-      const msg = e instanceof Error ? e.message : t("common.saveError");
       setAdminError(
-        msg === "Invalid credentials" ? t("sa.superPwdWrong") : msg,
+        e instanceof ApiError && e.code === "INVALID_CREDENTIALS"
+          ? t("sa.superPwdWrong")
+          : e instanceof Error
+            ? e.message
+            : t("common.saveError"),
       );
     } finally {
       setAdminSaving(false);

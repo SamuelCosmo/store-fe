@@ -19,6 +19,9 @@ const dict = { es, en } as const;
 export type TKey = keyof typeof es;
 export type TParams = Record<string, string | number>;
 
+/** ¿Existe la llave? — para claves dinámicas (ej. `err.${code}` del backend). */
+export const hasKey = (key: string): key is TKey => key in es;
+
 const LangContext = createContext<{
   lang: Lang;
   setLang: (lang: Lang) => void;
