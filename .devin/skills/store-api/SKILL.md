@@ -115,8 +115,15 @@ original (409 si ya se re-usó).
 
 ```text
 GET/PUT   /api/clients/{id}/settings   # { name, logoUrl, currency, taxRate,
-                                       #   kioskReceiptSeconds, tokenPrice,
+                                       #   kioskReceiptSeconds, tokenPrice, timezone,
                                        #   sessionHours: { rol: horas } } (0 = no cerrar)
+                                       # 400 si: currency no ISO 4217, taxRate fuera
+                                       # de 0–100, tokenPrice < 0, kiosk 3–60 s,
+                                       # sessionHours rol no-tenant / >720, timezone
+                                       # no IANA. timezone (default America/Mexico_City)
+                                       # = "hoy" de reportes/fichas + lunes del folio.
+                                       # sessionHours también la aplica el backend
+                                       # sobre el iat del JWT (401 al vencer).
                                        # marca del tenant: name vacío se ignora;
                                        # logoUrl "" quita el logo. El logo se sube
                                        # con POST /api/uploads/brand (solo ADMIN →
@@ -125,6 +132,8 @@ GET/PUT   /api/clients/{id}/settings   # { name, logoUrl, currency, taxRate,
                                        # (null en SUPERADMIN) — BrandMark los usa.
 GET/PUT   /api/stores/{id}/settings    # { menuName, kitchenOkMin,
                                        #   kitchenWarnMin, kitchenSound }
+                                       # 400 si warnMin <= okMin (valor resultante)
+                                       # o minutos fuera de 1–240
 # La MARCA vive por establecimiento (en Store, no en settings): logoUrl +
 # primaryColor/accentColor/canvasColor (#rrggbb; null = tema base; "" quita,
 # ausente conserva en el PUT). La ve el admin en el modal del store
@@ -179,22 +188,29 @@ DELETE /api/users/{id}                 # ADMIN — body { currentPassword }
 ### Órdenes
 
 ```text
-POST   /api/orders            # OrderRequest abajo
-GET    /api/orders            # ?storeId=&status=&page=&size=&sort=
+POST   /api/orders            # OrderRequest abajo — ADMIN/MANAGER/EMPLOYEE/CUSTOMER
+                            #  (KITCHEN 403). Header Idempotency-Key: un id por
+                            #  cobro; reintento con el mismo key → la orden ya
+                            #  creada (OrderTerminal: payKey, se renueva al
+                            #  cambiar carrito/tipo/tienda).
+GET    /api/orders            # staff (CUSTOMER 403) — ?storeId=&status=&page=&size=&sort=
                             #  array para KDS · Page para historial
                             #  (default createdAt desc)
-GET    /api/orders/{id}
+GET    /api/orders/{id}       # staff
 PATCH  /api/orders/{id}/status
-GET    /api/orders/{id}/ticket   # payload autocontenido para imprimir:
+GET    /api/orders/{id}/ticket   # staff — payload autocontenido para reimprimir:
                                  #  OrderResponse + storeName (menuName ?: name)
                                  #  + storeAddress + clientName/logoUrl (marca
                                  #  del tenant; OrderResponse también las trae —
                                  #  encabezado del ticket cuando existe).
-                                 #  Cualquier rol autenticado
-                                 #  (CUSTOMER del kiosco incluido), scoping por
-                                 #  store de sesión. El front imprime con
-                                 #  window.print + #print-ticket (globals.css)
+                                 #  El kiosco usa la respuesta del POST. El front
+                                 #  imprime con window.print + #print-ticket (globals.css)
 ```
+
+**Dinero en el POS:** `OrderTerminal` calcula en centavos enteros
+(`lineCents`/`taxCents`) con el mismo HALF_UP que `OrderService`
+(subtotal × tasa / 100 → 2 decimales) — "Exacto" coincide al centavo con
+el total que valida el backend. No sumes precios como floats.
 
 ```json
 // POST /api/orders — SIN storeId (sale del JWT)

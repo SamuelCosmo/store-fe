@@ -40,6 +40,11 @@ const SESSION_ROLES: Role[] = [
 
 const CURRENCIES = ["MXN", "USD", "EUR", "COP", "ARS", "CLP", "PEN", "GTQ"];
 
+// Zona IANA del equipo del admin — se guarda con la configuración (el
+// backend la necesita para el folio y el "hoy" de reportes; no se pregunta)
+const deviceZone = () =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_SETTINGS.timezone;
+
 type StoreOption = { id: number; name: string };
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -158,6 +163,7 @@ export function SettingsView() {
               ...client.sessionHours,
             },
           },
+          timezone: client.timezone ?? DEFAULT_SETTINGS.timezone,
         });
       } catch (e) {
         if (!cancelled) {
@@ -219,7 +225,11 @@ export function SettingsView() {
           taxRate: form.taxRate,
           tokenPrice: form.tokenPrice,
           kioskReceiptSeconds: form.kiosk.receiptSeconds,
-          sessionHours: form.session.hours,
+          // solo roles del tenant — SUPERADMIN no es configurable (400 en el back)
+          sessionHours: Object.fromEntries(
+            SESSION_ROLES.map((r) => [r, form.session.hours[r]]),
+          ),
+          timezone: deviceZone(),
         }),
       });
       if (storeId != null) {
@@ -424,6 +434,14 @@ export function SettingsView() {
                   />
                   <p className="mt-1 text-[11px] text-text-secondary">
                     {t("settings.tokenPrice.hint")}
+                  </p>
+                </Field>
+                <Field label={t("settings.timezone")}>
+                  <p className="flex h-11 items-center rounded-lg border border-border bg-surface/60 px-3.5 text-[13px] text-text-secondary">
+                    {deviceZone().replaceAll("_", " ")}
+                  </p>
+                  <p className="mt-1 text-[11px] text-text-secondary">
+                    {t("settings.timezone.hint")}
                   </p>
                 </Field>
               </div>

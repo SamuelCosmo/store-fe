@@ -4,6 +4,7 @@ import { BrandMark } from "@/components/molecules/BrandMark";
 import { Modal } from "@/components/molecules/Modal";
 import { api } from "@/lib/api";
 import { brandCss } from "@/lib/branding";
+import { newRequestId } from "@/lib/log";
 import { useI18n } from "@/lib/i18n";
 import {
   SETTINGS_CHANGED_EVENT,
@@ -67,15 +68,30 @@ type StoreOpt = {
   canvasColor: string | null;
 };
 
-function lineUnit(item: CartItem) {
+// Dinero en centavos enteros — sumar floats (0.1 + 0.2) desfasa 1 centavo
+// contra el BigDecimal del backend y "Exacto" quedaría corto.
+const toCents = (amount: number) => Math.round(amount * 100);
+
+function lineCents(item: CartItem) {
   return (
-    item.product.price +
-    (item.selection.size?.price ?? 0) +
+    toCents(item.product.price) +
+    toCents(item.selection.size?.price ?? 0) +
     item.selection.extras.reduce(
-      (sum, p) => sum + p.extra.price * p.quantity,
+      (sum, p) => sum + toCents(p.extra.price) * p.quantity,
       0,
     )
   );
+}
+
+function lineUnit(item: CartItem) {
+  return lineCents(item) / 100;
+}
+
+/** Igual que OrderService: subtotal × tasa / 100, HALF_UP a 2 decimales.
+ *  Tasa en centésimas de % → todo entero, sin error de float. */
+function taxCents(subtotalCents: number, ratePct: number) {
+  const rateBp = Math.round(ratePct * 100);
+  return Math.floor((subtotalCents * rateBp + 5_000) / 10_000);
 }
 
 function lineNote(item: CartItem) {
@@ -192,6 +208,10 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     step: "form" | "confirm" | "done";
   } | null>(null);
   const [paying, setPaying] = useState(false);
+  // Idempotency-Key del cobro: estable mientras el pedido no cambie — si
+  // la red se corta tras cobrar, reintentar devuelve la orden ya creada en
+  // vez de duplicarla. Carrito nuevo (o cobro exitoso, que lo vacía) → key nuevo.
+  const payKey = useRef("");
   const [cashReceived, setCashReceived] = useState("");
   const [idle, setIdle] = useState(false);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -246,6 +266,11 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     },
     [viewStore],
   );
+
+  // cocina no vende (el backend responde 403 al POST) — de vuelta a su KDS
+  useEffect(() => {
+    if (session?.role === "KITCHEN") router.replace(ROLE_HOME.KITCHEN);
+  }, [session?.role, router]);
 
   // ¿puede elegir tienda? solo caja + admin/gerente — el resto usa la suya
   const pickable =
@@ -398,10 +423,12 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     [products, categoryId, channel, tokenMode],
   );
 
-  const subtotal = cart.reduce((sum, i) => sum + lineUnit(i), 0);
   // El impuesto se agrega sobre el subtotal — los precios no lo incluyen
-  const taxAmount = Math.round(subtotal * taxRate) / 100;
-  const total = subtotal + taxAmount;
+  const subtotalCents = cart.reduce((sum, i) => sum + lineCents(i), 0);
+  const taxAmountCents = taxCents(subtotalCents, taxRate);
+  const subtotal = subtotalCents / 100;
+  const taxAmount = taxAmountCents / 100;
+  const total = (subtotalCents + taxAmountCents) / 100;
   // fichas: solo si TODO el pedido es canjeable (tokenCost > 0 por producto)
   const tokensDue = cart.reduce((sum, i) => sum + i.product.tokenCost, 0);
   const cartAllTokenable =
@@ -475,12 +502,17 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     ]);
   }
 
+  useEffect(() => {
+    payKey.current = newRequestId();
+  }, [cart, orderType, viewStore]);
+
   async function pay() {
     setPaying(true);
     setError(null);
     try {
       const order = await api<OrderDto>("/api/orders", {
         method: "POST",
+        headers: { "Idempotency-Key": payKey.current },
         body: JSON.stringify({
           channel,
           orderType,
@@ -510,7 +542,9 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
         // changeGiven viene del backend (persistido); fallback al cálculo local
         change:
           order.changeGiven ??
-          (payment === "CASH" ? Number(cashReceived) - total : null),
+          (payment === "CASH"
+            ? (toCents(Number(cashReceived)) - toCents(total)) / 100
+            : null),
       });
     } catch (e) {
       setPayOpen(false);

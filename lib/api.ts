@@ -22,9 +22,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const isForm = init?.body instanceof FormData;
   const token = getSession()?.token;
   const method = init?.method ?? "GET";
-  // mismo id en el log del back → el "ref" del toast lo encuentra
+  // mismo id en el log del back → el "código para soporte" del toast lo encuentra
   const requestId = newRequestId();
-  const ref = ` · ref ${requestId}`;
+  const ref = ` (${translateNow("api.supportCode", { code: requestId })})`;
   const started = Date.now();
   let res: Response;
   try {

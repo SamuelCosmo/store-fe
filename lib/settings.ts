@@ -16,6 +16,8 @@ export type StoreSettings = {
   tokenPrice: number;
   kiosk: { receiptSeconds: number };
   session: { hours: Record<Role, number> };
+  // zona IANA del negocio — el backend la usa para "hoy" y el folio semanal
+  timezone: string;
 };
 
 export type ClientSettingsDto = {
@@ -26,6 +28,7 @@ export type ClientSettingsDto = {
   tokenPrice: number;
   kioskReceiptSeconds: number;
   sessionHours: Partial<Record<Role, number>>;
+  timezone: string;
 };
 
 export type StoreSettingsDto = {
@@ -52,6 +55,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
       SUPERADMIN: 12,
     },
   },
+  timezone: "America/Mexico_City",
 };
 
 export const SETTINGS_CHANGED_EVENT = "store:settings-changed";
@@ -77,6 +81,7 @@ export function getSettings(): StoreSettings {
           ...stored?.session?.hours,
         },
       },
+      timezone: stored?.timezone ?? DEFAULT_SETTINGS.timezone,
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -125,6 +130,7 @@ export async function refreshSettings(
     session: {
       hours: { ...DEFAULT_SETTINGS.session.hours, ...client.sessionHours },
     },
+    timezone: client.timezone ?? DEFAULT_SETTINGS.timezone,
   };
   if (storeId != null) {
     const store = await api<StoreSettingsDto>(
