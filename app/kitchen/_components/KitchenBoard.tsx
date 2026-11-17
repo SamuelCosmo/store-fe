@@ -161,10 +161,10 @@ export function KitchenBoard() {
 
   const load = useCallback(async () => {
     const scope = viewStore != null ? `&storeId=${viewStore}` : "";
-    const lists = await Promise.all(
-      ACTIVE.map((s) => api<OrderDto[]>(`/api/orders?status=${s}${scope}`)),
+    // un solo request: la API acepta varios status separados por coma
+    const next = await api<OrderDto[]>(
+      `/api/orders?status=${ACTIVE.join(",")}${scope}`,
     );
-    const next = lists.flat();
     // umbrales del establecimiento de cada orden (no del de la sesión) —
     // así el selector/vista combinada aplican la config correcta y los
     // cambios de /settings llegan al tablero sin recargar

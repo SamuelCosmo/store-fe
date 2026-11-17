@@ -285,6 +285,15 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       logo/nombre de plataforma si no hay), y el ticket imprime
       `clientName`+logo en el encabezado (fallback `storeName`). El
       login conserva la marca SAC+ (el tenant aún no se conoce ahí).
+- [ ] **Recuperar contraseña por correo** — flujo "¿Olvidaste tu
+      contraseña?": `POST /api/auth/forgot` (email → link/token firmado
+      con caducidad corta) + `POST /api/auth/reset` (token + password
+      nueva). **Bloqueado**: no hay servicio de correo/mensajería
+      contratado — cuando lo haya, enchufar un `MailService` (SendGrid,
+      SES, Resend…) y aplicar el mismo rate limit por correo/IP que ya
+      tienen `login`/`stores`/`superadmin`. En el front: link "¿Olvidaste
+      tu contraseña?" en `/` y `/superadmin` → pantalla que pide correo
+      y otra que recibe el token por URL y pide la nueva.
 - [ ] **Página de cuenta (settings por usuario)** — el menú del
       `UserCard` tenía un item "Configuración" que apuntaba a `/settings`
       (settings del tenant) — se quitó porque ahí va una página aparte

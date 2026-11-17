@@ -64,6 +64,7 @@
   "api.network": "There's no connection to the system. Make sure this device has internet and try again. If it keeps happening, contact support.",
   "api.supportCode": "Support code: {code}",
   "err.INVALID_CREDENTIALS": "The email or password is incorrect.",
+  "err.RATE_LIMITED": "Too many attempts. Wait 10 minutes and try again.",
   "err.CONCURRENT_UPDATE": "Someone else changed this at the same time. Reload the screen and try again.",
   "err.CASH_INSUFFICIENT": "The cash received is less than the total. Check the amount.",
   "err.CUSTOMER_KIOSK_ONLY": "This account can only place orders from the kiosk.",

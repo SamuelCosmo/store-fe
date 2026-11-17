@@ -64,6 +64,7 @@
   "api.network": "No hay conexión con el sistema. Revisa que el equipo tenga internet y vuelve a intentarlo. Si sigue pasando, avisa a soporte.",
   "api.supportCode": "Código para soporte: {code}",
   "err.INVALID_CREDENTIALS": "El correo o la contraseña no son correctos.",
+  "err.RATE_LIMITED": "Demasiados intentos. Espera 10 minutos y vuelve a intentarlo.",
   "err.CONCURRENT_UPDATE": "Alguien más modificó esto al mismo tiempo. Recarga la pantalla y vuelve a intentarlo.",
   "err.CASH_INSUFFICIENT": "El efectivo recibido es menor que el total. Revisa la cantidad.",
   "err.CUSTOMER_KIOSK_ONLY": "Esta cuenta solo puede hacer pedidos desde el kiosco.",

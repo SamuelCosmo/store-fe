@@ -193,7 +193,9 @@ POST   /api/orders            # OrderRequest abajo — ADMIN/MANAGER/EMPLOYEE/CU
                             #  cambiar carrito/tipo/tienda).
 GET    /api/orders            # staff (CUSTOMER 403) — ?storeId=&status=&page=&size=&sort=
                             #  array para KDS · Page para historial
-                            #  (default createdAt desc)
+                            #  (default createdAt desc). `status` admite
+                            #  varios: ?status=PENDING,CONFIRMED,READY —
+                            #  el KDS pide los activos en UN request.
 GET    /api/orders/{id}       # staff
 PATCH  /api/orders/{id}/status
 GET    /api/orders/{id}/ticket   # staff — payload autocontenido para reimprimir:
@@ -325,7 +327,9 @@ Todos los errores llegan como `ErrorResponse`:
 - Lógica por error → comparar `err.code` (`ApiError`) / `body.code`,
   nunca el texto: `STORE_REQUIRED` (login multi-tienda),
   `INVALID_CREDENTIALS` (401 de contraseña equivocada — `api()` NO cierra
-  sesión con este code; un 401 sin code sí).
+  sesión con este code; un 401 sin code sí),
+  `RATE_LIMITED` (429 — login/stores/superadmin: 5 fallos por correo o 30
+  por IP en 10 min; `POST /api/logs` corta a 60/min por IP en silencio).
 - Código nuevo en el back ⇒ agregar `err.<CODE>` en es.json y en.json.
 - Cobros (`POST /api/orders`, `POST /api/tokens`) aceptan header
   `Idempotency-Key`; `CONCURRENT_UPDATE` (409) = otra pantalla cambió la
