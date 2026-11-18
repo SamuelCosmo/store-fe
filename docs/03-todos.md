@@ -2,6 +2,134 @@
 
 En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 
+> **Auditoría 2025-11**: `docs/SAC_AUDIT_REPORT.md` — hallazgos F-01…F-28
+> clasificados CRITICAL/HIGH/MEDIUM/LOW. Los pendientes de abajo referencian
+> esos IDs (HP-XXX-nn). Skills del agente en `.devin/skills/` (ver AGENTS.md).
+
+## Auditoría — bloqueantes y alta prioridad
+
+- [ ] **HP-MT-01 · Módulos contratados enforceados en backend** (F-01, HIGH)
+      — `client_modules`/`user_modules` están en docs/13 pero NO en código.
+      Implementar entidades + claims JWT + `@PreAuthorize` por módulo +
+      endpoints `PUT /api/clients/{id}/modules`, `PUT /api/users/{id}/modules`.
+      Skill: business-domain-erp, backend-engineering.
+- [ ] **HP-MT-02 · Suspensión de tenant** (F-02, HIGH) — `Client` no tiene
+      `status`/`suspendedAt`; agregar campo + bloqueo en login + UI superadmin.
+- [ ] **HP-MT-03 · Feature flags + dependencias de módulos** (F-28, MED) —
+      catálogo de módulos con `requires` (KDS→ORDERS, KIOSK→MENU+ORDERS+PAYMENTS)
+      + `tenant_features` para capacidades dentro de un módulo.
+- [ ] **HP-SEC-01 · Aislamiento tenant defense-in-depth** (F-03, HIGH) —
+      Postgres RLS como segunda capa sobre el scoping en services + tests
+      cross-tenant automatizados (ver HP-QA-05).
+- [ ] **HP-SEC-02 · Audit log de cambios de negocio** (F-07, HIGH) —
+      entidad `audit_events` (actor, acción, entidad, diff jsonb, createdAt)
+      escrita desde services que mutan catálogo/settings/usuarios/precios.
+- [ ] **HP-SEC-03 · Restringir Swagger en producción** (F-08, MED) —
+      `/swagger-ui/**` y `/v3/api-docs/**` hoy `permitAll`; solo SUPERADMIN
+      o profile `!prod`.
+- [ ] **HP-SEC-04 · Security headers** (F-09, MED) — CSP, HSTS,
+      X-Content-Type-Options, Referrer-Policy en Spring Security +
+      `headers()` de Next. Validar que no rompa impresión/tickets.
+- [ ] **HP-DB-01 · Migraciones formales (Flyway/Liquibase)** (F-06, HIGH) —
+      hoy `ddl-auto: update`; baseline antes de que el esquema crezca +
+      estrategia expand/contract para cambios destructivos.
+- [ ] **HP-OPS-01 · Backups y disaster recovery** (F-05, HIGH) — documentar
+      backups de Railway Postgres, probar restore, runbook de incidente.
+- [ ] **HP-OPS-02 · Monitoreo y alertas** (F-05, HIGH) — `/actuator/health`,
+      uptime monitor externo, error tracking (Sentry), alertas 5xx/login.
+- [ ] **HP-OPS-03 · Rate limiter distribuido** (F-10, MED) — in-memory hoy;
+      Redis/DB si hay >1 réplica.
+- [ ] **HP-OPS-04 · Entorno staging** (F-18, MED) — validar antes de prod.
+- [ ] **HP-QA-01 · Tests frontend** (F-11, MED) — Vitest + RTL para `lib/`
+      (cálculos centavos, apiErrorMessage, paginación) cuando se justifique.
+- [ ] **HP-QA-02 · CI pipeline con gates** (F-11, MED) — `mvnw test` +
+      `tsc --noEmit` + `eslint` antes de deploy (hoy Railway compila post-merge).
+- [ ] **HP-QA-03 · E2E happy path** (F-11, MED) — Playwright/Cypress:
+      login → orden POS → KDS → ticket.
+- [ ] **HP-QA-04 · Tests de repositorio con Testcontainers** (F-12, MED) —
+      Postgres real para queries críticas (aggregates, scoping, locks).
+- [ ] **HP-QA-05 · Tests de aislamiento cross-tenant** (F-15, MED) — por
+      cada módulo: usuario de tienda A no ve datos de B; tenant ajeno → 403.
+- [ ] **HP-BIZ-01 · Corte de caja por turno** — diseño en sección
+      "Iteración siguiente" (shift por store, fondo inicial, esperado vs
+      contado, incluye fichas; ADMIN/MANAGER abren/cierran).
+- [ ] **HP-BIZ-02 · Descuentos** — `orders.discount` (monto) server-side,
+      input en modal de cobro, línea en ticket. Ver TODO original arriba.
+- [ ] **HP-BIZ-03 · Recuperar contraseña por correo** — bloqueado por
+      proveedor de mensajería (ver TODO original arriba).
+- [ ] **HP-INV-01 · Movimientos de inventario** (F-16, MED) —
+      `inventory_movements` (tipo, qty firmada, referencia, autor) +
+      ajustes con rol MANAGER+; recetas/BOM y food cost después.
+- [ ] **HP-PAY-01 · Integración Bancomer** (F-17, MED) — `TODO(bancomer)`
+      en OrderService; esperando spec del banco (ver docs/14).
+- [ ] **HP-FE-01 · Romper `OrderTerminal.tsx` (1,642 líneas)** (F-13, MED) —
+      separar en step components (carrito/pago/resumen).
+- [ ] **HP-DB-02 · Decidir unicidad de email** (F-14, MED) — hoy global;
+      ¿por tenant o global? Impacta personas con cuentas en varios tenants.
+- [ ] **HP-DOC-01 · Sincronizar docs con código** (F-22, LOW) —
+      `06-database.md` (token_sales, app_logs, columnas nuevas de orders),
+      `10-frontend-screens.md` (pantallas actuales).
+- [ ] **HP-A11Y-01 · Auditoría WCAG 2.2 AA** (F-24, LOW) — axe/Lighthouse
+      por superficie; focus trap en modales; aria-labels en botones
+      solo-icono; `aria-live` en KDS/toasts. Ver skill accessibility-wcag.
+
+## Legal & Regulatory Compliance — Mexico
+
+> TODOs de cumplimiento legal — **todos Requires Review** hasta visto bueno
+> de abogado mexicano calificado. Un documento generado por IA NO cuenta
+> como aprobado. Skill: `legal-compliance-mx`.
+
+### Plataforma SAC+ (responsable: SAC+ / abogado)
+
+| ID | TODO | Prioridad | Dependencias | Entregable | Criterio de aceptación |
+|---|---|---|---|---|---|
+| HP-LGL-01 | Identificar persona física/moral operadora de SAC+ | Alta | — | Documento de constitución | RFC y razón social definidos |
+| HP-LGL-02 | Aviso de privacidad de la plataforma | Alta | HP-LGL-01 | PDF/web publicado | Cubre datos tratados, finalidades, ARCO, transferencias; revisado por abogado |
+| HP-LGL-03 | Términos y condiciones del servicio SaaS | Alta | HP-LGL-01 | Documento legal | Roles, propiedad de datos, suspensión, limitación de responsabilidad |
+| HP-LGL-04 | Contrato de suscripción SaaS | Alta | HP-LGL-03 | Contrato plantilla | Planes, módulos, precios, renovación, cancelación |
+| HP-LGL-05 | Acuerdo de procesamiento de datos (DPA) | Alta | HP-LGL-02 | DPA firmado por tenant | SAC+ como encargado; alcance, seguridad, subencargados, borrado |
+| HP-LGL-06 | Inventario de subencargados | Alta | — | Lista: Railway, Postgres host, S3, futuro correo/pagos | Cada uno con ubicación de datos y mecanismo de transferencia |
+| HP-LGL-07 | Transferencias internacionales de datos | Alta | HP-LGL-06 | Análisis LFPDPPP | Mecanismo válido (consentimiento/contrato/modelo) documentado |
+| HP-LGL-08 | Política de retención y eliminación | Media | HP-LGL-02 | Política + procedimiento | Plazos por tipo de dato; borrado real al cancelar tenant |
+| HP-LGL-09 | Procedimiento ARCO | Media | HP-LGL-02 | Runbook + formulario | Recepción, verificación de identidad, respuesta ≤20 días hábiles |
+| HP-LGL-10 | Plan de respuesta a incidentes (seguridad y privacidad) | Alta | — | Runbook | Notificación INAI si aplica; roles y tiempos |
+| HP-LGL-11 | Revisión de propiedad intelectual y licencias OSS | Media | — | Inventario `pom.xml`/`package.json` | Licencias compatibles comercialmente; avisos donde aplique |
+| HP-LGL-12 | Políticas de cancelación y reembolsos | Media | HP-LGL-04 | Política publicada | Reglas claras alineadas a PROFECO si aplica |
+| HP-LGL-13 | SLA y responsabilidades de soporte | Media | HP-LGL-04 | Anexo al contrato | Tiempos de respuesta, exclusiones, canales |
+| HP-LGL-14 | Obligaciones fiscales de SAC+ (CFDI, ISR/IVA) | Alta | HP-LGL-01 | Opinión de contador | Régimen fiscal, facturación de suscripciones, obligaciones periódicas |
+| HP-LGL-15 | Revisión PROFECO (venta a público) | Baja | HP-LGL-03 | Análisis | Si aplica venta directa a consumidor final |
+
+### Por tenant (responsabilidad del cliente — SAC+ solo provee capacidad técnica)
+
+- Cada restaurante debe tener su propio aviso de privacidad (datos de
+  clientes en pedidos/reservas/fichas), definir finalidades de recolección
+  y cumplir PROFECO/LFPDPPP por su cuenta. SAC+ documenta la separación en
+  el contrato (HP-LGL-03/05) pero NO asume sus obligaciones.
+
+### Vertical restaurante (futuro/aplicable al cliente actual)
+
+- [ ] Revisar privacidad de datos de clientes del restaurante (pedidos,
+      reservaciones futuras, marketing).
+- [ ] Definir propósitos de recolección de datos de clientes.
+- [ ] Documentar responsabilidades del procesador de pagos (terminal
+      Bancomer vs SAC+ vs banco) cuando se integre.
+- [ ] Workflows de cancelación/reembolso alineados a política del tenant.
+- [ ] Requisitos de facturación CFDI del restaurante (SAC+ provee datos;
+      el CFDI lo emite el restaurante con su PAC).
+- [ ] Normativa sanitaria de alimentos (NOM-251, COFEPRIS) — del operador.
+
+### Vertical clínica de audífonos (FUTURO — no cliente confirmado)
+
+- [ ] Datos de salud = sensibles LFPDPPP → consentimiento expreso.
+- [ ] NOM-004 (expediente clínico, retención ≥5 años) y NOM-024 (sistemas
+      de registro electrónico de salud).
+- [ ] Mecanismos de consentimiento del paciente y políticas de acceso a
+      expediente.
+- [ ] Retención/eliminación de datos clínicos y documentos seguros.
+- [ ] Restricción de procesamiento con IA de datos sensibles.
+- [ ] Obligaciones de establecimientos de salud y profesionales que
+      correspondan al tenant, no a SAC+.
+
 ## Bloqueantes / corto plazo
 
 - [x] **Route guard del panel** — `PanelGuard` en `(panel)/layout.tsx`:
