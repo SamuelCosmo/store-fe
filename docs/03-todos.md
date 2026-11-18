@@ -21,15 +21,20 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [ ] **HP-SEC-01 · Aislamiento tenant defense-in-depth** (F-03, HIGH) —
       Postgres RLS como segunda capa sobre el scoping en services + tests
       cross-tenant automatizados (ver HP-QA-05).
-- [ ] **HP-SEC-02 · Audit log de cambios de negocio** (F-07, HIGH) —
+- [x] **HP-SEC-02 · Audit log de cambios de negocio** (F-07, HIGH) —
       entidad `audit_events` (actor, acción, entidad, diff jsonb, createdAt)
-      escrita desde services que mutan catálogo/settings/usuarios/precios.
-- [ ] **HP-SEC-03 · Restringir Swagger en producción** (F-08, MED) —
-      `/swagger-ui/**` y `/v3/api-docs/**` hoy `permitAll`; solo SUPERADMIN
-      o profile `!prod`.
-- [ ] **HP-SEC-04 · Security headers** (F-09, MED) — CSP, HSTS,
+      ✅ Implementado: paquete `audit/` + hooks en services +
+      `GET /api/audit` (ADMIN tenant / SUPERADMIN con filtro) + pantalla
+      `/audit` en el panel + `AuditServiceTest`.
+- [x] **HP-SEC-03 · Restringir Swagger en producción** (F-08, MED) —
+      `/swagger-ui/**` y `/v3/api-docs/**` ya no son públicos:
+      `hasRole("SUPERADMIN")` en SecurityConfig.
+- [x] **HP-SEC-04 · Security headers** (F-09, MED) — CSP, HSTS,
       X-Content-Type-Options, Referrer-Policy en Spring Security +
-      `headers()` de Next. Validar que no rompa impresión/tickets.
+      `headers()` de Next. ✅ HSTS, CSP, X-Frame-Options,
+      Referrer-Policy en Spring; CSP, nosniff, frame DENY,
+      Referrer-Policy, Permissions-Policy, HSTS en
+      `next.config.ts`.
 - [ ] **HP-DB-01 · Migraciones formales (Flyway/Liquibase)** (F-06, HIGH) —
       hoy `ddl-auto: update`; baseline antes de que el esquema crezca +
       estrategia expand/contract para cambios destructivos.
@@ -272,13 +277,15 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       restringidos a ADMIN/MANAGER con `resolveScope`/`canScope`;
       pantalla `/cortes` en el panel (selector de tienda, turno actual
       con esperado en vivo, modal abrir/cerrar, tabla de historial).
-- [ ] **Bitácora de cambios (audit log)** — quién cambió precios,
+- [x] **Bitácora de cambios (audit log)** — quién cambió precios,
       settings, usuarios, categorías; complementa `cancelledBy`/
       `cancelledAt` que ya guardan las órdenes. Entidad `AuditEvent`
       genérica (actor, acción, entidad, entityId, diff jsonb,
       createdAt) escrita desde los services que mutan catálogo/
       settings/usuarios. Consulta inicial: solo ADMIN ve `/audit` o
       sección en `/settings`; retención a definir.
+      ✅ `audit_events` + `/api/audit` + `/audit` (ver HP-SEC-02).
+      Pendiente: retención/purgado de eventos antiguos.
 - [ ] **Límites del plan aplicados de verdad** — hoy `maxStores` se
       cumple en stores; `maxPosPerStore`/`maxKiosksPerStore` ya se
       validan en `addDevice` pero falta definir si el POS/kiosco

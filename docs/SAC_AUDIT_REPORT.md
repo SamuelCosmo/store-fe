@@ -2,6 +2,11 @@
 
 **Date:** 2025-11-17 · **Scope:** `store-be` (Spring Boot) + `store-fe` (Next.js)
 **Method:** static inspection of source, config, docs, tests and infra files.
+
+> **Update 2026-11-17:** F-07, F-08 and F-09 are now RESOLVED —
+> `audit_events` + `GET /api/audit` + `/audit` panel page (HP-SEC-02),
+> Swagger restricted to SUPERADMIN (HP-SEC-03), security headers in
+> Spring Security + `next.config.ts` (HP-SEC-04). See findings register.
 No code was modified. Findings cite verifiable evidence only.
 
 ---
@@ -115,7 +120,7 @@ optional — fine). No testcontainers, no Jacoco, no CI pipeline files
 | Feature flags, module dependencies | no code |
 | Tenant suspension | `Client` has no `active`/`suspended` field (only `Store.active`) |
 | Cash shift / corte de caja | no `shift` package (TODO in 03-todos) |
-| Audit log of business changes | only order `cancelledBy`; no generic audit entity |
+| Audit log of business changes | ~~only `cancelledBy`~~ **RESOLVED** — `audit_events` entity + `GET /api/audit` + `/audit` page (2026-11-17) |
 | Discounts | no `discount` field on Order (TODO) |
 | Tables/reservations/bar module | no packages; docs pending |
 | Inventory movements/warehouses/recipes | `InventoryService` is quantity-only (ponytail comment) |
@@ -177,9 +182,13 @@ acceptable for stateless Bearer API.
 - JWT in `localStorage` (XSS-exfiltratable) — accepted trade-off,
   documented; httpOnly cookie was tried and reverted for cross-domain
   Railway. Keep CSP tight if added (MEDIUM).
-- Swagger UI + `/v3/api-docs/**` are `permitAll` in SecurityConfig —
+- ~~Swagger UI + `/v3/api-docs/**` are `permitAll`~~ **RESOLVED** —
+  now `hasRole("SUPERADMIN")` in SecurityConfig (2026-11-17).
   API schema publicly exposed in production (MEDIUM; restrict in prod).
-- No security headers (CSP, HSTS, X-Content-Type-Options, Referrer-Policy)
+- ~~No security headers~~ **RESOLVED** — HSTS, CSP, X-Frame-Options,
+  Referrer-Policy in Spring Security; CSP, nosniff, frame DENY,
+  Referrer-Policy, Permissions-Policy, HSTS in `next.config.ts`
+  (2026-11-17). Tickets/print unaffected (print uses `window.print`).
   configured in Spring or Next (MEDIUM).
 - Rate limiter is in-memory — single instance OK on Railway today;
   breaks silently with >1 replica (MEDIUM, document scaling path).
@@ -194,7 +203,11 @@ acceptable for stateless Bearer API.
   Railway — document provider guarantees (LOW).
 - Email enumeration: duplicate-email errors on user create reveal
   cross-tenant existence (LOW).
-- No audit trail for sensitive mutations (price changes, settings,
+- ~~No audit trail for sensitive mutations~~ **RESOLVED** —
+  `com.store.platform.audit` records create/update/delete/restore/
+  settings/cancel/purchase/set from mutating services with actor
+  snapshots and field diffs; `GET /api/audit` (ADMIN tenant scope,
+  SUPERADMIN cross-tenant) + `/audit` panel page (2026-11-17).
   user role changes, module assignments) beyond order `cancelledBy`
   (HIGH for SaaS accountability + legal defensibility).
 
@@ -244,11 +257,11 @@ food-safety regs) are the customer's, but SAC+ should document the split.
 1. Module/plan layer documented but unimplemented (blocks SaaS sales).
 2. `ddl-auto: update` without migrations (blocks safe schema evolution).
 3. `OrderTerminal.tsx` 1,642-line god component.
-4. No audit entity for business mutations.
+4. ~~No audit entity for business mutations.~~ RESOLVED (audit_events, 2026-11-17).
 5. No RLS / defense-in-depth tenant isolation.
 6. Missing inventory depth (movements, recipes, warehouses).
 7. No CI gates, no frontend tests, no E2E.
-8. Public Swagger + missing security headers.
+8. ~~Public Swagger + missing security headers.~~ RESOLVED (2026-11-17).
 9. Docs drift: `06-database.md` predates `token_sales`, `app_logs`,
    new order columns; `10-frontend-screens.md` may lag actual screens.
 10. Email globally unique limits multi-tenant personas.
@@ -263,9 +276,9 @@ food-safety regs) are the customer's, but SAC+ should document the split.
 | F-04 | HIGH | Compliance | No legal docs (privacy, terms, DPA, ARCO) | no legal files anywhere | Lawyer-reviewed MX pack — see §Legal TODOs | legal-compliance-mx | HP-LGL-* |
 | F-05 | HIGH | Ops | No backups/DR runbook, no monitoring/alerting | no infra docs, no actuator | Document Railway backups; add health endpoint + uptime + alerts | devops-sre, observability-monitoring | HP-OPS-01/02 |
 | F-06 | HIGH | Data | `ddl-auto: update`, no migrations | `application.yml:13` | Adopt Flyway/Liquibase baseline before schema grows | database-engineering | HP-DB-01 |
-| F-07 | HIGH | Business | No audit log of business changes | only `orders.cancelled_by` | `audit_events` entity written from mutating services | security-engineering | HP-SEC-02 |
-| F-08 | MED | Security | Swagger/docs public in prod | `SecurityConfig.java:50` | Restrict to SUPERADMIN or disable in prod profile | security-engineering | HP-SEC-03 |
-| F-09 | MED | Security | No security headers (CSP/HSTS/etc.) | neither repo configures them | Spring Security headers + Next headers() | security-engineering, frontend-engineering | HP-SEC-04 |
+| F-07 | HIGH | Business | ~~No audit log of business changes~~ **RESOLVED 2026-11-17** — `audit_events` + service hooks + `GET /api/audit` + `/audit` UI | `audit/` package, `AuditServiceTest` | security-engineering | HP-SEC-02 ✅ |
+| F-08 | MED | Security | ~~Swagger/docs public in prod~~ **RESOLVED 2026-11-17** — SUPERADMIN-only in SecurityConfig | `SecurityConfig.java` | security-engineering | HP-SEC-03 ✅ |
+| F-09 | MED | Security | ~~No security headers~~ **RESOLVED 2026-11-17** — Spring headers + Next `headers()` | `SecurityConfig.java`, `next.config.ts` | security-engineering | HP-SEC-04 ✅ |
 | F-10 | MED | Security | Rate limiter in-memory | `common/RateLimiter.java` | Redis/DB-backed when scaling replicas | devops-sre | HP-OPS-03 |
 | F-11 | MED | Quality | Zero frontend tests; no E2E; no CI gates | no test files in store-fe; no .github | Vitest+RTL for lib/, Playwright smoke, CI pipeline | testing-qa | HP-QA-01/02/03 |
 | F-12 | MED | Quality | No DB integration tests in CI | tests are Mockito-only | Testcontainers Postgres for repo-critical tests | testing-qa, database-engineering | HP-QA-04 |

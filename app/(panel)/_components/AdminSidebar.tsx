@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   ReceiptText,
   Settings,
+  History,
   Soup,
   Store,
   Tag,
@@ -47,6 +48,7 @@ const items: {
   { href: "/orders", key: "nav.orders", icon: ReceiptText },
   { href: "/users", key: "nav.users", icon: Users, adminOnly: true },
   { href: "/settings", key: "nav.settings", icon: Settings, adminOnly: true },
+  { href: "/audit", key: "nav.audit", icon: History, adminOnly: true },
 ];
 
 export function AdminSidebar() {

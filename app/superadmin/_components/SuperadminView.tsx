@@ -12,6 +12,7 @@ import {
   type AuthResponse,
 } from "@/lib/session";
 import { PASSWORD_RULES } from "@/lib/password";
+import { AuditPanel } from "./AuditPanel";
 import { LogsPanel } from "./LogsPanel";
 import {
   Building2,
@@ -197,7 +198,7 @@ export function SuperadminView() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminSaving, setAdminSaving] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"clients" | "logs">("clients");
+  const [tab, setTab] = useState<"clients" | "logs" | "audit">("clients");
 
   const isSuper = session?.role === "SUPERADMIN";
 
@@ -362,11 +363,11 @@ export function SuperadminView() {
       </header>
 
       <div
-        className={`mx-auto flex w-full flex-1 flex-col gap-6 p-8 ${tab === "logs" ? "max-w-7xl" : "max-w-4xl"}`}
+        className={`mx-auto flex w-full flex-1 flex-col gap-6 p-8 ${tab === "logs" || tab === "audit" ? "max-w-7xl" : "max-w-4xl"}`}
       >
         <div className="flex items-center justify-between">
           <div role="tablist" className="flex gap-1 rounded-xl border border-border bg-background p-1">
-            {(["clients", "logs"] as const).map((key) => (
+            {(["clients", "logs", "audit"] as const).map((key) => (
               <button
                 key={key}
                 type="button"
@@ -379,7 +380,7 @@ export function SuperadminView() {
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                {key === "clients" ? t("sa.clients") : t("sa.logs")}
+                {({ clients: t("sa.clients"), logs: t("sa.logs"), audit: t("sa.audit") })[key]}
               </button>
             ))}
           </div>
@@ -397,6 +398,8 @@ export function SuperadminView() {
 
         {tab === "logs" ? (
           <LogsPanel clients={clients} />
+        ) : tab === "audit" ? (
+          <AuditPanel clients={clients} />
         ) : (
           <>
 

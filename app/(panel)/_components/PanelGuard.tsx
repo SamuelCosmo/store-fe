@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 // Rutas del panel restringidas a ADMIN (el backend refuerza las mutaciones).
-const ADMIN_ONLY = ["/users", "/settings"];
+const ADMIN_ONLY = ["/users", "/settings", "/audit"];
 
 export function PanelGuard({ children }: { children: ReactNode }) {
   const router = useRouter();

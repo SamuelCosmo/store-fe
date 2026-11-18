@@ -14,7 +14,7 @@ description: >
 
 Referencia destilada de `store-be/docs/`. Si algo difiere del código del
 backend, el código gana — verificar en Swagger UI
-(`http://localhost:8080/swagger-ui.html`) o en `../store-be/src/`.
+(`http://localhost:8080/swagger-ui.html` — requiere JWT SUPERADMIN desde HP-SEC-03) o en `../store-be/src/`.
 
 ## Base URL
 
@@ -182,6 +182,25 @@ DELETE /api/users/{id}                 # ADMIN — body { currentPassword }
   admin logueado (re-auth server-side; 401 `Invalid credentials` si falla).
 - Un admin no puede desactivarse, eliminarse ni cambiar su propio rol;
   `active=false` bloquea el login.
+
+### Auditoría (ADMIN) ✅
+
+```text
+GET    /api/audit?entityType=&action=&storeId=&from=&to=&page=&size=
+```
+
+- Bitácora de cambios de negocio (catálogo, stores, usuarios, clientes,
+  órdenes, fichas, inventario, dispositivos). Siempre `Page`; sin sort =
+  `createdAt desc`. Filtros opcionales: `entityType`, `action`,
+  `storeId`, `from`/`to` ISO instant.
+- Scope forzado: ADMIN solo ve su tenant (un `clientId` ajeno en el
+  query se ignora); SUPERADMIN puede filtrar `?clientId=` o ver todo.
+- `details` = snapshot del alta o diff `{campo:{from,to}}`; nunca
+  passwords ni secretos. Actor como snapshot (name/email/role).
+- Front: `/audit` en el panel (`adminOnly` en sidebar + `ADMIN_ONLY`
+  en PanelGuard) y pestaña "Auditoría" en `/superadmin` para
+  SUPERADMIN cross-tenant (filtro `?clientId=`). entityTypes: category, product, extra, size, store,
+  user, client, order, token_sale, inventory, device.
 
 ### Órdenes
 
