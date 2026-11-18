@@ -124,6 +124,39 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 
 ## Iteración siguiente
 
+- [ ] **Corte de caja por turno** — abrir turno con fondo inicial,
+      vender normal, cerrar con efectivo contado → esperado vs contado
+      (faltante/sobrante) + historial por tienda. Decisiones tomadas
+      (happy path): el turno es **por establecimiento, no por cajero**
+      (el POS usa un usuario compartido siempre abierto); `openedBy`/
+      `closedBy` solo registran qué admin/gerente lo operó; **cuenta
+      todo**: efectivo esperado = fondo + cobros CASH de órdenes +
+      fichas vendidas en CASH − reembolsos CASH (tarjeta y canje de
+      fichas se reportan como referencia, no entran al cajón);
+      **ADMIN y MANAGER abren/cierran cualquier turno de sus tiendas**
+      (cierre forzado incluido). Diseño sugerido: entidad `Shift`
+      (store, openedBy, openedAt, openingCash, closedBy, closedAt,
+      countedCash, expectedCash, cashDifference) + atribución por
+      ventana `[openedAt, closedAt]` sobre `createdAt` de orders/
+      token_sales (sin FK nueva ni tocar el flujo de cobro); un solo
+      turno abierto por tienda; endpoints `/api/shifts` (GET lista,
+      GET /{id} detalle con agregados, POST /open, POST /{id}/close)
+      restringidos a ADMIN/MANAGER con `resolveScope`/`canScope`;
+      pantalla `/cortes` en el panel (selector de tienda, turno actual
+      con esperado en vivo, modal abrir/cerrar, tabla de historial).
+- [ ] **Bitácora de cambios (audit log)** — quién cambió precios,
+      settings, usuarios, categorías; complementa `cancelledBy`/
+      `cancelledAt` que ya guardan las órdenes. Entidad `AuditEvent`
+      genérica (actor, acción, entidad, entityId, diff jsonb,
+      createdAt) escrita desde los services que mutan catálogo/
+      settings/usuarios. Consulta inicial: solo ADMIN ve `/audit` o
+      sección en `/settings`; retención a definir.
+- [ ] **Límites del plan aplicados de verdad** — hoy `maxStores` se
+      cumple en stores; `maxPosPerStore`/`maxKiosksPerStore` ya se
+      validan en `addDevice` pero falta definir si el POS/kiosco
+      bloquea por dispositivo o por usuario; revisar si las fichas
+      (tokenPrice) y módulos contratados (`client_modules`) deben
+      gatear features del front.
 - [x] **Dashboard real** — métricas del día via `GET /api/reports/dashboard`
       (KPIs, por hora, canal/tipo/pago, top productos, por empleado).
 - [x] **Dashboard: pedidos a tiempo vs atrasados** — `Order` ganó
