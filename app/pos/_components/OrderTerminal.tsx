@@ -13,7 +13,7 @@ import {
   type StoreSettings,
 } from "@/lib/settings";
 import { logoutSession } from "@/lib/api";
-import { ROLE_HOME, useSession } from "@/lib/session";
+import { clearSession, hasModule, homePath, useSession } from "@/lib/session";
 import type { CategoryDto } from "@/app/(panel)/categories/_components/CategoriesView";
 import type { ProductDto } from "@/app/(panel)/products/_components/ProductsView";
 import {
@@ -271,10 +271,16 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     [viewStore],
   );
 
-  // cocina no vende (el backend responde 403 al POST) — de vuelta a su KDS
+  // cocina no vende y un cambio de módulos en caliente expulsa de inmediato
   useEffect(() => {
-    if (session?.role === "KITCHEN") router.replace(ROLE_HOME.KITCHEN);
-  }, [session?.role, router]);
+    if (!session) return;
+    const reqModule = channel === "KIOSK" ? "KIOSK" : "POS";
+    if (session.role === "KITCHEN" || !hasModule(session, reqModule)) {
+      const dest = homePath(session);
+      if (dest === "/") clearSession();
+      router.replace(dest);
+    }
+  }, [session, channel, router]);
 
   // ¿puede elegir tienda? solo caja + admin/gerente — el resto usa la suya
   const pickable =
@@ -589,16 +595,23 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
     setMenu(null);
   }, []);
 
+  const canPrintTickets = hasModule(session, "TICKETS");
+
   // Auto-imprime el ticket al cobrar — imprime la copia oculta de abajo
   // (@media print solo muestra #print-ticket). Una vez por orden.
   useEffect(() => {
-    if (!receipt || !autoPrint || printedOrderId.current === receipt.id) {
+    if (
+      !receipt ||
+      !autoPrint ||
+      !canPrintTickets ||
+      printedOrderId.current === receipt.id
+    ) {
       return;
     }
     printedOrderId.current = receipt.id;
     const t = setTimeout(printTicket, 250);
     return () => clearTimeout(t);
-  }, [receipt, autoPrint]);
+  }, [receipt, autoPrint, canPrintTickets]);
 
   useEffect(() => {
     if (!receipt) return;
@@ -636,8 +649,10 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
               : "--:--"}
           </p>
           <ThemeToggle />
-          {/* venta de fichas — solo caja y solo si el tenant fijó precio */}
-          {channel === "POS" && (settings?.tokenPrice ?? 0) > 0 && (
+          {/* venta de fichas — solo caja, módulo TOKENS y precio configurado */}
+          {channel === "POS" &&
+            hasModule(session, "TOKENS") &&
+            (settings?.tokenPrice ?? 0) > 0 && (
             <button
               onClick={() =>
                 setTokenSale({
@@ -660,13 +675,13 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
           {channel === "POS" &&
           (session?.role === "ADMIN" || session?.role === "MANAGER") ? (
             <Link
-              href={ROLE_HOME[session.role]}
+              href={homePath(session)}
               className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-bold text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <ArrowLeft size={14} aria-hidden />
               {t("common.back")}
             </Link>
-          ) : channel === "POS" ? (
+          ) : channel === "POS" && hasModule(session, "KDS") ? (
             <Link
               href="/kitchen"
               aria-label={t("pos.kitchenBoard")}
@@ -1561,14 +1576,16 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
             >
               {t("pos.newOrderIn", { n: countdown })}
             </button>
-            <button
-              type="button"
-              onClick={() => setTicket(receipt)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-bold text-text-secondary transition-colors hover:bg-surface"
-            >
-              <Printer size={16} aria-hidden />
-              {t("ticket.printTicket")}
-            </button>
+            {canPrintTickets && (
+              <button
+                type="button"
+                onClick={() => setTicket(receipt)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-bold text-text-secondary transition-colors hover:bg-surface"
+              >
+                <Printer size={16} aria-hidden />
+                {t("ticket.printTicket")}
+              </button>
+            )}
           </div>
         )}
       </Modal>
@@ -1576,7 +1593,7 @@ export function OrderTerminal({ channel }: { channel: "POS" | "KIOSK" }) {
       {/* copia oculta para la auto-impresión: solo sale en papel
           (h-0 la colapsa en pantalla; en print #print-ticket es absolute y
           escapa el overflow:hidden del padre estático) */}
-      {receipt && autoPrint && !ticket && (
+      {receipt && autoPrint && canPrintTickets && !ticket && (
         <div aria-hidden className="print-copy invisible h-0 overflow-hidden">
           <OrderTicket order={receipt} storeName={storeName} print />
         </div>

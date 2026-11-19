@@ -270,7 +270,7 @@ food-safety regs) are the customer's, but SAC+ should document the split.
 
 | ID | Pri | Area | Finding | Evidence | Remediation | Skill | TODO |
 |---|---|---|---|---|---|---|---|
-| F-01 | HIGH | Multi-tenancy | No module entitlements in code | `docs/13` vs zero `Module` classes | Implement `client_modules`/`user_modules` + JWT claims + `@PreAuthorize` module checks | business-domain-erp | HP-MT-01 |
+| F-01 | HIGH | Multi-tenancy | ~~No module entitlements in code~~ **RESOLVED 2026-11-18** — `client_modules`/`user_modules` + per-request `MODULE_*` authorities + `X-Effective-Modules` live sync + UI in `/superadmin` & `/users` | `module/` package, `ModuleServiceTest`, `JwtAuthFilterTest` | — | business-domain-erp | HP-MT-01 ✅ |
 | F-02 | HIGH | Multi-tenancy | No tenant suspension/lifecycle | `Client.java` lacks status field | Add `status`/`suspendedAt`; block login when suspended | business-domain-erp | HP-MT-02 |
 | F-03 | HIGH | Security | Tenant isolation only app-layer, no RLS | no RLS policies; all scoping in services | Add Postgres RLS as defense-in-depth (keep app checks) | security-engineering, database-engineering | HP-SEC-01 |
 | F-04 | HIGH | Compliance | No legal docs (privacy, terms, DPA, ARCO) | no legal files anywhere | Lawyer-reviewed MX pack — see §Legal TODOs | legal-compliance-mx | HP-LGL-* |

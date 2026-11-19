@@ -8,7 +8,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  ROLE_HOME,
+  clearSession,
+  homePath,
   saveSession,
   useSession,
   type AuthResponse,
@@ -38,7 +39,10 @@ export default function LoginPage() {
   const { t, lang } = useI18n();
 
   useEffect(() => {
-    if (session?.role) router.replace(ROLE_HOME[session.role] ?? "/");
+    if (!session?.role) return;
+    const dest = homePath(session);
+    if (dest === "/") clearSession();
+    else router.replace(dest);
   }, [session, router]);
 
   useEffect(() => {
@@ -96,7 +100,7 @@ export default function LoginPage() {
     }
     const session = body as AuthResponse;
     saveSession(session);
-    router.push(ROLE_HOME[session.role] ?? "/");
+    router.push(homePath(session));
   }
 
   function closeStorePicker() {

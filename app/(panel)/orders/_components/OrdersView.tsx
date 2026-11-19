@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { api } from "@/lib/api";
 import { useI18n, type TKey } from "@/lib/i18n";
 import { getSettings } from "@/lib/settings";
-import { useSession } from "@/lib/session";
+import { hasModule, useSession } from "@/lib/session";
 import { ChevronDown, Printer } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -207,15 +207,19 @@ export function OrdersView() {
               <span className="text-right font-bold text-text-primary tabular-nums">
                 {fmt.format(o.total)}
               </span>
-              <button
-                type="button"
-                onClick={() => openTicket(o)}
-                title={t("orders.reprint")}
-                aria-label={t("orders.reprintAria", { n: o.id })}
-                className="flex size-9 items-center justify-center justify-self-end rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary"
-              >
-                <Printer size={16} aria-hidden />
-              </button>
+              {hasModule(session, "TICKETS") ? (
+                <button
+                  type="button"
+                  onClick={() => openTicket(o)}
+                  title={t("orders.reprint")}
+                  aria-label={t("orders.reprintAria", { n: o.id })}
+                  className="flex size-9 items-center justify-center justify-self-end rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary"
+                >
+                  <Printer size={16} aria-hidden />
+                </button>
+              ) : (
+                <span />
+              )}
             </div>
           ))
         )}

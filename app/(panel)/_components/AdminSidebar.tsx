@@ -31,21 +31,24 @@ const items: {
   icon: LucideIcon;
   exact?: boolean;
   adminOnly?: boolean;
+  /** módulo del tenant requerido para ver el ítem */
+  module?: string;
   /** si está, solo esos roles ven el ítem */
   roles?: Role[];
 }[] = [
-  { href: "/dashboard", key: "nav.dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/categories", key: "nav.categories", icon: Tag },
-  { href: "/products", key: "nav.products", icon: Soup },
+  { href: "/dashboard", key: "nav.dashboard", icon: LayoutDashboard, exact: true, module: "REPORTS" },
+  { href: "/categories", key: "nav.categories", icon: Tag, module: "CATALOG" },
+  { href: "/products", key: "nav.products", icon: Soup, module: "CATALOG" },
   { href: "/stores", key: "nav.stores", icon: Store },
   {
     href: "/pos",
     key: "nav.pos",
     icon: CreditCard,
+    module: "POS",
     roles: ["ADMIN", "MANAGER"],
   },
-  { href: "/kitchen", key: "nav.kitchen", icon: ChefHat },
-  { href: "/orders", key: "nav.orders", icon: ReceiptText },
+  { href: "/kitchen", key: "nav.kitchen", icon: ChefHat, module: "KDS" },
+  { href: "/orders", key: "nav.orders", icon: ReceiptText, module: "POS" },
   { href: "/users", key: "nav.users", icon: Users, adminOnly: true },
   { href: "/settings", key: "nav.settings", icon: Settings, adminOnly: true },
   { href: "/audit", key: "nav.audit", icon: History, adminOnly: true },
@@ -77,7 +80,10 @@ export function AdminSidebar() {
         .filter(
           (i) =>
             (!i.adminOnly || session?.role === "ADMIN") &&
-            (!i.roles || i.roles.includes(session?.role ?? "EMPLOYEE")),
+            (!i.roles || i.roles.includes(session?.role ?? "EMPLOYEE")) &&
+            (!i.module ||
+              session?.modules === undefined ||
+              session.modules.includes(i.module)),
         )
         .map(({ key, ...i }) => ({ ...i, label: t(key) }))}
     />

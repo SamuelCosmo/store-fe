@@ -7,6 +7,7 @@ import {
   hydrateSession,
   readStoredSession,
 } from "@/lib/store";
+import { api } from "@/lib/api";
 import { LangProvider } from "@/lib/i18n";
 import { report } from "@/lib/log";
 import { ToastProvider } from "@/lib/toast";
@@ -40,11 +41,11 @@ export function Providers({ children }: { children: ReactNode }) {
     }
   }, [store, router, pathname]);
 
-  // Cada minuto y al recuperar foco: cierra sesión si pasó el límite por
-  // rol (o el `exp` del JWT) y refresca el cache de settings del backend,
-  // así las terminales reciben cambios de configuración sin reload.
+  // Revisa expiración, settings y módulos efectivos (al recuperar foco de
+  // pestaña/ventana y periódicamente mientras la pantalla está visible).
   useEffect(() => {
-    const sync = () => {
+    let lastSettingsSync = 0;
+    const sync = (full: boolean) => {
       const session = store.getState().session.value;
       if (!session) return;
       if (isSessionExpired(session)) {
@@ -53,18 +54,31 @@ export function Providers({ children }: { children: ReactNode }) {
         window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
         return;
       }
-      if (session.clientId != null) {
+      if (session.clientId == null) return;
+      const now = Date.now();
+      if (full && now - lastSettingsSync > 2_000) {
+        lastSettingsSync = now;
         refreshSettings(session.clientId, session.storeId).catch(() => {});
+      } else {
+        // Heartbeat ligero: actualiza session.modules vía X-Effective-Modules
+        // sin re-renderizar nada si los permisos no cambiaron.
+        api<string[]>("/api/modules/me").catch(() => {});
       }
     };
-    const id = setInterval(sync, 60_000);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") sync();
+    const settingsTimer = setInterval(() => sync(true), 60_000);
+    const modulesTimer = setInterval(() => {
+      if (document.visibilityState === "visible") sync(false);
+    }, 10_000);
+    const onActive = () => {
+      if (document.visibilityState === "visible") sync(true);
     };
-    document.addEventListener("visibilitychange", onVisible);
+    document.addEventListener("visibilitychange", onActive);
+    window.addEventListener("focus", onActive);
     return () => {
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(settingsTimer);
+      clearInterval(modulesTimer);
+      document.removeEventListener("visibilitychange", onActive);
+      window.removeEventListener("focus", onActive);
     };
   }, [store]);
 

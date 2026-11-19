@@ -8,11 +8,18 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 
 ## Auditoría — bloqueantes y alta prioridad
 
-- [ ] **HP-MT-01 · Módulos contratados enforceados en backend** (F-01, HIGH)
-      — `client_modules`/`user_modules` están en docs/13 pero NO en código.
-      Implementar entidades + claims JWT + `@PreAuthorize` por módulo +
-      endpoints `PUT /api/clients/{id}/modules`, `PUT /api/users/{id}/modules`.
-      Skill: business-domain-erp, backend-engineering.
+- [x] **HP-MT-01 · Módulos contratados enforceados en backend** (F-01, HIGH)
+      — `Module` enum + `client_modules`/`user_modules` (),
+      `ModuleService` (legacy: colección vacía = catálogo completo; PUTs
+      rechazan vacío), authorities `MODULE_*` frescas por request en
+      `JwtAuthFilter` (EntityGraph, sin N+1), guards `hasAuthority` en
+      controllers, `PUT /api/clients/{id}/modules` (SUPERADMIN),
+      `PUT /api/users/{id}/modules` + `GET /api/modules/available`
+      (ADMIN, ⊆ client_modules), modules en Auth/User/ClientResponse,
+      seeds all-modules en altas, auditoría en cambios, front: session
+      .modules + sidebar/PanelGuard/homePath + editores en
+      /superadmin y /users. Pendiente: BAR/RESERVATIONS aún sin
+      pantallas que los consuman.
 - [ ] **HP-MT-02 · Suspensión de tenant** (F-02, HIGH) — `Client` no tiene
       `status`/`suspendedAt`; agregar campo + bloqueo en login + UI superadmin.
 - [ ] **HP-MT-03 · Feature flags + dependencias de módulos** (F-28, MED) —
@@ -301,9 +308,12 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       umbral `kitchenWarnMin` del store. El dashboard lo muestra en su
       sección de tiempos. Órdenes viejas sin timestamps quedan fuera
       del conteo.
-- [ ] **Módulos por usuario** — el sidebar muestra todo; filtrar por
-      `user_modules ∩ client_modules` cuando el backend lo exponga.
-- [ ] **Enrutado por rol + módulos tras login** — hoy solo se usa `ROLE_HOME`.
+- [x] **Módulos por usuario** — `AuthResponse.modules` (efectivos) en
+      sesión; sidebar filtra ítems por módulo y `PanelGuard` redirige
+      URLs directas a `homePath(session)`.
+- [x] **Enrutado por rol + módulos tras login** — `homePath(session)`
+      resuelve por rol + módulos efectivos (p.ej. EMPLOYEE sin POS cae a
+      /kitchen u /orders); sesiones viejas sin `modules` no se restringen.
 - [x] **Selector de establecimiento en login** — cuando login responde
       `storeId required` (rol operativo con varias tiendas asignadas) el
       front consulta `POST /api/auth/stores` (mismas credenciales →
@@ -319,8 +329,8 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       por SQL directo (no por la app). Edición del admin del tenant:
       `GET/PUT /api/clients/{id}/admin` (SUPERADMIN, confirma su propia
       contraseña; la nueva del admin valida las reglas de `UserRequest`)
-      + modal "Admin" por fila en la tabla. Pendiente: módulos
-      contratados (`PUT /api/clients/{id}/modules`) y settings del
+      + modal "Admin" por fila en la tabla. Módulos contratados ya editables en el mismo modal
+      (`PUT /api/clients/{id}/modules`). Pendiente: settings del
       cliente.
 - [x] **Superadmin: crear admin al crear cliente** — `ClientRequest`
       acepta `adminName`/`adminEmail`/`adminPassword` opcionales; si viene

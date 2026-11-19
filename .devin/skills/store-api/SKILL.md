@@ -71,8 +71,11 @@ Tras el login, enrutar según rol y módulos efectivos
 | CUSTOMER | `/kiosk`                                   |
 | KITCHEN  | `/kitchen`                                  |
 
-El frontend oculta rutas sin permiso (UX); el backend refuerza con
-`@PreAuthorize`. Módulos vendibles: `CATALOG`, `INVENTORY`, `POS`, `KIOSK`,
+Implementado: `homePath(session)` en `lib/session.ts` resuelve el
+destino por rol + `session.modules`; `PanelGuard` bloquea URLs de
+módulos no contratados y `AdminSidebar` filtra ítems (`module:` por
+ítem). El backend refuerza con `hasAuthority('MODULE_*')` por
+request. Módulos vendibles: `CATALOG`, `INVENTORY`, `POS`, `KIOSK`,
 `KDS`, `BAR`, `TOKENS`, `REPORTS`, `TICKETS`, `RESERVATIONS`.
 
 ## Endpoints
@@ -182,6 +185,38 @@ DELETE /api/users/{id}                 # ADMIN — body { currentPassword }
   admin logueado (re-auth server-side; 401 `Invalid credentials` si falla).
 - Un admin no puede desactivarse, eliminarse ni cambiar su propio rol;
   `active=false` bloquea el login.
+
+### Módulos por tenant ✅ *(HP-MT-01)*
+
+```text
+GET    /api/modules                     # catálogo (cualquier autenticado)
+GET    /api/modules/me                  # módulos efectivos del usuario actual
+GET    /api/modules/available           # ADMIN: contratados del tenant propio
+PUT    /api/clients/{id}/modules        # SUPERADMIN {modules:[...]} → List<String>
+PUT    /api/users/{id}/modules          # ADMIN {modules:[...]} ⊆ client_modules
+```
+
+- `client_modules` = lo que la plataforma vendió; `user_modules ⊆
+  client_modules` = asignación del ADMIN. Ambos PUT exigen ≥1 módulo.
+- SUPERADMIN → todos los módulos; ADMIN → los del cliente; demás roles →
+  `user_modules ∩ client_modules`. `JwtAuthFilter` resuelve authorities
+  `MODULE_*` frescas por request (no van en el JWT) y expone el header
+  `X-Effective-Modules` en cada respuesta autenticada.
+- Campos: `AuthResponse.modules` (efectivos del usuario),
+  `UserResponse.modules`, `ClientResponse.modules` (contratados).
+- **Legacy**: colección vacía = nunca configurado → catálogo completo;
+  los PUT rechazan vacío así que no hay backfill.
+- Front: `lib/api.ts` sincroniza `session.modules` desde
+  `X-Effective-Modules` en cada respuesta (y `Providers` hace sync al
+  recuperar foco + heartbeat `/api/modules/me`), `homePath()` resuelve
+  rol + módulos, sidebar filtra por `module:` y `PanelGuard`,
+  `OrderTerminal` y `KitchenBoard` expulsan al instante si se revoca un
+  módulo en caliente. `modules === undefined` (sesión vieja) = sin
+  restricción. Errores: `err.INVALID_MODULE`, `err.MODULE_NOT_PURCHASED`,
+  `err.MODULES_REQUIRED`.
+- UI: checkboxes de módulos en el modal de cliente de `/superadmin`
+  (edición → PUT clients/{id}/modules) y en `UserModal` de `/users`
+  (disponibles vía `/api/modules/available` → PUT users/{id}/modules).
 
 ### Auditoría (ADMIN) ✅
 

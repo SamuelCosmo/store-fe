@@ -17,18 +17,21 @@ export type UserFormData = {
   password: string;
   role: Role;
   storeIds: number[];
+  modules: string[];
 };
 
 export function UserModal({
   open,
   user,
   stores,
+  availableModules,
   onClose,
   onSubmit,
 }: {
   open: boolean;
   user: UserDto | null;
   stores: StoreDto[];
+  availableModules: string[];
   onClose: () => void;
   onSubmit: (data: UserFormData) => void;
 }) {
@@ -44,6 +47,7 @@ export function UserModal({
           key={user?.id ?? "new"}
           user={user}
           stores={stores}
+          availableModules={availableModules}
           onSubmit={onSubmit}
         />
       )}
@@ -54,10 +58,12 @@ export function UserModal({
 function UserForm({
   user,
   stores,
+  availableModules,
   onSubmit,
 }: {
   user: UserDto | null;
   stores: StoreDto[];
+  availableModules: string[];
   onSubmit: (data: UserFormData) => void;
 }) {
   const [name, setName] = useState(user?.name ?? "");
@@ -66,6 +72,9 @@ function UserForm({
   const [password2, setPassword2] = useState("");
   const [role, setRole] = useState<Role>(user?.role ?? "EMPLOYEE");
   const [storeIds, setStoreIds] = useState<number[]>(user?.storeIds ?? []);
+  const [modules, setModules] = useState<string[]>(
+    user?.modules ?? availableModules,
+  );
   const [error, setError] = useState<string | null>(null);
   const { t } = useI18n();
 
@@ -84,6 +93,10 @@ function UserForm({
       setError(t("users.storeRequired"));
       return;
     }
+    if (availableModules.length > 0 && modules.length === 0) {
+      setError(t("users.modulesRequired"));
+      return;
+    }
     if (password || password2 || !user) {
       if (password !== password2) {
         setError(t("users.pwdMismatch"));
@@ -100,6 +113,7 @@ function UserForm({
       password,
       role,
       storeIds,
+      modules,
     });
   }
 
@@ -242,6 +256,46 @@ function UserForm({
             </p>
           )}
         </div>
+      )}
+
+      {availableModules.length > 0 && (
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="mb-1 flex w-full items-center justify-between text-sm font-medium text-text-primary">
+            <span>{t("users.modulesLegend")}</span>
+            <span className="text-xs font-normal text-text-muted">
+              {modules.length}/{availableModules.length}
+            </span>
+          </legend>
+          <div className="flex max-h-52 flex-col gap-1.5 overflow-y-auto pr-1">
+            {availableModules.map((m) => (
+              <label
+                key={m}
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-border px-3 py-2.5 transition-colors hover:bg-surface has-checked:border-primary has-checked:bg-primary-light"
+              >
+                <input
+                  type="checkbox"
+                  checked={modules.includes(m)}
+                  onChange={() =>
+                    setModules((prev) =>
+                      prev.includes(m)
+                        ? prev.filter((x) => x !== m)
+                        : [...prev, m],
+                    )
+                  }
+                  className="mt-0.5 size-4 shrink-0 accent-primary"
+                />
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-sm font-semibold leading-tight text-text-primary">
+                    {t(`module.${m}` as TKey)}
+                  </span>
+                  <span className="text-xs leading-snug text-text-secondary">
+                    {t(`moduleDesc.${m}` as TKey)}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
       )}
 
       {stores.length > 0 && (

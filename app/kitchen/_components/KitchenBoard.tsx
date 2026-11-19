@@ -16,7 +16,7 @@ import {
 } from "@/components/molecules/OrderTicket";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
 import { ArrowLeft, Printer, TriangleAlert } from "lucide-react";
-import { ROLE_HOME, useSession } from "@/lib/session";
+import { clearSession, hasModule, homePath, useSession } from "@/lib/session";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -115,9 +115,14 @@ export function KitchenBoard() {
     });
   }, []);
 
-  // El tablero es para staff — la cuenta compartida del kiosco vuelve a su home
+  // El tablero es para staff con módulo KDS — si cambia en caliente, redirige
   useEffect(() => {
-    if (session?.role === "CUSTOMER") router.replace(ROLE_HOME.CUSTOMER);
+    if (!session) return;
+    if (session.role === "CUSTOMER" || !hasModule(session, "KDS")) {
+      const dest = homePath(session);
+      if (dest === "/") clearSession();
+      router.replace(dest);
+    }
   }, [session, router]);
 
   // AudioContext solo arranca tras un gesto del usuario (autoplay policy)
@@ -323,7 +328,7 @@ export function KitchenBoard() {
           {/* staff que no vive aquí (admin/gerente/caja) puede volver a su home */}
           {session && session.role !== "KITCHEN" && (
             <Link
-              href={ROLE_HOME[session.role]}
+              href={homePath(session)}
               className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-bold text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <ArrowLeft size={14} aria-hidden />
@@ -456,15 +461,17 @@ export function KitchenBoard() {
                   </ul>
 
                   <div className="mt-auto flex items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setTicket(o)}
-                      title={t("orders.reprint")}
-                      aria-label={t("orders.reprintAria", { n: o.id })}
-                      className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-text-primary/20 bg-background/60 text-text-secondary transition-colors hover:text-primary"
-                    >
-                      <Printer size={16} aria-hidden />
-                    </button>
+                    {hasModule(session, "TICKETS") && (
+                      <button
+                        type="button"
+                        onClick={() => setTicket(o)}
+                        title={t("orders.reprint")}
+                        aria-label={t("orders.reprintAria", { n: o.id })}
+                        className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-text-primary/20 bg-background/60 text-text-secondary transition-colors hover:text-primary"
+                      >
+                        <Printer size={16} aria-hidden />
+                      </button>
+                    )}
                     {next && (
                       <button
                         type="button"

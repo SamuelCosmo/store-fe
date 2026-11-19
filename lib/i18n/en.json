@@ -100,7 +100,6 @@
   "err.FILE_TYPE": "Only JPG, PNG, WEBP or GIF images are accepted.",
   "err.FILE_TOO_LARGE": "The image is larger than 5 MB. Choose a lighter one.",
   "err.UPLOAD_FAILED": "The image couldn't be uploaded. Try again in a few seconds.",
-
   "nav.dashboard": "Dashboard",
   "nav.categories": "Categories",
   "nav.products": "Products",
@@ -116,26 +115,22 @@
   "theme.dark": "Dark theme",
   "theme.toLight": "Switch to light theme",
   "theme.toDark": "Switch to dark theme",
-
   "role.ADMIN": "Administrator",
   "role.MANAGER": "Manager",
   "role.EMPLOYEE": "Employee",
   "role.CUSTOMER": "Customer",
   "role.KITCHEN": "Kitchen",
   "role.SUPERADMIN": "Platform",
-
   "status.PENDING": "Pending",
   "status.CONFIRMED": "Confirmed",
   "status.PREPARING": "Preparing",
   "status.READY": "Ready",
   "status.COMPLETED": "Delivered",
   "status.CANCELLED": "Cancelled",
-
   "pwd.min8": "At least 8 characters",
   "pwd.upper": "One uppercase letter",
   "pwd.lower": "One lowercase letter",
   "pwd.digit": "One number",
-
   "login.title": "Sign in",
   "login.subtitle": "Administration panel",
   "login.welcome": "Welcome back",
@@ -160,7 +155,6 @@
   "login.badCredentials": "Incorrect email or password.",
   "login.failed": "Could not sign in",
   "login.offline": "No connection to the server.",
-
   "ticket.order": "Order #{n}",
   "ticket.cancelled": "*** CANCELLED ***",
   "ticket.kiosk": "Kiosk",
@@ -180,7 +174,6 @@
   "ticket.print": "Print",
   "ticket.printTicket": "Print ticket",
   "ticket.title": "Ticket #{n}",
-
   "settings.title": "Settings",
   "settings.subtitle": "Business and device settings",
   "settings.save": "Save changes",
@@ -220,7 +213,6 @@
   "settings.status": "Status",
   "settings.statusSaved": "Saved to the database",
   "settings.statusHint": "Changes apply to every terminal",
-
   "dash.morning": "Good morning",
   "dash.afternoon": "Good afternoon",
   "dash.evening": "Good evening",
@@ -255,7 +247,6 @@
   "dash.token": "Tokens",
   "dash.tokens": "Tokens sold",
   "dash.tokensSold": "{n} tokens",
-
   "orders.title": "Orders",
   "orders.subtitle": "Store order history",
   "orders.allStatuses": "All statuses",
@@ -274,7 +265,6 @@
   "orders.refunded": "Refunded",
   "orders.noRefund": "Not refunded",
   "orders.cancelledBy": "by {name}",
-
   "kitchen.title": "Kitchen",
   "kitchen.loginRequired": "Sign in to view orders.",
   "kitchen.loading": "Loading orders…",
@@ -288,7 +278,6 @@
   "kitchen.loadError": "Could not load orders",
   "kitchen.updateError": "Could not update the order",
   "kitchen.cancelError": "Could not cancel the order",
-
   "pos.subtitle": "Point of sale",
   "pos.loginRequired": "Sign in to operate the terminal.",
   "pos.loadingMenu": "Loading menu…",
@@ -348,7 +337,6 @@
   "pos.addToCart": "Add to order",
   "pos.addExtra": "Add {name}",
   "pos.removeExtra": "Remove {name}",
-
   "cats.title": "Categories",
   "cats.subtitle": "Group the products on the menu",
   "cats.search": "Search category…",
@@ -369,7 +357,6 @@
   "cats.storeRequired": "Assign the category to a store",
   "cats.visible": "Visible on the menu",
   "cats.deletedTitle": "Deleted categories",
-
   "stores.title": "Stores",
   "stores.subtitle": "Business branches and points of sale",
   "stores.search": "Search store…",
@@ -403,7 +390,6 @@
   "stores.colorCanvas": "Background",
   "stores.colorClear": "Reset (use base theme)",
   "stores.brandHint": "The logo and colors show on this location's terminals (register, kiosk, kitchen) and on its printed ticket. Dark mode is derived automatically.",
-
   "users.title": "Users",
   "users.subtitle": "Staff accounts for the business",
   "users.search": "Search user…",
@@ -437,7 +423,6 @@
   "users.confirmSaveNew": "Confirm the new user",
   "users.pwdPh": "At least 8 characters",
   "users.pwdKeepPh": "Leave empty to keep the current one",
-
   "products.title": "Products",
   "products.subtitle": "Menu, sizes and extras for the business",
   "products.search": "Search product…",
@@ -478,7 +463,6 @@
   "products.noAssignments": "Not assigned",
   "products.noExtras": "No extras",
   "products.deletedTitle": "Deleted products",
-
   "extras.subtitle": "Ingredients and add-ons with a cost",
   "extras.new": "New extra",
   "extras.modalNew": "New extra",
@@ -490,7 +474,6 @@
   "extras.namePh": "Extra cheese",
   "extras.priceLabel": "Extra price",
   "extras.deletedTitle": "Deleted extras",
-
   "sizes.subtitle": "Sizes and presentations",
   "sizes.new": "New size",
   "sizes.modalNew": "New size",
@@ -503,7 +486,6 @@
   "sizes.namePh": "Large",
   "sizes.priceHint": "Added to the product price. 0 = free.",
   "sizes.deletedTitle": "Deleted sizes",
-
   "sa.title": "Platform",
   "sa.loginSub": "Client administration access.",
   "sa.submit": "SIGN IN",
@@ -596,5 +578,31 @@
   "audit.action.activate": "Activated",
   "audit.action.deactivate": "Deactivated",
   "audit.action.sold_out": "Sold out",
-  "audit.action.restock": "Restocked"
+  "audit.action.restock": "Restocked",
+  "sa.modules": "Modules",
+  "users.modulesLegend": "Modules",
+  "users.modulesRequired": "Select at least one module.",
+  "module.CATALOG": "Catalog",
+  "module.INVENTORY": "Inventory",
+  "module.POS": "Point of sale",
+  "module.KIOSK": "Kiosk",
+  "module.KDS": "Kitchen display",
+  "module.BAR": "Bar",
+  "module.TOKENS": "Tokens",
+  "module.REPORTS": "Reports",
+  "module.TICKETS": "Tickets",
+  "module.RESERVATIONS": "Reservations",
+  "moduleDesc.CATALOG": "Categories, products, pricing and enable/disable",
+  "moduleDesc.INVENTORY": "Stock control and sold-out items",
+  "moduleDesc.POS": "Register to take orders and charge",
+  "moduleDesc.KIOSK": "Self-service terminal for customers",
+  "moduleDesc.KDS": "Active orders and kitchen fulfillment",
+  "moduleDesc.BAR": "Bar display and pending drinks",
+  "moduleDesc.TOKENS": "Drink token sales and redemption",
+  "moduleDesc.REPORTS": "Daily sales, top products and sales by employee",
+  "moduleDesc.TICKETS": "Receipt printing and configuration",
+  "moduleDesc.RESERVATIONS": "Tables, bar seating and reservations",
+  "err.INVALID_MODULE": "The module name is not valid.",
+  "err.MODULE_NOT_PURCHASED": "The client has not purchased that module.",
+  "err.MODULES_REQUIRED": "Select at least one module."
 }

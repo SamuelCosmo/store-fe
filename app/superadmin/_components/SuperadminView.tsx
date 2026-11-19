@@ -3,7 +3,7 @@
 import { Modal } from "@/components/molecules/Modal";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
 import { ApiError, api, apiErrorMessage, logoutSession } from "@/lib/api";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, type TKey } from "@/lib/i18n";
 import { useToast } from "@/lib/toast";
 import {
   clearSession,
@@ -29,6 +29,11 @@ import { useEffect, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
+const MODULES = [
+  "CATALOG", "INVENTORY", "POS", "KIOSK", "KDS", "BAR",
+  "TOKENS", "REPORTS", "TICKETS", "RESERVATIONS",
+] as const;
+
 type ClientDto = {
   id: number;
   name: string;
@@ -36,6 +41,7 @@ type ClientDto = {
   maxPosPerStore: number;
   maxKiosksPerStore: number;
   createdAt: string;
+  modules: string[];
 };
 
 type ClientForm = {
@@ -46,6 +52,7 @@ type ClientForm = {
   adminName: string;
   adminEmail: string;
   adminPassword: string;
+  modules: string[];
 };
 
 const EMPTY_FORM: ClientForm = {
@@ -56,6 +63,7 @@ const EMPTY_FORM: ClientForm = {
   adminName: "",
   adminEmail: "",
   adminPassword: "",
+  modules: [...MODULES],
 };
 
 type AdminForm = {
@@ -230,6 +238,7 @@ export function SuperadminView() {
             maxStores: String(client.maxStores),
             maxPosPerStore: String(client.maxPosPerStore),
             maxKiosksPerStore: String(client.maxKiosksPerStore),
+            modules: [...(client.modules ?? [...MODULES])],
           },
     );
     setModal(client);
@@ -260,10 +269,20 @@ export function SuperadminView() {
               method: "PUT",
               body,
             });
+      const modulesChanged =
+        [...form.modules].sort().join() !==
+        [...(saved.modules ?? [])].sort().join();
+      if (modulesChanged) {
+        await api(`/api/clients/${saved.id}/modules`, {
+          method: "PUT",
+          body: JSON.stringify({ modules: form.modules }),
+        });
+      }
+      const savedWithModules = { ...saved, modules: form.modules };
       setClients((prev) =>
         modal === "new"
-          ? [...prev, saved]
-          : prev.map((c) => (c.id === saved.id ? saved : c)),
+          ? [...prev, savedWithModules]
+          : prev.map((c) => (c.id === saved.id ? savedWithModules : c)),
       );
       setModal(null);
       toast.success(modal === "new" ? t("common.saved") : t("common.updated"));
@@ -554,6 +573,44 @@ export function SuperadminView() {
               />
             </div>
           )}
+          <fieldset className="flex flex-col gap-1.5">
+            <legend className="mb-1 flex w-full items-center justify-between text-[13px] font-semibold text-text-primary">
+              <span>{t("sa.modules")}</span>
+              <span className="text-xs font-normal text-text-muted">
+                {form.modules.length}/{MODULES.length}
+              </span>
+            </legend>
+            <div className="flex max-h-64 flex-col gap-1.5 overflow-y-auto pr-1">
+              {MODULES.map((m) => (
+                <label
+                  key={m}
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-border px-3 py-2.5 transition-colors hover:bg-surface has-checked:border-primary has-checked:bg-primary-light"
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.modules.includes(m)}
+                    onChange={() =>
+                      setForm({
+                        ...form,
+                        modules: form.modules.includes(m)
+                          ? form.modules.filter((x) => x !== m)
+                          : [...form.modules, m],
+                      })
+                    }
+                    className="mt-0.5 size-4 shrink-0 accent-primary"
+                  />
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-[13px] font-semibold leading-tight text-text-primary">
+                      {t(`module.${m}` as TKey)}
+                    </span>
+                    <span className="text-xs leading-snug text-text-secondary">
+                      {t(`moduleDesc.${m}` as TKey)}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <div className="mt-1 flex justify-end gap-2.5">
             <button
               type="button"
@@ -569,7 +626,8 @@ export function SuperadminView() {
                 saving ||
                 !form.name.trim() ||
                 (modal === "new" &&
-                  (!form.adminEmail.trim() || !form.adminPassword))
+                  (!form.adminEmail.trim() || !form.adminPassword)) ||
+                form.modules.length === 0
               }
               className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
             >

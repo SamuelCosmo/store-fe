@@ -4,6 +4,7 @@ import {
   SESSION_EXPIRED_EVENT,
   clearSession,
   getSession,
+  syncSessionModules,
 } from "./session";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
@@ -73,6 +74,12 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(translateNow("api.network") + ref, 0, null);
   }
   breadcrumb("api", `${method} ${path} ${res.status}`);
+  // JwtAuthFilter emite los módulos efectivos frescos en cada request autenticado
+  // (incluso en 403), reflejando altas/bajas de módulos sin re-login.
+  const effectiveHeader = res.headers.get("X-Effective-Modules");
+  if (effectiveHeader !== null) {
+    syncSessionModules(effectiveHeader ? effectiveHeader.split(",") : []);
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     const code: string | null = body?.code ?? null;

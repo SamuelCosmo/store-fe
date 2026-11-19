@@ -35,6 +35,7 @@ export type UserDto = {
   role: Role;
   active: boolean;
   storeIds: number[];
+  modules: string[];
 };
 
 const GRID = "grid-cols-[1fr_140px_1fr_60px]";
@@ -59,6 +60,7 @@ export function UsersView() {
   const toast = useToast();
   const [users, setUsers] = useState<UserDto[]>([]);
   const [stores, setStores] = useState<StoreDto[]>([]);
+  const [availableModules, setAvailableModules] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -90,6 +92,13 @@ export function UsersView() {
       .catch(() => {});
   }, [session]);
 
+  useEffect(() => {
+    if (!session) return;
+    api<string[]>("/api/modules/available")
+      .then(setAvailableModules)
+      .catch(() => {});
+  }, [session]);
+
   // la página de usuarios la sirve el backend: page/size/sort/search en la query
   useEffect(() => {
     if (!session) return;
@@ -117,19 +126,38 @@ export function UsersView() {
   const storeName = (id: number) => stores.find((s) => s.id === id)?.name;
 
   async function saveUser(data: UserFormData, currentPassword: string) {
+    // modules va por su propio PUT — no es parte de UserRequest
+    const { modules, ...rest } = data;
     const saved = await api<UserDto>(
       editing ? `/api/users/${editing.id}` : "/api/users",
       {
         method: editing ? "PUT" : "POST",
         body: JSON.stringify({
-          ...data,
+          ...rest,
           password: data.password || null,
           currentPassword,
         }),
       },
     );
+    // modules vacío = fieldset oculto (available falló) → dejar default del backend
+    const modulesChanged =
+      modules.length > 0 &&
+      [...modules].sort().join() !==
+        [...(saved.modules ?? [])].sort().join();
+    if (modulesChanged) {
+      await api(`/api/users/${saved.id}/modules`, {
+        method: "PUT",
+        body: JSON.stringify({ modules }),
+      });
+    }
+    const savedWithModules = {
+      ...saved,
+      modules: modules.length ? modules : (saved.modules ?? []),
+    };
     if (editing) {
-      setUsers((prev) => prev.map((u) => (u.id === saved.id ? saved : u)));
+      setUsers((prev) =>
+        prev.map((u) => (u.id === saved.id ? savedWithModules : u)),
+      );
     } else {
       // el nuevo puede no caer en la página actual → refetch desde la 1a
       setPage(0);
@@ -361,6 +389,7 @@ export function UsersView() {
         open={modalOpen}
         user={editing}
         stores={stores}
+        availableModules={availableModules}
         onClose={() => setModalOpen(false)}
         onSubmit={(data) => setConfirm({ kind: "save", data })}
       />

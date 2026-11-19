@@ -27,6 +27,8 @@ export type AuthResponse = {
   clientName?: string | null;
   clientLogoUrl?: string | null;
   storeId: number | null;
+  /** Módulos efectivos del usuario (backend) — el front oculta pantallas. */
+  modules?: string[];
 };
 
 export const ROLE_HOME: Record<Role, string> = {
@@ -77,4 +79,55 @@ export function isSessionExpired(session: AuthResponse): boolean {
   // esto solo evita mostrar pantallas con una sesión ya muerta.
   const hours = getSettings().session.hours[session.role] ?? 0;
   return hours > 0 && Date.now() - session.loginAt > hours * 3_600_000;
+}
+
+export function hasModule(
+  session: AuthResponse | null | undefined,
+  mod: string,
+): boolean {
+  if (!session) return false;
+  // modules undefined = sesión previa al feature → no restringir (backend manda)
+  return session.modules === undefined || session.modules.includes(mod);
+}
+
+/** Actualiza `session.modules` solo si cambió (evita re-renders en cascada). */
+export function syncSessionModules(modules: string[]) {
+  const session = getSession();
+  if (!session || session.role === "SUPERADMIN") return;
+  const prev = session.modules;
+  if (
+    prev &&
+    prev.length === modules.length &&
+    prev.every((m, i) => m === modules[i])
+  ) {
+    return;
+  }
+  getStore().dispatch(setSession({ ...session, modules }));
+}
+
+/** Home del usuario según rol + módulos efectivos — evita mandar a una
+ *  pantalla cuyo módulo el tenant no compró. */
+export function homePath(session: AuthResponse): string {
+  const has = (m: string) => hasModule(session, m);
+  switch (session.role) {
+    case "SUPERADMIN":
+      return "/superadmin";
+    case "KITCHEN":
+      return has("KDS") ? "/kitchen" : "/";
+    case "CUSTOMER":
+      return has("KIOSK") ? "/kiosk" : "/";
+    case "EMPLOYEE":
+      if (has("POS")) return "/pos";
+      if (has("KDS")) return "/kitchen";
+      if (has("CATALOG")) return "/products";
+      return "/stores";
+    default: {
+      // ADMIN / MANAGER — dashboard si hay REPORTS, si no la primera útil
+      if (has("REPORTS")) return "/dashboard";
+      if (has("POS")) return "/pos";
+      if (has("CATALOG")) return "/products";
+      if (has("KDS")) return "/kitchen";
+      return "/stores";
+    }
+  }
 }

@@ -100,7 +100,6 @@
   "err.FILE_TYPE": "Solo se aceptan imágenes JPG, PNG, WEBP o GIF.",
   "err.FILE_TOO_LARGE": "La imagen pesa más de 5 MB. Elige una más ligera.",
   "err.UPLOAD_FAILED": "No se pudo subir la imagen. Intenta de nuevo en unos segundos.",
-
   "nav.dashboard": "Dashboard",
   "nav.categories": "Categorías",
   "nav.products": "Productos",
@@ -116,26 +115,22 @@
   "theme.dark": "Tema oscuro",
   "theme.toLight": "Cambiar a tema claro",
   "theme.toDark": "Cambiar a tema oscuro",
-
   "role.ADMIN": "Administrador",
   "role.MANAGER": "Gerente",
   "role.EMPLOYEE": "Empleado",
   "role.CUSTOMER": "Cliente",
   "role.KITCHEN": "Cocina",
   "role.SUPERADMIN": "Plataforma",
-
   "status.PENDING": "Pendiente",
   "status.CONFIRMED": "Confirmada",
   "status.PREPARING": "Preparando",
   "status.READY": "Lista",
   "status.COMPLETED": "Entregada",
   "status.CANCELLED": "Cancelada",
-
   "pwd.min8": "Mínimo 8 caracteres",
   "pwd.upper": "Una mayúscula",
   "pwd.lower": "Una minúscula",
   "pwd.digit": "Un número",
-
   "login.title": "Inicia sesión",
   "login.subtitle": "Panel de administración",
   "login.welcome": "Bienvenido de nuevo",
@@ -160,7 +155,6 @@
   "login.badCredentials": "Correo o contraseña incorrectos.",
   "login.failed": "No se pudo iniciar sesión",
   "login.offline": "Sin conexión con el servidor.",
-
   "ticket.order": "Pedido #{n}",
   "ticket.cancelled": "*** CANCELADA ***",
   "ticket.kiosk": "Kiosco",
@@ -180,7 +174,6 @@
   "ticket.print": "Imprimir",
   "ticket.printTicket": "Imprimir ticket",
   "ticket.title": "Ticket #{n}",
-
   "settings.title": "Configuración",
   "settings.subtitle": "Ajustes del negocio y de este equipo",
   "settings.save": "Guardar cambios",
@@ -220,7 +213,6 @@
   "settings.status": "Estado",
   "settings.statusSaved": "Guardado en la base de datos",
   "settings.statusHint": "Los cambios aplican a todas las terminales",
-
   "dash.morning": "Buenos días",
   "dash.afternoon": "Buenas tardes",
   "dash.evening": "Buenas noches",
@@ -255,7 +247,6 @@
   "dash.token": "Fichas",
   "dash.tokens": "Fichas vendidas",
   "dash.tokensSold": "{n} fichas",
-
   "orders.title": "Pedidos",
   "orders.subtitle": "Historial de pedidos del establecimiento",
   "orders.allStatuses": "Todos los estatus",
@@ -274,7 +265,6 @@
   "orders.refunded": "Reembolsada",
   "orders.noRefund": "Sin reembolso",
   "orders.cancelledBy": "por {name}",
-
   "kitchen.title": "Cocina",
   "kitchen.loginRequired": "Inicia sesión para ver las órdenes.",
   "kitchen.loading": "Cargando órdenes…",
@@ -288,7 +278,6 @@
   "kitchen.loadError": "No se pudieron cargar las órdenes",
   "kitchen.updateError": "No se pudo actualizar la orden",
   "kitchen.cancelError": "No se pudo cancelar la orden",
-
   "pos.subtitle": "Punto de venta",
   "pos.loginRequired": "Inicia sesión para operar la terminal.",
   "pos.loadingMenu": "Cargando menú…",
@@ -348,7 +337,6 @@
   "pos.addToCart": "Añadir al pedido",
   "pos.addExtra": "Agregar {name}",
   "pos.removeExtra": "Quitar {name}",
-
   "cats.title": "Categorías",
   "cats.subtitle": "Agrupa los productos del menú",
   "cats.search": "Buscar categoría…",
@@ -369,7 +357,6 @@
   "cats.storeRequired": "Asigna la categoría a un establecimiento",
   "cats.visible": "Visible en el menú",
   "cats.deletedTitle": "Categorías eliminadas",
-
   "stores.title": "Establecimientos",
   "stores.subtitle": "Sucursales y puntos de venta del negocio",
   "stores.search": "Buscar establecimiento…",
@@ -403,7 +390,6 @@
   "stores.colorCanvas": "Fondo",
   "stores.colorClear": "Quitar (usa el tema base)",
   "stores.brandHint": "El logo y los colores se ven en las terminales (caja, kiosco, cocina) y en el ticket impreso. El modo nocturno se genera solo.",
-
   "users.title": "Usuarios",
   "users.subtitle": "Cuentas del personal del negocio",
   "users.search": "Buscar usuario…",
@@ -437,7 +423,6 @@
   "users.confirmSaveNew": "Confirma la creación del usuario",
   "users.pwdPh": "Mínimo 8 caracteres",
   "users.pwdKeepPh": "Deja vacío para conservar la actual",
-
   "products.title": "Productos",
   "products.subtitle": "Menú, tamaños y extras del negocio",
   "products.search": "Buscar producto…",
@@ -478,7 +463,6 @@
   "products.noAssignments": "Sin asignar",
   "products.noExtras": "Sin extras",
   "products.deletedTitle": "Productos eliminados",
-
   "extras.subtitle": "Ingredientes y agregados con costo",
   "extras.new": "Nuevo extra",
   "extras.modalNew": "Nuevo extra",
@@ -490,7 +474,6 @@
   "extras.namePh": "Queso extra",
   "extras.priceLabel": "Precio extra",
   "extras.deletedTitle": "Extras eliminados",
-
   "sizes.subtitle": "Tamaños y presentaciones",
   "sizes.new": "Nuevo tamaño",
   "sizes.modalNew": "Nuevo tamaño",
@@ -503,7 +486,6 @@
   "sizes.namePh": "Grande",
   "sizes.priceHint": "Se suma al precio del producto. 0 = sin costo.",
   "sizes.deletedTitle": "Tamaños eliminados",
-
   "sa.title": "Plataforma",
   "sa.loginSub": "Acceso de administración de clientes.",
   "sa.submit": "ACCEDER",
@@ -596,5 +578,31 @@
   "audit.action.activate": "Activó",
   "audit.action.deactivate": "Desactivó",
   "audit.action.sold_out": "Agotado",
-  "audit.action.restock": "Reabasteció"
+  "audit.action.restock": "Reabasteció",
+  "sa.modules": "Módulos",
+  "users.modulesLegend": "Módulos",
+  "users.modulesRequired": "Selecciona al menos un módulo.",
+  "module.CATALOG": "Catálogo",
+  "module.INVENTORY": "Inventario",
+  "module.POS": "Punto de venta",
+  "module.KIOSK": "Kiosco",
+  "module.KDS": "Pantalla de cocina",
+  "module.BAR": "Barra",
+  "module.TOKENS": "Fichas",
+  "module.REPORTS": "Reportes",
+  "module.TICKETS": "Tickets",
+  "module.RESERVATIONS": "Reservaciones",
+  "moduleDesc.CATALOG": "Categorías, productos, precios y activar/desactivar",
+  "moduleDesc.INVENTORY": "Control de existencias y productos agotados",
+  "moduleDesc.POS": "Caja para tomar órdenes y cobrar",
+  "moduleDesc.KIOSK": "Autoservicio para el cliente final",
+  "moduleDesc.KDS": "Pedidos en preparación y surtido en cocina",
+  "moduleDesc.BAR": "Pantalla de barra y bebidas pendientes",
+  "moduleDesc.TOKENS": "Venta y canje de fichas para bebidas",
+  "moduleDesc.REPORTS": "Ventas del día, top productos y ventas por empleado",
+  "moduleDesc.TICKETS": "Impresión y configuración de tickets",
+  "moduleDesc.RESERVATIONS": "Mesas, sillas de barra y reservaciones",
+  "err.INVALID_MODULE": "El nombre del módulo no es válido.",
+  "err.MODULE_NOT_PURCHASED": "El cliente no tiene contratado ese módulo.",
+  "err.MODULES_REQUIRED": "Selecciona al menos un módulo."
 }
