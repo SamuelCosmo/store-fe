@@ -21,6 +21,7 @@ import {
   LogOut,
   Pencil,
   Plus,
+  Power,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -40,6 +41,8 @@ type ClientDto = {
   maxStores: number;
   maxPosPerStore: number;
   maxKiosksPerStore: number;
+  active: boolean;
+  suspendedAt: string | null;
   createdAt: string;
   modules: string[];
 };
@@ -206,6 +209,10 @@ export function SuperadminView() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminSaving, setAdminSaving] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
+  const [statusModal, setStatusModal] = useState<ClientDto | null>(null);
+  const [statusPwd, setStatusPwd] = useState("");
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [tab, setTab] = useState<"clients" | "logs" | "audit">("clients");
 
   const isSuper = session?.role === "SUPERADMIN";
@@ -351,6 +358,45 @@ export function SuperadminView() {
     }
   }
 
+  function openStatusModal(client: ClientDto) {
+    setStatusModal(client);
+    setStatusPwd("");
+    setStatusError(null);
+  }
+
+  async function saveStatus() {
+    if (!statusModal) return;
+    setStatusError(null);
+    setStatusSaving(true);
+    try {
+      const updated = await api<ClientDto>(
+        `/api/clients/${statusModal.id}/active`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            active: !statusModal.active,
+            superadminPassword: statusPwd,
+          }),
+        },
+      );
+      setClients((prev) =>
+        prev.map((c) => (c.id === updated.id ? updated : c)),
+      );
+      setStatusModal(null);
+      toast.success(t("common.updated"));
+    } catch (e) {
+      setStatusError(
+        e instanceof ApiError && e.code === "INVALID_CREDENTIALS"
+          ? t("sa.superPwdWrong")
+          : e instanceof Error
+            ? e.message
+            : t("common.saveError"),
+      );
+    } finally {
+      setStatusSaving(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-1 flex-col bg-canvas">
       <header className="flex h-[72px] items-center justify-between border-b border-border bg-background px-8">
@@ -432,7 +478,7 @@ export function SuperadminView() {
         )}
 
         <div className="rounded-2xl border border-border bg-background p-5">
-          <div className="grid grid-cols-[60px_1fr_100px_100px_100px_120px_84px] items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase">
+          <div className="grid grid-cols-[60px_1fr_100px_100px_100px_120px_120px] items-center gap-4 rounded-lg bg-surface px-3.5 py-2.5 text-[10px] tracking-wide text-text-muted uppercase">
             <span>ID</span>
             <span>{t("sa.colClient")}</span>
             <span>{t("sa.colStores")}</span>
@@ -454,13 +500,20 @@ export function SuperadminView() {
             clients.map((c) => (
               <div
                 key={c.id}
-                className="grid min-h-[56px] grid-cols-[60px_1fr_100px_100px_100px_120px_84px] items-center gap-4 border-b border-border px-3.5 py-2.5 text-sm last:border-b-0"
+                className={`grid min-h-[56px] grid-cols-[60px_1fr_100px_100px_100px_120px_120px] items-center gap-4 border-b border-border px-3.5 py-2.5 text-sm last:border-b-0 ${
+                  c.active === false ? "opacity-75" : ""
+                }`}
               >
                 <span className="font-bold text-text-secondary tabular-nums">
                   #{c.id}
                 </span>
-                <span className="font-semibold text-text-primary">
-                  {c.name}
+                <span className="flex min-w-0 items-center gap-2 font-semibold text-text-primary">
+                  <span className="truncate">{c.name}</span>
+                  {c.active === false && (
+                    <span className="shrink-0 rounded-full bg-error/10 px-2 py-0.5 text-[10px] font-bold text-error uppercase">
+                      {t("sa.suspended")}
+                    </span>
+                  )}
                 </span>
                 <span className="text-text-secondary tabular-nums">
                   {t("sa.max", { n: c.maxStores })}
@@ -475,6 +528,24 @@ export function SuperadminView() {
                   {new Date(c.createdAt).toLocaleDateString(locale)}
                 </span>
                 <div className="flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    onClick={() => openStatusModal(c)}
+                    aria-label={t(
+                      c.active === false ? "sa.activateTitle" : "sa.suspendTitle",
+                      { name: c.name },
+                    )}
+                    title={t(
+                      c.active === false ? "sa.activateBtn" : "sa.suspendBtn",
+                    )}
+                    className={`flex size-9 items-center justify-center rounded-lg transition-colors hover:bg-surface ${
+                      c.active === false
+                        ? "text-success hover:text-success"
+                        : "text-text-secondary hover:text-error"
+                    }`}
+                  >
+                    <Power size={15} aria-hidden />
+                  </button>
                   <button
                     type="button"
                     onClick={() => openAdminModal(c)}
@@ -769,6 +840,71 @@ export function SuperadminView() {
               </div>
             </>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={statusModal !== null}
+        onClose={() => setStatusModal(null)}
+        title={t(
+          statusModal?.active === false
+            ? "sa.activateTitle"
+            : "sa.suspendTitle",
+          { name: statusModal?.name ?? "" },
+        )}
+      >
+        <div className="flex flex-col gap-4">
+          {statusError && (
+            <p
+              role="alert"
+              className="rounded-lg border border-error/40 bg-error/5 px-3.5 py-2.5 text-sm text-error"
+            >
+              {statusError}
+            </p>
+          )}
+          <p className="text-sm text-text-secondary">
+            {t(
+              statusModal?.active === false
+                ? "sa.activateHint"
+                : "sa.suspendHint",
+              { name: statusModal?.name ?? "" },
+            )}
+          </p>
+          <label className="flex flex-col gap-1.5 rounded-xl border border-border bg-surface p-3.5 text-[13px] font-semibold text-text-primary">
+            {t("sa.superPwdLabel")}
+            <input
+              type="password"
+              value={statusPwd}
+              onChange={(e) => setStatusPwd(e.target.value)}
+              className={inputClass}
+              autoComplete="current-password"
+            />
+          </label>
+          <div className="mt-1 flex justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={() => setStatusModal(null)}
+              className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={saveStatus}
+              disabled={statusSaving || !statusPwd}
+              className={`rounded-lg px-4 py-2.5 text-sm font-bold text-white transition-colors disabled:opacity-60 ${
+                statusModal?.active === false
+                  ? "bg-success hover:bg-success/90"
+                  : "bg-error hover:bg-error/90"
+              }`}
+            >
+              {t(
+                statusModal?.active === false
+                  ? "sa.activateBtn"
+                  : "sa.suspendBtn",
+              )}
+            </button>
+          </div>
         </div>
       </Modal>
     </div>

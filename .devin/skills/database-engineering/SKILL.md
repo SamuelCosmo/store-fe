@@ -38,10 +38,12 @@ description: >
    soft-delete prefiere `RESTRICT`/`NO ACTION` para no romper historial.
    Snapshots en `order_items` preservan el ticket aunque el producto se
    borre.
-5. **Migraciones**: no hay Flyway/Liquibase — el schema se crea por
-   `ddl-auto` (verificar `application.yml`). Cambios destructivos
-   (drop/rename de columna con datos) requieren plan de migración de datos
-   documentado ANTES de ejecutar — pedir aprobación (ver AGENTS.md).
+5. **Migraciones**: Flyway activo (`src/main/resources/db/migration/V<N>__*.sql`)
+   con `ddl-auto: validate` (`baseline-on-migrate: true`, `baseline-version: 0`).
+   Todo cambio de entidad/esquema requiere nueva migración `V<N+1>__*.sql`
+   en el mismo cambio; nunca editar migraciones ya aplicadas. Cambios
+   destructivos (drop/rename de columna con datos) requieren estrategia
+   expand/contract y aprobación previa (ver AGENTS.md).
 6. **Tenant isolation**: el filtro `store_id`/`client_id` en service es la
    barrera actual. Evaluar PostgreSQL RLS como defensa en profundidad
    (pendiente en auditoría) — nunca confiar solo en filtros de aplicación.

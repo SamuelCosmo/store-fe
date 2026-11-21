@@ -20,8 +20,11 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       .modules + sidebar/PanelGuard/homePath + editores en
       /superadmin y /users. Pendiente: BAR/RESERVATIONS aún sin
       pantallas que los consuman.
-- [ ] **HP-MT-02 · Suspensión de tenant** (F-02, HIGH) — `Client` no tiene
-      `status`/`suspendedAt`; agregar campo + bloqueo en login + UI superadmin.
+- [x] **HP-MT-02 · Suspensión de tenant** (F-02, HIGH) — `Client.active` +
+      `suspendedAt`, `PATCH /api/clients/{id}/active` (SUPERADMIN con
+      confirmación de contraseña + auditoría `suspend`/`activate`), bloqueo
+      en `AuthService` (`CLIENT_SUSPENDED`) y cierre inmediato de sesiones
+      abiertas en `JwtAuthFilter` + chip/acción en `/superadmin`.
 - [ ] **HP-MT-03 · Feature flags + dependencias de módulos** (F-28, MED) —
       catálogo de módulos con `requires` (KDS→ORDERS, KIOSK→MENU+ORDERS+PAYMENTS)
       + `tenant_features` para capacidades dentro de un módulo.
@@ -42,9 +45,12 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       Referrer-Policy en Spring; CSP, nosniff, frame DENY,
       Referrer-Policy, Permissions-Policy, HSTS en
       `next.config.ts`.
-- [ ] **HP-DB-01 · Migraciones formales (Flyway/Liquibase)** (F-06, HIGH) —
-      hoy `ddl-auto: update`; baseline antes de que el esquema crezca +
-      estrategia expand/contract para cambios destructivos.
+- [x] **HP-DB-01 · Migraciones formales (Flyway)** (F-06, HIGH) —
+      `flyway-core` + `flyway-database-postgresql`, `ddl-auto: validate`,
+      `baseline-on-migrate: true` (`baseline-version: 0`),
+      `V1__baseline.sql` idempotente + `V2__client_suspension.sql` (incluye
+      fix de `orders_payment_method_check` para `TOKEN`). Verificado en DB
+      vacía y en DB existente.
 - [ ] **HP-OPS-01 · Backups y disaster recovery** (F-05, HIGH) — documentar
       backups de Railway Postgres, probar restore, runbook de incidente.
 - [ ] **HP-OPS-02 · Monitoreo y alertas** (F-05, HIGH) — `/actuator/health`,

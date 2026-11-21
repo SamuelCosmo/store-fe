@@ -64,6 +64,8 @@ const ACTIONS = [
   "reorder",
   "activate",
   "deactivate",
+  "suspend",
+  "modules",
   "sold_out",
   "restock",
 ];
@@ -73,6 +75,7 @@ const ACTION_STYLE: Record<string, string> = {
   restore: "bg-success/10 text-success",
   update: "bg-primary/10 text-primary",
   settings: "bg-primary/10 text-primary",
+  modules: "bg-primary/10 text-primary",
   reorder: "bg-primary/10 text-primary",
   set: "bg-primary/10 text-primary",
   purchase: "bg-primary/10 text-primary",
@@ -81,6 +84,7 @@ const ACTION_STYLE: Record<string, string> = {
   cancel: "bg-error/10 text-error",
   delete: "bg-error/10 text-error",
   deactivate: "bg-error/10 text-error",
+  suspend: "bg-error/10 text-error",
   sold_out: "bg-error/10 text-error",
 };
 

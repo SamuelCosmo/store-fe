@@ -172,6 +172,9 @@ PUT    /api/clients/{id}               # SUPERADMIN — nombre + límites del pl
 GET/PUT /api/clients/{id}/admin        # SUPERADMIN — admin del tenant; el PUT
                             # pide superadminPassword (401 si falla) y la nueva
                             # adminPassword valida 8+ con may/min/dígito
+PATCH  /api/clients/{id}/active        # SUPERADMIN — { active, superadminPassword }
+                            # suspende/reactiva tenant; login da CLIENT_SUSPENDED
+                            # y sesiones vivas caen con 401 en JwtAuthFilter
 GET    /api/clients/{id}/stores        # lista del cliente — paginable
 GET    /api/users                      # ADMIN/MANAGER — lista del cliente, paginable
 POST   /api/users                      # ADMIN — { name, email, password, role,
