@@ -231,7 +231,9 @@ food-safety regs) are the customer's, but SAC+ should document the split.
   aggregates, scoping, exception mapping, JWT filter, token sales).
 - **No repository/DB integration tests in CI** (the one written was
   removed — needs live Postgres).
-- **No controller/web-layer tests**, no cross-tenant isolation tests.
+- ~~**No controller/web-layer tests**, no cross-tenant isolation tests.~~
+  Resuelto (2026-11-18): `CrossTenantIsolationTest` cubre lectura y
+  escritura cross-tenant por módulo (HP-QA-05).
 - **Frontend: zero automated tests** (no Vitest/RTL/Cypress).
 - **No CI pipeline** — Railway `mvnw install` compiles+runs tests at
   deploy, which is a gate but post-merge.
@@ -284,7 +286,7 @@ food-safety regs) are the customer's, but SAC+ should document the split.
 | F-12 | MED | Quality | No DB integration tests in CI | tests are Mockito-only | Testcontainers Postgres for repo-critical tests | testing-qa, database-engineering | HP-QA-04 |
 | F-13 | MED | Arch | `OrderTerminal.tsx` 1,642 lines | file size | Split into step components (cart/payment/summary) | frontend-engineering | HP-FE-01 |
 | F-14 | MED | Tenancy | `users.email` globally unique | `User.java:36` | Decide: keep global (simpler) or scope per tenant | database-engineering | HP-DB-02 |
-| F-15 | MED | Tenancy | No cross-tenant isolation tests | none exist | Add `@DataJpaTest`/MockMvc tests asserting 403/empty across tenants | testing-qa, security-engineering | HP-QA-05 |
+| F-15 | MED | Tenancy | ~~No cross-tenant isolation tests~~ **resuelto 2026-11-18** | `CrossTenantIsolationTest` cubre lectura+escritura cross-tenant por módulo | done | testing-qa, security-engineering | HP-QA-05 ✅ |
 | F-16 | MED | Inventory | Stock only — no movements/recipes/waste | `InventoryService` ponytail comment | `inventory_movements` ledger + recipes/BOM later | inventory-management | HP-INV-01 |
 | F-17 | MED | Payments | CARD is placeholder; no Payment entity | `TODO(bancomer)` in OrderService | Await Bancomer spec; then `payments` entity + PENDING_PAYMENT flow | payment-integration | HP-PAY-01 |
 | F-18 | MED | Ops | No staging environment | only local+prod | Add Railway staging env | devops-sre | HP-OPS-04 |
