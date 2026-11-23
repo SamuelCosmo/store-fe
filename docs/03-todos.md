@@ -87,13 +87,20 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       ajustes con rol MANAGER+; recetas/BOM y food cost después.
 - [ ] **HP-PAY-01 · Integración Bancomer** (F-17, MED) — `TODO(bancomer)`
       en OrderService; esperando spec del banco (ver docs/14).
-- [ ] **HP-FE-01 · Romper `OrderTerminal.tsx` (1,642 líneas)** (F-13, MED) —
-      separar en step components (carrito/pago/resumen).
+- [x] **HP-FE-01 · Romper `OrderTerminal.tsx` (1,642 líneas)** (F-13, MED) —
+      ✅ dividido en `terminal-utils.ts` (tipos + cálculo en centavos) y
+      componentes por paso: `TerminalHeader`, `MenuSection`, `CartPanel`,
+      `PayModal`, `TokenSaleModal`, `ReceiptModal`, `ConfirmLogoutModal`,
+      `IdleOverlay`. El padre quedó en ~660 líneas de estado/orquestación;
+      comportamiento intacto (mismo JSX, mismas llamadas API).
 - [ ] **HP-DB-02 · Decidir unicidad de email** (F-14, MED) — hoy global;
       ¿por tenant o global? Impacta personas con cuentas en varios tenants.
-- [ ] **HP-DOC-01 · Sincronizar docs con código** (F-22, LOW) —
-      `06-database.md` (token_sales, app_logs, columnas nuevas de orders),
-      `10-frontend-screens.md` (pantallas actuales).
+- [x] **HP-DOC-01 · Sincronizar docs con código** (F-22, LOW) —
+      ✅ `06-database.md`: `app_logs`, `audit_events`, `devices`, suspension/
+      plan/branding de clients+stores, `idempotency_key`, tablas planeadas
+      marcadas (`tables`, `reservations`, `tickets`). `10-frontend-screens.md`:
+      superficie SUPERADMIN, pantallas reales del panel, extras de POS/kiosco,
+      Barra marcada como planeada.
 - [ ] **HP-A11Y-01 · Auditoría WCAG 2.2 AA** (F-24, LOW) — axe/Lighthouse
       por superficie; focus trap en modales; aria-labels en botones
       solo-icono; `aria-live` en KDS/toasts. Ver skill accessibility-wcag.
