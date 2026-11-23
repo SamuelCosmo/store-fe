@@ -51,26 +51,30 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       `V1__baseline.sql` idempotente + `V2__client_suspension.sql` (incluye
       fix de `orders_payment_method_check` para `TOKEN`). Verificado en DB
       vacía y en DB existente.
-- [ ] **HP-OPS-01 · Backups y disaster recovery** (F-05, HIGH) — documentar
-      backups de Railway Postgres, probar restore, runbook de incidente.
-- [ ] **HP-OPS-02 · Monitoreo y alertas** (F-05, HIGH) — `/actuator/health`,
-      uptime monitor externo, error tracking (Sentry), alertas 5xx/login.
+- [ ] **HP-OPS-01 · Backups y disaster recovery** (F-05, HIGH) *(pospuesto
+      hasta activar Railway)* — documentar backups de Railway Postgres,
+      probar restore, runbook de incidente.
+- [ ] **HP-OPS-02 · Monitoreo y alertas** (F-05, HIGH) *(pospuesto hasta
+      activar Railway)* — `/api/health`, uptime monitor externo, error
+      tracking (Sentry), alertas 5xx/login.
 - [ ] **HP-OPS-03 · Rate limiter distribuido** (F-10, MED) — in-memory hoy;
       Redis/DB si hay >1 réplica.
 - [ ] **HP-OPS-04 · Entorno staging** (F-18, MED) — validar antes de prod.
 - [ ] **HP-QA-01 · Tests frontend** (F-11, MED) — Vitest + RTL para `lib/`
       (cálculos centavos, apiErrorMessage, paginación) cuando se justifique.
-- [ ] **HP-QA-02 · CI pipeline con gates** (F-11, MED) — `mvnw test` +
-      `tsc --noEmit` + `eslint` antes de deploy (hoy Railway compila post-merge).
+- [x] **HP-QA-02 · CI pipeline con gates** (F-11, MED) — GitHub Actions
+      (`.github/workflows/ci.yml`) en `store-be` (`mvnw test`) y `store-fe`
+      (`pnpm typecheck` + `pnpm lint`) en cada push a `main` y PR.
 - [ ] **HP-QA-03 · E2E happy path** (F-11, MED) — Playwright/Cypress:
       login → orden POS → KDS → ticket.
 - [ ] **HP-QA-04 · Tests de repositorio con Testcontainers** (F-12, MED) —
       Postgres real para queries críticas (aggregates, scoping, locks).
 - [ ] **HP-QA-05 · Tests de aislamiento cross-tenant** (F-15, MED) — por
       cada módulo: usuario de tienda A no ve datos de B; tenant ajeno → 403.
-- [ ] **HP-BIZ-01 · Corte de caja por turno** — diseño en sección
-      "Iteración siguiente" (shift por store, fondo inicial, esperado vs
-      contado, incluye fichas; ADMIN/MANAGER abren/cierran).
+- [ ] **HP-BIZ-01 · Corte de caja por turno** *(pospuesto — bajo demanda de
+      cliente)* — módulo opcional `SHIFTS` + switch `requireOpenShift` por
+      cliente/tienda (kiosco nunca bloquea). Diseño completo en sección
+      "Iteración siguiente".
 - [ ] **HP-BIZ-02 · Descuentos** — `orders.discount` (monto) server-side,
       input en modal de cobro, línea en ticket. Ver TODO original arriba.
 - [ ] **HP-BIZ-03 · Recuperar contraseña por correo** — bloqueado por
@@ -270,26 +274,27 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 
 ## Iteración siguiente
 
-- [ ] **Corte de caja por turno** — abrir turno con fondo inicial,
-      vender normal, cerrar con efectivo contado → esperado vs contado
-      (faltante/sobrante) + historial por tienda. Decisiones tomadas
-      (happy path): el turno es **por establecimiento, no por cajero**
-      (el POS usa un usuario compartido siempre abierto); `openedBy`/
-      `closedBy` solo registran qué admin/gerente lo operó; **cuenta
-      todo**: efectivo esperado = fondo + cobros CASH de órdenes +
-      fichas vendidas en CASH − reembolsos CASH (tarjeta y canje de
-      fichas se reportan como referencia, no entran al cajón);
-      **ADMIN y MANAGER abren/cierran cualquier turno de sus tiendas**
-      (cierre forzado incluido). Diseño sugerido: entidad `Shift`
-      (store, openedBy, openedAt, openingCash, closedBy, closedAt,
-      countedCash, expectedCash, cashDifference) + atribución por
-      ventana `[openedAt, closedAt]` sobre `createdAt` de orders/
-      token_sales (sin FK nueva ni tocar el flujo de cobro); un solo
-      turno abierto por tienda; endpoints `/api/shifts` (GET lista,
-      GET /{id} detalle con agregados, POST /open, POST /{id}/close)
-      restringidos a ADMIN/MANAGER con `resolveScope`/`canScope`;
-      pantalla `/cortes` en el panel (selector de tienda, turno actual
-      con esperado en vivo, modal abrir/cerrar, tabla de historial).
+- [ ] **Corte de caja por turno** *(pospuesto a futuro si un cliente lo
+      solicita)* — opcional multi-giro en dos niveles: (1) módulo `SHIFTS`
+      en `Module` para que negocios sin efectivo ni siquiera lo vean, y
+      (2) switch `requireOpenShift` en settings para elegir si el POS exige
+      turno abierto antes de cobrar o permite cortes libres (el kiosco nunca
+      se bloquea porque solo cobra con tarjeta). Flujo: abrir turno con fondo
+      inicial (`openingCash`), vender normal, cerrar con efectivo contado
+      (`countedCash` + nota opcional) → esperado vs contado (faltante/sobrante)
+      + tira térmica 80mm + historial por tienda. El turno es **por
+      establecimiento, no por cajero** (el POS usa un usuario compartido
+      siempre abierto); `openedBy`/`closedBy` registran qué admin/gerente lo
+      operó; **cuenta todo**: efectivo esperado = fondo + cobros CASH de
+      órdenes + fichas vendidas en CASH − reembolsos CASH (tarjeta y canje de
+      fichas se reportan como referencia, no entran al cajón); **ADMIN y
+      MANAGER abren/cierran cualquier turno de sus tiendas** (cierre forzado
+      incluido). Diseño sugerido: migración Flyway `shifts` + atribución por
+      ventana `[openedAt, closedAt]` sobre `createdAt` de orders/token_sales
+      (sin FK nueva ni tocar el flujo de cobro); un solo turno abierto por
+      tienda; endpoints `/api/shifts` (GET lista, GET /{id} detalle con
+      agregados, POST /open, POST /{id}/close) con `MODULE_SHIFTS` +
+      `resolveScope`/`canScope`.
 - [x] **Bitácora de cambios (audit log)** — quién cambió precios,
       settings, usuarios, categorías; complementa `cancelledBy`/
       `cancelledAt` que ya guardan las órdenes. Entidad `AuditEvent`
@@ -297,8 +302,8 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       createdAt) escrita desde los services que mutan catálogo/
       settings/usuarios. Consulta inicial: solo ADMIN ve `/audit` o
       sección en `/settings`; retención a definir.
-      ✅ `audit_events` + `/api/audit` + `/audit` (ver HP-SEC-02).
-      Pendiente: retención/purgado de eventos antiguos.
+      ✅ `audit_events` + `/api/audit` + `/audit` + purga diaria automática
+      (`AUDIT_RETENTION_DAYS=180`, tope máx 6 meses) (ver HP-SEC-02).
 - [ ] **Límites del plan aplicados de verdad** — hoy `maxStores` se
       cumple en stores; `maxPosPerStore`/`maxKiosksPerStore` ya se
       validan en `addDevice` pero falta definir si el POS/kiosco

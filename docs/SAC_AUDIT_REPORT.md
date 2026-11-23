@@ -280,7 +280,7 @@ food-safety regs) are the customer's, but SAC+ should document the split.
 | F-08 | MED | Security | ~~Swagger/docs public in prod~~ **RESOLVED 2026-11-17** — SUPERADMIN-only in SecurityConfig | `SecurityConfig.java` | security-engineering | HP-SEC-03 ✅ |
 | F-09 | MED | Security | ~~No security headers~~ **RESOLVED 2026-11-17** — Spring headers + Next `headers()` | `SecurityConfig.java`, `next.config.ts` | security-engineering | HP-SEC-04 ✅ |
 | F-10 | MED | Security | Rate limiter in-memory | `common/RateLimiter.java` | Redis/DB-backed when scaling replicas | devops-sre | HP-OPS-03 |
-| F-11 | MED | Quality | Zero frontend tests; no E2E; no CI gates | no test files in store-fe; no .github | Vitest+RTL for lib/, Playwright smoke, CI pipeline | testing-qa | HP-QA-01/02/03 |
+| F-11 | MED | Quality | Zero frontend tests; no E2E; **CI gates added 2026-11-19** (`.github/workflows/ci.yml` in both repos) | no test files in store-fe | Vitest+RTL for lib/, Playwright smoke | testing-qa | HP-QA-02 ✅ / HP-QA-01,03 |
 | F-12 | MED | Quality | No DB integration tests in CI | tests are Mockito-only | Testcontainers Postgres for repo-critical tests | testing-qa, database-engineering | HP-QA-04 |
 | F-13 | MED | Arch | `OrderTerminal.tsx` 1,642 lines | file size | Split into step components (cart/payment/summary) | frontend-engineering | HP-FE-01 |
 | F-14 | MED | Tenancy | `users.email` globally unique | `User.java:36` | Decide: keep global (simpler) or scope per tenant | database-engineering | HP-DB-02 |

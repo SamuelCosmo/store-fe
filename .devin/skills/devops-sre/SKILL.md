@@ -18,7 +18,9 @@ description: >
   Postgres :5433 `storedb`
 - **Storage**: S3-compatible — local `adobe/s3mock` :9090 (volumen
   persistente); prod: bucket S3/R2 vía env `STORAGE_*`
-- **CI/CD**: Railway auto-deploy por push; no hay pipeline CI separado
+- **CI/CD**: GitHub Actions (`.github/workflows/ci.yml` en ambos repos:
+  `mvnw test` en back, `pnpm typecheck` + `pnpm lint` en front) + Railway
+  auto-deploy por push
 
 ## Entornos
 
@@ -34,6 +36,7 @@ Staging: **no existe** — pendiente (ver audit).
 **Backend**: `JWT_SECRET` (OBLIGATORIO, ≥256 bits — sin default en prod),
 `CORS_ORIGINS`, `DATABASE_URL`/datasource, `STORAGE_*` (endpoint, bucket,
 access/secret key), `SEED_DEV_DATA=false` en prod, `LOG_RETENTION_DAYS`,
+`AUDIT_RETENTION_DAYS` (default y máx 180 = 6 meses),
 `LOGGING_STRUCTURED_FORMAT_CONSOLE=logstash` (JSON en Railway).
 
 **Frontend**: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SENTRY_DSN` (futuro).
