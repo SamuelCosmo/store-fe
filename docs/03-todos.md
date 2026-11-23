@@ -69,8 +69,11 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
       login → orden POS → KDS → ticket.
 - [ ] **HP-QA-04 · Tests de repositorio con Testcontainers** (F-12, MED) —
       Postgres real para queries críticas (aggregates, scoping, locks).
-- [ ] **HP-QA-05 · Tests de aislamiento cross-tenant** (F-15, MED) — por
-      cada módulo: usuario de tienda A no ve datos de B; tenant ajeno → 403.
+- [x] **HP-QA-05 · Tests de aislamiento cross-tenant** (F-15, MED) —
+      ✅ `security/CrossTenantIsolationTest` (~18 casos): scope de tiendas,
+      `/api/clients`, usuarios, catálogo (producto/categoría/extra/size),
+      órdenes, fichas, dashboard, auditoría, módulos e inventario — lectura
+      y escritura rechazadas contra tenant/store ajeno.
 - [ ] **HP-BIZ-01 · Corte de caja por turno** *(pospuesto — bajo demanda de
       cliente)* — módulo opcional `SHIFTS` + switch `requireOpenShift` por
       cliente/tienda (kiosco nunca bloquea). Diseño completo en sección
