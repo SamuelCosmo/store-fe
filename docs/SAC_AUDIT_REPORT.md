@@ -139,7 +139,8 @@ scoping, centralized exceptions, docs discipline (12+ numbered docs).
 Weaknesses:
 - `ddl-auto: update` — no migration tooling; schema drift risk grows
   (MEDIUM→HIGH as data accumulates).
-- `OrderTerminal.tsx` is 1,642 lines — god component; split pending.
+- ~~`OrderTerminal.tsx` is 1,642 lines~~ — RESOLVED 2026-11-22: split into
+  `terminal-utils` + 8 step components; parent ~660 lines orchestration.
 - Categories↔stores M:N makes "product belongs to store" indirect
   (`product.getCategory().getStores()`) — works, but a direct
   `product_stores` or store-scoped catalog would be cleaner at scale.
@@ -258,14 +259,14 @@ food-safety regs) are the customer's, but SAC+ should document the split.
 
 1. Module/plan layer documented but unimplemented (blocks SaaS sales).
 2. `ddl-auto: update` without migrations (blocks safe schema evolution).
-3. `OrderTerminal.tsx` 1,642-line god component.
+3. ~~`OrderTerminal.tsx` 1,642-line god component.~~ RESOLVED (2026-11-22).
 4. ~~No audit entity for business mutations.~~ RESOLVED (audit_events, 2026-11-17).
 5. No RLS / defense-in-depth tenant isolation.
 6. Missing inventory depth (movements, recipes, warehouses).
 7. No CI gates, no frontend tests, no E2E.
 8. ~~Public Swagger + missing security headers.~~ RESOLVED (2026-11-17).
-9. Docs drift: `06-database.md` predates `token_sales`, `app_logs`,
-   new order columns; `10-frontend-screens.md` may lag actual screens.
+9. ~~Docs drift: `06-database.md`, `10-frontend-screens.md`.~~ RESOLVED
+   (2026-11-22).
 10. Email globally unique limits multi-tenant personas.
 
 ## 13. Findings Register
@@ -284,7 +285,7 @@ food-safety regs) are the customer's, but SAC+ should document the split.
 | F-10 | MED | Security | Rate limiter in-memory | `common/RateLimiter.java` | Redis/DB-backed when scaling replicas | devops-sre | HP-OPS-03 |
 | F-11 | MED | Quality | Zero frontend tests; no E2E; **CI gates added 2026-11-19** (`.github/workflows/ci.yml` in both repos) | no test files in store-fe | Vitest+RTL for lib/, Playwright smoke | testing-qa | HP-QA-02 ✅ / HP-QA-01,03 |
 | F-12 | MED | Quality | No DB integration tests in CI | tests are Mockito-only | Testcontainers Postgres for repo-critical tests | testing-qa, database-engineering | HP-QA-04 |
-| F-13 | MED | Arch | `OrderTerminal.tsx` 1,642 lines | file size | Split into step components (cart/payment/summary) | frontend-engineering | HP-FE-01 |
+| F-13 | MED | Arch | ~~`OrderTerminal.tsx` 1,642 lines~~ **RESOLVED 2026-11-22** — split into `terminal-utils` (money/cart helpers) + `TerminalHeader`, `MenuSection`, `CartPanel`, `PayModal`, `TokenSaleModal`, `ReceiptModal`, `ConfirmLogoutModal`, `IdleOverlay` | `app/pos/_components/` | — | frontend-engineering | HP-FE-01 ✅ |
 | F-14 | MED | Tenancy | `users.email` globally unique | `User.java:36` | Decide: keep global (simpler) or scope per tenant | database-engineering | HP-DB-02 |
 | F-15 | MED | Tenancy | ~~No cross-tenant isolation tests~~ **resuelto 2026-11-18** | `CrossTenantIsolationTest` cubre lectura+escritura cross-tenant por módulo | done | testing-qa, security-engineering | HP-QA-05 ✅ |
 | F-16 | MED | Inventory | Stock only — no movements/recipes/waste | `InventoryService` ponytail comment | `inventory_movements` ledger + recipes/BOM later | inventory-management | HP-INV-01 |
@@ -293,7 +294,7 @@ food-safety regs) are the customer's, but SAC+ should document the split.
 | F-19 | LOW | Security | JWT in localStorage | `lib/store.ts` | Accepted trade-off; mitigate via CSP + short TTL | security-engineering | — |
 | F-20 | LOW | Security | `/api/logs` public writes | `SecurityConfig` permitAll + rate limit | Acceptable; monitor volume | security-engineering | — |
 | F-21 | LOW | Security | Email enumeration via duplicate errors | UserService | Generic messages where feasible | security-engineering | — |
-| F-22 | LOW | Docs | `06-database.md`, `10-frontend-screens.md` drift | missing newer tables/screens | Refresh docs to match code | documentation-engineering | HP-DOC-01 |
+| F-22 | LOW | Docs | ~~`06-database.md`, `10-frontend-screens.md` drift~~ **RESOLVED 2026-11-22** — DB doc synced (app_logs, audit_events, devices, suspension, idempotency, planned tables flagged); screens doc synced (SUPERADMIN, real panel screens, Barra flagged planned) | `store-be/docs/` | — | documentation-engineering | HP-DOC-01 ✅ |
 | F-23 | LOW | SEO/UX | No robots/sitemap/OG; internal app | public/ has only images | N/A for app; add if marketing site appears | frontend-engineering | — |
 | F-24 | LOW | A11y | No formal WCAG audit; icon buttons lack consistent aria-labels | spot check | axe/Lighthouse pass per surface | accessibility-wcag | HP-A11Y-01 |
 | F-25 | MED | Business | Cash shift/corte de caja missing | no shift code; TODO documented | Implement per happy-path design | business-domain-erp, backend-engineering | HP-BIZ-01 |
