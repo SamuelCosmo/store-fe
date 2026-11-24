@@ -4,6 +4,7 @@ import { Modal } from "@/components/molecules/Modal";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
 import { apiErrorMessage } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { refreshSettings } from "@/lib/settings";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -100,6 +101,12 @@ export default function LoginPage() {
     }
     const session = body as AuthResponse;
     saveSession(session);
+    // Settings del tenant (IVA, moneda, fichas) — sin esto las terminales
+    // calculan totales con defaults hasta el refresh periódico (~60s) y el
+    // cobro truena con CASH_INSUFFICIENT contra el total real del server.
+    if (session.clientId != null) {
+      refreshSettings(session.clientId, session.storeId).catch(() => {});
+    }
     router.push(homePath(session));
   }
 
