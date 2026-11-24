@@ -25,8 +25,24 @@ NEXT_PUBLIC_API_URL=http://localhost:8080
 pnpm install
 pnpm dev        # http://localhost:3000
 pnpm lint       # eslint
+pnpm test       # Vitest (lib/ + utils del POS)
 pnpm build      # build de producción
 ```
+
+### E2E (Playwright, HP-QA-03)
+
+Corre contra el stack real — backend en `:8080` + Postgres con el fixture:
+
+```bash
+# una vez, y tras cada reset de la DB:
+docker exec -i store-be-postgres-1 psql -U store -d storedb < e2e/seed.sql
+
+npx playwright install chromium   # primera vez
+pnpm test:e2e                     # levanta `pnpm dev` si :3000 no responde
+```
+
+Login → cobro POS en efectivo → avance en KDS → recibo, con el tenant
+fixture `e2e@sac.test` / `e2e-super-secret`.
 
 Swagger UI del backend: http://localhost:8080/swagger-ui.html
 

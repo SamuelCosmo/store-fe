@@ -12,25 +12,31 @@ description: >
 
 ## Estado actual
 
-**store-be**: ~40 tests JUnit5 + Mockito (`*Test.java` junto a services).
-Cubren: AuthService (rate limit, login), OrderService (creación, estados,
-stock, refunds, idempotencia), ReportService (agregados), StoreService
-(scoping), RateLimiter, GlobalExceptionHandler. **Sin H2** — no hay tests
-de repositorio/DB reales en CI.
+**store-be**: ~62 tests. Unitarios JUnit5 + Mockito (`*Test.java` junto a
+services) + `security/CrossTenantIsolationTest` (HP-QA-05) +
+`repository/PostgresRepositoryIT` (HP-QA-04: `@DataJpaTest` + Testcontainers
+`postgres:16-alpine`, 7 tests sobre folio semanal, agregados, idempotencia y
+soft-delete; requiere Docker — `docker-java 3.7.0` + `api.version=1.44` en
+el bloque `static` para Docker Desktop Engine ≥28).
 
-**store-fe**: sin suite de tests de componentes. Verificación = `tsc
---noEmit` + `eslint` + prueba manual en `pnpm dev`.
+**store-fe**: 33 tests Vitest (`pnpm test`, `vitest.config.mts`, alias `@/`):
+`lib/` (centavos, session, settings, log.redact, branding, password) +
+`pos/_components/terminal-utils`. **E2E**: Playwright
+(`e2e/happy-path.spec.ts`, `pnpm test:e2e`) — login → cobro POS → KDS →
+recibo, contra el stack real (:8080 + Postgres) con fixture `e2e/seed.sql`
+(tenant 9001, `e2e@sac.test`/`e2e-super-secret`). Gate local; en CI falta
+levantar `store-be` en el runner.
 
-**CI**: Railway corre `mvnw install` (compila tests) en deploy; no hay
-pipeline de CI separado con gates.
+**CI**: `.github/workflows/ci.yml` en ambos repos (push `main` + PRs):
+`mvnw test` en store-be; `pnpm typecheck` + `lint` + `test` en store-fe.
 
-## Pirámide objetivo
+## Pirámide
 
 ```
-        E2E (futuro: Playwright/Cypress)
-      Integración (futuro: @DataJpaTest/@SpringBootTest con Testcontainers)
-    Unitarios (actual: services con Mockito)
-  Typecheck+Lint (actual front)
+        E2E (Playwright, local — `pnpm test:e2e`)
+      Integración (@DataJpaTest + Testcontainers — PostgresRepositoryIT)
+    Unitarios (JUnit/Mockito back · Vitest front `lib/`)
+  Typecheck+Lint (CI en cada PR)
 ```
 
 ## Reglas
@@ -48,11 +54,11 @@ pipeline de CI separado con gates.
      MANAGER no accede a tienda no asignada.
 4. **Tests de autorización negativa**: por cada endpoint nuevo, probar
    rol sin permiso → 403 y tenant ajeno → 403/404.
-5. **Frontend**: cuando se justifique, agregar Vitest + React Testing
-   Library para lógica de `lib/` (cálculos de dinero en centavos,
-   `apiErrorMessage`, paginación). Componentes visuales: prueba manual.
-6. **Regresión**: antes de release, smoke manual del happy path:
-   login → catálogo → orden POS → KDS → corte (futuro) → reporte.
+5. **Frontend**: lógica pura nueva en `lib/`/`_components/*-utils` va con
+   test Vitest. Componentes visuales: E2E si es flujo crítico, si no,
+   prueba manual.
+6. **Regresión**: antes de release, `pnpm test:e2e` cubre el happy path
+   (login → orden POS → KDS → recibo); corte/reporte sigue manual.
 
 ## Cobertura mínima por tipo de cambio
 
@@ -62,11 +68,10 @@ pipeline de CI separado con gates.
 | Cambio de cálculo (impuestos, totales, stock) | unitario con casos borde |
 | Nuevo código de error | `err.<CODE>` en i18n + test de mapeo si aplica |
 | Query agregada nueva | test con mocks verificando shape de `Object[]` |
-| Frontend lógica pura | Vitest cuando exista; mientras, verificación manual |
+| Frontend lógica pura | Vitest (`pnpm test`) |
+| Flujo crítico de UI | caso en `e2e/` (Playwright) |
 
 ## Pendientes de calidad (del audit)
 
-- [ ] Testcontainers/PostgreSQL real para repositories críticos.
-- [ ] Suite E2E del happy path (login → orden → ticket).
-- [ ] CI pipeline con `mvnw test` + `tsc` + `eslint` como gate.
+- [ ] E2E en CI (requiere levantar `store-be` + Postgres en el runner).
 - [ ] Mutation/coverage report (Jacoco) para visibilidad.

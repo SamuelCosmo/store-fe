@@ -60,15 +60,23 @@ En orden sugerido. Los TODO inline en código apuntan al mismo trabajo.
 - [ ] **HP-OPS-03 · Rate limiter distribuido** (F-10, MED) — in-memory hoy;
       Redis/DB si hay >1 réplica.
 - [ ] **HP-OPS-04 · Entorno staging** (F-18, MED) — validar antes de prod.
-- [ ] **HP-QA-01 · Tests frontend** (F-11, MED) — Vitest + RTL para `lib/`
-      (cálculos centavos, apiErrorMessage, paginación) cuando se justifique.
+- [x] **HP-QA-01 · Tests frontend** (F-11, MED) — ✅ Vitest (`pnpm test`):
+      33 tests en `lib/` (cálculos en centavos, session, settings, log.redact,
+      branding, password) + `pos/_components/terminal-utils`; corre en CI.
 - [x] **HP-QA-02 · CI pipeline con gates** (F-11, MED) — GitHub Actions
       (`.github/workflows/ci.yml`) en `store-be` (`mvnw test`) y `store-fe`
-      (`pnpm typecheck` + `pnpm lint`) en cada push a `main` y PR.
-- [ ] **HP-QA-03 · E2E happy path** (F-11, MED) — Playwright/Cypress:
-      login → orden POS → KDS → ticket.
-- [ ] **HP-QA-04 · Tests de repositorio con Testcontainers** (F-12, MED) —
-      Postgres real para queries críticas (aggregates, scoping, locks).
+      (`pnpm typecheck` + `pnpm lint` + `pnpm test`) en cada push a `main` y PR.
+- [x] **HP-QA-03 · E2E happy path** (F-11, MED) — ✅ Playwright
+      (`e2e/happy-path.spec.ts`, `pnpm test:e2e`): login → cobro POS en
+      efectivo → avance KDS (Preparando→Lista→Entregar) → recibo. Corre
+      contra el stack real con el fixture `e2e/seed.sql`; gate local —
+      CI queda pendiente (requiere levantar `store-be` en el runner).
+- [x] **HP-QA-04 · Tests de repositorio con Testcontainers** (F-12, MED) —
+      ✅ `repository/PostgresRepositoryIT` (7 tests, `postgres:16-alpine`):
+      folio semanal, agregados dashboard, top productos, idempotencia de
+      órdenes y fichas (scope + unique), email case-insensitive y
+      soft-delete. Requiere Docker; ver el bloque `static` sobre
+      `api.version` para Docker Desktop reciente.
 - [x] **HP-QA-05 · Tests de aislamiento cross-tenant** (F-15, MED) —
       ✅ `security/CrossTenantIsolationTest` (~18 casos): scope de tiendas,
       `/api/clients`, usuarios, catálogo (producto/categoría/extra/size),
